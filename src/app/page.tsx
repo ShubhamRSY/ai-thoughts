@@ -12,9 +12,12 @@ import type { CapturedClip } from "@/components/Submit/MediaRecorderView";
 import PulseOverview, { type FeelingTally } from "@/components/Pulse/PulseOverview";
 import FeelWith from "@/components/Pulse/FeelWith";
 import FeelingRoom from "@/components/Pulse/FeelingRoom";
+import PulseEpisode from "@/components/Pulse/PulseEpisode";
+import StreakCard from "@/components/StreakCard";
 import { INITIAL_THOUGHTS } from "@/lib/mock-data";
 import { digestBytes } from "@/lib/integrity";
 import { useLocalProfile } from "@/hooks/useLocalProfile";
+import { useFeelingStreak } from "@/hooks/useFeelingStreak";
 import type { MediaType, Thought, FeelingId, Reaction } from "@/lib/types";
 import {
   fetchPulsePosts,
@@ -29,6 +32,7 @@ type MediaFilter = "all" | MediaType;
 
 export default function Home() {
   const { profile, save } = useLocalProfile();
+  const { streak, bump } = useFeelingStreak();
   const [thoughts, setThoughts] = useState<Thought[]>(INITIAL_THOUGHTS);
   const [mine, setMine] = useState<Thought[]>([]);
   const [media, setMedia] = useState<MediaFilter>("all");
@@ -107,6 +111,7 @@ export default function Home() {
         if (posted) {
           setThoughts((prev) => [posted, ...prev]);
           setMine((prev) => [posted, ...prev]);
+          bump(data.feeling);
           return true;
         }
         return false;
@@ -124,9 +129,10 @@ export default function Home() {
 
       setThoughts((prev) => [newThought, ...prev]);
       setMine((prev) => [newThought, ...prev]);
+      bump(data.feeling);
       return true;
     },
-    [profile, save]
+    [profile, save, bump]
   );
 
   const onReact = useCallback((thoughtId: string, reaction: Reaction) => {
@@ -172,6 +178,12 @@ export default function Home() {
 
   const feelingTally = useMemo(() => computeTally(thoughts), [thoughts]);
 
+  const othersMap = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const t of thoughts) if (t.feeling) m[t.feeling] = (m[t.feeling] ?? 0) + 1;
+    return m;
+  }, [thoughts]);
+
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-[430px] flex-col sm:border-x sm:border-zinc-800/40">
       <Header onShare={() => openShare("video")} />
@@ -209,6 +221,8 @@ export default function Home() {
                   onOpenRoom={handleOpenRoom}
                 />
 
+                <PulseEpisode thoughts={thoughts} onOpenRoom={handleOpenRoom} />
+
                 <FeelWith tally={feelingTally} onOpenRoom={handleOpenRoom} />
 
                 <div className="px-4 pt-5">
@@ -216,7 +230,13 @@ export default function Home() {
                     <Sparkles className="h-3.5 w-3.5" />
                     The feed
                   </div>
-                  <FeedGrid thoughts={filtered} onReact={onReact} onReport={onReport} />
+                  <FeedGrid
+                    thoughts={filtered}
+                    onReact={onReact}
+                    onReport={onReport}
+                    onOpenRoom={handleOpenRoom}
+                    othersMap={othersMap}
+                  />
                 </div>
               </>
             )}
@@ -224,7 +244,15 @@ export default function Home() {
         )}
 
         {tab === "you" && (
-          <ProfileView myThoughts={mine} onCreate={() => openShare("video")} />
+          <div className="px-4">
+            <ProfileView myThoughts={mine} onCreate={() => openShare("video")} />
+            <StreakCard
+              count={streak.count}
+              todayFeeling={streak.todayFeeling}
+              checkedInToday={streak.last === todayKey()}
+              onCreate={() => openShare("video")}
+            />
+          </div>
         )}
       </main>
 
@@ -260,4 +288,9 @@ function computeTally(thoughts: Thought[]): FeelingTally[] {
   return (Object.entries(counts) as [FeelingId, number][])
     .map(([id, count]) => ({ id, count }))
     .sort((a, b) => b.count - a.count);
+}
+
+function todayKey(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }

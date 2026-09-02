@@ -23,8 +23,10 @@ The home screen is a **live mood reading**: a wave of feelings sized by how many
 
 ### 🫀 A differentiated Pulse, not another feed
 - **`PulseOverview`** — live dominant-mood headline ("Most hearts feel *worried*"), per-feeling mood wave, and voice counts.
+- **`PulseEpisode`** — an auto-generated daily digest: *"The pulse felt __ today"*, languages spoken, top echoed take, a "% alive" meter, and featured voices → the day's story, not just a timeline.
 - **`FeelWith`** carousel — tap a feeling to *find your people*.
 - **`FeelingRoom`** — a focused room per feeling with a "share in this room" CTA that pre-selects the feeling.
+- **"You're not alone"** — every take shows how many other people feel the same way, one tap from the room.
 
 ### 🎙️ Feelings-first share
 - Full-screen share modal: pick a feeling → record **video/audio** or write **text**.
@@ -40,6 +42,9 @@ The home screen is a **live mood reading**: a wave of feelings sized by how many
 
 ### 📱 PWA, mobile-first
 - Installable (manifest + service worker), centered 430px phone shell, IG-style bottom nav, safe-area aware.
+
+### 🔥 Daily feeling streak
+- Posting a take keeps your **pulse streak** alive (localStorage-backed, no backend needed). The You tab shows "N days on the pulse", today's mood chip, and a "check in today" nudge — a gentle reason to return tomorrow.
 
 ### 🗄️ Live backend (optional)
 - Zero-setup demo mode on fixtures when Supabase isn't configured.
@@ -107,10 +112,10 @@ src/
   components/
     Feed/         FeedCard, FeedGrid, FilterBar, TranscriptPanel
     Player/       AudioPlayer, VideoPlayer
-    Pulse/        PulseOverview, FeelWith, FeelingRoom
+    Pulse/        PulseOverview, FeelWith, FeelingRoom, PulseEpisode
     Submit/       SubmitModal, MediaRecorderView, TextForm
-    Header.tsx, MobileNav.tsx, ProfileView.tsx, IntegrityBadge.tsx
-  hooks/          useMediaRecorder, useLocalProfile
+    Header.tsx, MobileNav.tsx, ProfileView.tsx, IntegrityBadge.tsx, StreakCard.tsx
+  hooks/          useMediaRecorder, useLocalProfile, useFeelingStreak
   lib/
     supabase/     client, config, feed (fetch/publish/storage/auth/report)
     feelings.ts   the 7 feelings model
@@ -126,10 +131,11 @@ supabase/
 
 ## Roadmap
 
+- [x] "Tonight's episode of the pulse" — auto-generated daily digest
+- [x] Daily feeling streak / return loop
 - [ ] Feeling-based discovery ("people feeling X near you" by language/country)
 - [ ] Follow authors + notification for room replies
 - [ ] Moderation dashboard for community keepers (reads `reports`)
-- [ ] "Tonight's episode of the pulse" — a periodic digest/show
 - [ ] Translation of takes with captions/voiceover
 
 ---

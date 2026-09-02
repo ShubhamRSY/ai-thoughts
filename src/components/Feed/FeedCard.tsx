@@ -12,8 +12,13 @@ import {
   Flag,
   ShieldCheck,
 } from "lucide-react";
-import type { Thought, Reaction } from "@/lib/types";
+import type {
+  Thought,
+  Reaction,
+  FeelingId,
+} from "@/lib/types";
 import { REACTION_TYPES } from "@/lib/mock-data";
+import { feelingOf } from "@/lib/feelings";
 import AudioPlayer from "@/components/Player/AudioPlayer";
 import VideoPlayer from "@/components/Player/VideoPlayer";
 import IntegrityBadge from "@/components/IntegrityBadge";
@@ -54,6 +59,9 @@ interface FeedCardProps {
   thought: Thought;
   onReact?: (thoughtId: string, reaction: Reaction) => void;
   onReport?: (thoughtId: string, reason: ReportReason) => void;
+  onOpenRoom?: (id: FeelingId) => void;
+  /** How many other takes share this card's feeling (safety in numbers). */
+  others?: number;
 }
 
 const REPORT_REASONS: ReportReason[] = [
@@ -63,7 +71,7 @@ const REPORT_REASONS: ReportReason[] = [
   "Harms someone",
 ];
 
-export default function FeedCard({ thought, onReact, onReport }: FeedCardProps) {
+export default function FeedCard({ thought, onReact, onReport, onOpenRoom, others }: FeedCardProps) {
   const [reactions, setReactions] = useState(thought.reactions);
   const [mine, setMine] = useState<Reaction | null>(null);
   const [burst, setBurst] = useState<Reaction | null>(null);
@@ -296,6 +304,20 @@ export default function FeedCard({ thought, onReact, onReport }: FeedCardProps) 
               );
             })}
           </div>
+        )}
+
+        {/* Safety in numbers — others feel this too */}
+        {thought.feeling && others && others > 1 && onOpenRoom && (
+          <button
+            onClick={() => onOpenRoom(thought.feeling!)}
+            className="mt-2 flex w-full items-center gap-1.5 rounded-lg border border-zinc-800/70 bg-zinc-900/40 px-2.5 py-1.5 text-[11px] font-medium text-zinc-400 transition hover:border-zinc-700 hover:text-zinc-200"
+          >
+            <span aria-hidden className="text-sm leading-none">
+              🤝
+            </span>
+            You&apos;re not alone — {others} others feel {feelingOf(thought.feeling)?.short.toLowerCase()} too
+            <span className="ml-auto text-zinc-600">open room →</span>
+          </button>
         )}
       </div>
 
