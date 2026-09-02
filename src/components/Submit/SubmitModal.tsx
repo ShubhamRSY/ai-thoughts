@@ -5,7 +5,7 @@ import { X, AudioLines, Video, Type, Send, Check, Globe, ChevronDown, Heart } fr
 import { TAG_OPTIONS, LANGS } from "@/lib/mock-data";
 import { FEELINGS } from "@/lib/feelings";
 import { fakeHash } from "@/lib/integrity";
-import type { FeelingId, MediaType, Thought } from "@/lib/types";
+import type { FeelingId, MediaType, Thought, PublishResult } from "@/lib/types";
 import MediaRecorderView, { type CapturedClip } from "@/components/Submit/MediaRecorderView";
 import TextForm from "@/components/Submit/TextForm";
 
@@ -17,7 +17,7 @@ interface SubmitModalProps {
   open: boolean;
   initialTab?: Tab;
   onClose: () => void;
-  onPublish: (thought: SharePayload, clip?: CapturedClip) => Promise<boolean>;
+  onPublish: (thought: SharePayload, clip?: CapturedClip) => Promise<PublishResult>;
   presetHandle?: string;
   presetAuthor?: string;
   presetFeeling?: FeelingId;
@@ -110,11 +110,19 @@ export default function SubmitModal({
       },
     };
 
-    const ok = await onPublish(payload, tab !== "text" ? (captured ?? undefined) : undefined);
-    if (!ok) {
-      setPublishError(
-        "Couldn't share right now. If you're recording, check your clip and try again."
-      );
+    const result = await onPublish(payload, tab !== "text" ? (captured ?? undefined) : undefined);
+    if (!result.ok) {
+      if (result.reason === "cooldown") {
+        setPublishError(
+          `You just shared — give it ${result.retryInSec}s. Take a breath, the pulse isn't going anywhere.`
+        );
+      } else if (result.reason === "too_long") {
+        setPublishError(`That's a little long — keep it under ${result.max} characters.`);
+      } else {
+        setPublishError(
+          "Couldn't share right now. If you're recording, check your clip and try again."
+        );
+      }
       return;
     }
     setPublished(true);

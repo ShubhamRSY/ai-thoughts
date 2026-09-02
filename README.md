@@ -40,6 +40,19 @@ The home screen is a **live mood reading**: a wave of feelings sized by how many
 - Report/flag flow on every take (hate, unsafe, spam, harm) routed to a `reports` table for community keepers.
 - Welcoming, all-ages copy throughout.
 
+### 🔒 Safety & moderation (launch-ready)
+- **15-second publish cooldown** — browser-side guard prevents rapid spam (app-side, no login needed).
+- **Content length cap** (2800 chars) + empty-content rejection surfaced to users.
+- **Keeper moderation desk** (`/keeper`) — invite-only; lists open reports with reason + snippet, "Remove take" deletes the post and resolves the report, "Keep & resolve" dismisses without deleting.
+- **RLS schema with `is_keeper()` SQL function** — keepers can read/resolve reports and delete posts via row-level security.
+- **Seed data** (`supabase/seed.sql`) — one-shot SQL inserts 8 demo takes + reactions so the pulse is never empty on first launch.
+
+### 📄 Legal pages (no sign-up friction)
+- `/terms` — Terms of Use (public posting, all-ages rules, keeper moderation rights).
+- `/privacy` — Privacy (what's collected, what's public, media handling, kids & all ages, rights).
+- `/guidelines` — Community Guidelines (the one rule, what gets removed, how to report).
+- Footer with links on every home page + discreet `/keeper` link for community keepers.
+
 ### 📱 PWA, mobile-first
 - Installable (manifest + service worker), centered 430px phone shell, IG-style bottom nav, safe-area aware.
 
@@ -93,8 +106,9 @@ Open [http://localhost:3000](http://localhost:3000). Without configuration the a
    ```
 
 4. Run the schema in the **Supabase SQL editor**:
-   - `supabase/schema.sql` — tables (`profiles`, `posts`, `post_reactions`, `reports`) + RLS.
+   - `supabase/schema.sql` — tables (`profiles`, `posts`, `post_reactions`, `reports`, `keepers`) + RLS + `is_keeper()` SQL function.
    - `supabase/storage.sql` — the public `takes` Storage bucket policies (upload/read for everyone).
+   - `supabase/seed.sql` — one-shot: inserts 8 demo takes + reactions so the pulse is never empty.
 
 > **Security note:** only the *publishable* anon key goes into the app (via env). Never expose your `service_role`/secret key — it's for admin tasks only (and never committed to git).
 
@@ -108,23 +122,24 @@ With env vars set, empty database → app still runs on demo fixtures. First pos
 
 ```
 src/
-  app/            page (Pulse home), layout, manifest
+  app/            page.tsx (Pulse home), layout, manifest, terms/, privacy/, guidelines/, keeper/
   components/
     Feed/         FeedCard, FeedGrid, FilterBar, TranscriptPanel
     Player/       AudioPlayer, VideoPlayer
     Pulse/        PulseOverview, FeelWith, FeelingRoom, PulseEpisode
     Submit/       SubmitModal, MediaRecorderView, TextForm
-    Header.tsx, MobileNav.tsx, ProfileView.tsx, IntegrityBadge.tsx, StreakCard.tsx
+    Header.tsx, MobileNav.tsx, Footer.tsx, ProfileView.tsx, IntegrityBadge.tsx, StreakCard.tsx, PWAInstall.tsx, PwaRegister.tsx
   hooks/          useMediaRecorder, useLocalProfile, useFeelingStreak
   lib/
-    supabase/     client, config, feed (fetch/publish/storage/auth/report)
+    supabase/     client, config, feed (fetch/publish/storage/auth/report/keeper)
     feelings.ts   the 7 feelings model
     integrity.ts  real SHA-256 digest + display helpers
     mock-data.ts  demo takes (used when offline/first load)
     types.ts      shared domain types
 supabase/
-  schema.sql      tables + RLS (posts, profiles, reactions, reports)
+  schema.sql      tables + RLS + keepers + is_keeper() function
   storage.sql     public "takes" bucket policies
+  seed.sql        one-shot demo voices (run once after schema)
 ```
 
 ---

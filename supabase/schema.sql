@@ -80,10 +80,12 @@ create policy "own profile insert"  on public.profiles       for insert with che
 create table if not exists public.reports (
   id              uuid primary key default gen_random_uuid(),
   post_id         uuid not null references public.posts (id) on delete cascade,
+  reporter_id     uuid references auth.users (id) on delete set null,
   reason          text not null,
   reported_handle text,
   content_snippet text,
-  status          text not null default 'open',
+  status          text not null default 'open'
+    check (status in ('open', 'resolved')),
   created_at      timestamptz not null default now()
 );
 
@@ -91,8 +93,37 @@ alter table public.reports enable row level security;
 
 -- Anyone (anon or signed-in) can submit a report
 create policy "public insert reports" on public.reports for insert with check (true);
--- Only keepers can read/resolve reports (placeholder: nobody reads publicly)
+-- Keepers read & resolve reports. A keeper is any signed-in user listed in
+-- the `keepers` table. Reports are never shown to the public.
+create or replace function public.is_keeper()
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.keepers where user_id = auth.uid()
+  );
+$$;
 create policy "keepers read reports" on public.reports
-  for select using (auth.role() = 'service_role');
+  for select using (public.is_keeper());
 create policy "keepers update reports" on public.reports
-  for update using (auth.role() = 'service_role');
+  for update using (public.is_keeper());
+-- Keepers may hide any post and delete it
+create policy "keepers delete posts" on public.posts
+  for delete using (public.is_keeper());
+
+-- ------------------------------------------------------------
+-- Keepers — the people who keep the pulse safe.
+--   Anyone can apply; an existing keeper (or you, via SQL) grants the role.
+-- ------------------------------------------------------------
+create table if not exists public.keepers (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references auth.users (id) on delete cascade,
+  created_at  timestamptz not null default now(),
+  unique (user_id)
+);
+
+alter table public.keepers enable row level security;
+
+-- A keeper may read the keeper list; only existing keepers may add new ones.
+create policy "keepers read keepers" on public.keepers
+  for select using (public.is_keeper());
+create policy "keepers insert keepers" on public.keepers
+  for insert with check (public.is_keeper());

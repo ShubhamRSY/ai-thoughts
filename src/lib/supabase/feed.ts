@@ -31,6 +31,42 @@ export function isLive(): boolean {
   return SUPABASE_CONFIGURED;
 }
 
+// ---------------------------------------------------------------------------
+// Abuse guard — keep the open pulse usable without a login.
+//   * a short cooldown between publishes from the same browser
+//   * minimal content sanity checks
+// These are app-side heuristics; real moderation still happens in the
+// keeper dashboard. Never throws.
+// ---------------------------------------------------------------------------
+const COOLDOWN_MS = 15000;
+const COOLDOWN_KEY = "pulse_last_publish";
+const MAX_CONTENT = 2800;
+
+export type PublishGuard =
+  | { ok: true }
+  | { ok: false; reason: "cooldown"; retryInSec: number }
+  | { ok: false; reason: "empty" }
+  | { ok: false; reason: "too_long"; max: number };
+
+/** Check whether this browser may publish right now (cooldown + sanity). */
+export function checkPublishGuard(content: string): PublishGuard {
+  const trimmed = content.trim();
+  if (!trimmed) return { ok: false, reason: "empty" };
+  if (trimmed.length > MAX_CONTENT) return { ok: false, reason: "too_long", max: MAX_CONTENT };
+
+  const last = Number(localStorage.getItem(COOLDOWN_KEY) ?? 0);
+  const elapsed = Date.now() - last;
+  if (last && elapsed < COOLDOWN_MS) {
+    return { ok: false, reason: "cooldown", retryInSec: Math.ceil((COOLDOWN_MS - elapsed) / 1000) };
+  }
+  return { ok: true };
+}
+
+/** Mark this browser as having just published (starts the cooldown). */
+export function markPublished(): void {
+  localStorage.setItem(COOLDOWN_KEY, String(Date.now()));
+}
+
 export function timeLabelFor(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60000);
@@ -242,4 +278,54 @@ export async function getProfile(userId: string) {
     .eq("id", userId)
     .maybeSingle();
   return error || !data ? null : data;
+}
+
+// ---------------------------------------------------------------------------
+// Keeper/moderation helpers. These return null on any failure and use the
+// anon key — the backend `is_keeper()` SQL function gates access per-row.
+// ---------------------------------------------------------------------------
+export interface ReportRow {
+  id: string;
+  post_id: string;
+  reason: string;
+  reported_handle: string | null;
+  content_snippet: string | null;
+  status: "open" | "resolved";
+  created_at: string;
+}
+
+export async function isKeeper(): Promise<boolean> {
+  const sb = getSupabaseBrowser();
+  if (!sb) return false;
+  const { data, error } = await sb.from("keepers").select("id").limit(1).maybeSingle();
+  return !error && !!data;
+}
+
+export async function fetchReports(openOnly = true): Promise<ReportRow[] | null> {
+  const sb = getSupabaseBrowser();
+  if (!sb) return null;
+  let q = sb.from("reports").select("*").order("created_at", { ascending: false });
+  if (openOnly) q = q.eq("status", "open");
+  const { data, error } = await q.limit(100);
+  return error || !data ? null : (data as ReportRow[]);
+}
+
+export async function resolveReport(reportId: string): Promise<boolean> {
+  const sb = getSupabaseBrowser();
+  if (!sb) return false;
+  const { error } = await sb
+    .from("reports")
+    .update({ status: "resolved" })
+    .eq("id", reportId);
+  if (error) console.error("resolveReport:", error.message);
+  return !error;
+}
+
+/** Keepers can hide (delete) a take. Storage clips stay uploaded for audit; the feed row is removed. */
+export async function deletePost(postId: string): Promise<boolean> {
+  const sb = getSupabaseBrowser();
+  if (!sb) return false;
+  const { error } = await sb.from("posts").delete().eq("id", postId);
+  if (error) console.error("deletePost:", error.message);
+  return !error;
 }

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { HeartHandshake } from "lucide-react";
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 import MobileNav, { type TabId } from "@/components/MobileNav";
 import FilterBar, { type FeelingFilter } from "@/components/Feed/FilterBar";
 import FeedGrid from "@/components/Feed/FeedGrid";
@@ -17,13 +18,15 @@ import { INITIAL_THOUGHTS } from "@/lib/mock-data";
 import { digestBytes } from "@/lib/integrity";
 import { useLocalProfile } from "@/hooks/useLocalProfile";
 import { useFeelingStreak } from "@/hooks/useFeelingStreak";
-import type { MediaType, Thought, FeelingId, Reaction } from "@/lib/types";
+import type { MediaType, Thought, FeelingId, Reaction, PublishResult } from "@/lib/types";
 import {
   fetchPulsePosts,
   isLive,
   publishPost,
   addReaction,
   reportPost,
+  checkPublishGuard,
+  markPublished,
 } from "@/lib/supabase/feed";
 import type { ReportReason } from "@/components/Feed/FeedCard";
 
@@ -80,7 +83,10 @@ export default function Home() {
   }, []);
 
   const publish = useCallback(
-    async (data: SharePayload, clip?: CapturedClip): Promise<boolean> => {
+    async (data: SharePayload, clip?: CapturedClip): Promise<PublishResult> => {
+      const guard = checkPublishGuard(data.content);
+      if (!guard.ok) return guard;
+
       const userHandle = data.handle.startsWith("@") ? data.handle : `@${data.handle}`;
       if (profile.handle !== userHandle) save({ ...profile, handle: userHandle });
 
@@ -98,15 +104,15 @@ export default function Home() {
 
       if (isLive()) {
         const posted = await publishPost(refined, clip?.blob ?? null);
-        if (posted) {
-          setThoughts((prev) => [posted, ...prev]);
-          setMine((prev) => [posted, ...prev]);
-          bump(data.feeling);
-          return true;
-        }
-        return false;
+        if (!posted) return { ok: false, reason: "failed" };
+        markPublished();
+        setThoughts((prev) => [posted, ...prev]);
+        setMine((prev) => [posted, ...prev]);
+        bump(data.feeling);
+        return { ok: true };
       }
 
+      markPublished();
       const newThought: Thought = {
         ...refined,
         id: `t${Date.now()}`,
@@ -120,7 +126,7 @@ export default function Home() {
       setThoughts((prev) => [newThought, ...prev]);
       setMine((prev) => [newThought, ...prev]);
       bump(data.feeling);
-      return true;
+      return { ok: true };
     },
     [profile, save, bump]
   );
@@ -213,6 +219,10 @@ export default function Home() {
                     onOpenRoom={handleOpenRoom}
                     othersMap={othersMap}
                   />
+                </div>
+
+                <div className="mt-8">
+                  <Footer />
                 </div>
               </>
             )}

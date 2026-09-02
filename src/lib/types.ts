@@ -1,5 +1,13 @@
 export type MediaType = "audio" | "video" | "text";
 
+/** Result of attempting to publish a take onto the pulse. */
+export type PublishResult =
+  | { ok: true }
+  | { ok: false; reason: "cooldown"; retryInSec: number }
+  | { ok: false; reason: "empty" }
+  | { ok: false; reason: "too_long"; max: number }
+  | { ok: false; reason: "failed" };
+
 export type VerificationStatus = "verified" | "simulated";
 
 /** A feeling people have about AI — the emotional heart of each take. */
