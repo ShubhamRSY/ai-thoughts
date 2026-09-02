@@ -18,6 +18,12 @@ export default function Footer() {
             Terms
           </Link>
           <Link
+            href="/install"
+            className="transition hover:text-zinc-200"
+          >
+            Install
+          </Link>
+          <Link
             href="/privacy"
             className="transition hover:text-zinc-200"
           >
