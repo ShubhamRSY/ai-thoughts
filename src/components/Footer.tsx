@@ -10,7 +10,7 @@ export default function Footer() {
           </span>
           <span>AI·Thoughts — The Public Pulse</span>
         </div>
-        <nav className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-zinc-400">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-zinc-400">
           <Link
             href="/terms"
             className="transition hover:text-zinc-200"
@@ -35,7 +35,7 @@ export default function Footer() {
           >
             Keepers Desk
           </Link>
-        </nav>
+        </div>
         <p className="text-[11px] leading-relaxed text-zinc-600">
           Every feeling about AI belongs here. Made with care for all ages, all
           languages, all hearts.
