@@ -1,69 +1,263 @@
-import Image from "next/image";
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { HeartHandshake, Sparkles } from "lucide-react";
+import Header from "@/components/Header";
+import MobileNav, { type TabId } from "@/components/MobileNav";
+import FilterBar, { type FeelingFilter } from "@/components/Feed/FilterBar";
+import FeedGrid from "@/components/Feed/FeedGrid";
+import ProfileView from "@/components/ProfileView";
+import SubmitModal, { type SharePayload } from "@/components/Submit/SubmitModal";
+import type { CapturedClip } from "@/components/Submit/MediaRecorderView";
+import PulseOverview, { type FeelingTally } from "@/components/Pulse/PulseOverview";
+import FeelWith from "@/components/Pulse/FeelWith";
+import FeelingRoom from "@/components/Pulse/FeelingRoom";
+import { INITIAL_THOUGHTS } from "@/lib/mock-data";
+import { digestBytes } from "@/lib/integrity";
+import { useLocalProfile } from "@/hooks/useLocalProfile";
+import type { MediaType, Thought, FeelingId, Reaction } from "@/lib/types";
+import {
+  fetchPulsePosts,
+  isLive,
+  publishPost,
+  addReaction,
+  reportPost,
+} from "@/lib/supabase/feed";
+import type { ReportReason } from "@/components/Feed/FeedCard";
+
+type MediaFilter = "all" | MediaType;
 
 export default function Home() {
+  const { profile, save } = useLocalProfile();
+  const [thoughts, setThoughts] = useState<Thought[]>(INITIAL_THOUGHTS);
+  const [mine, setMine] = useState<Thought[]>([]);
+  const [media, setMedia] = useState<MediaFilter>("all");
+  const [feeling, setFeeling] = useState<FeelingFilter>("all");
+  const [tags, setTags] = useState<string[]>([]);
+  const [tab, setTab] = useState<TabId>("home");
+  const [shareOpen, setShareOpen] = useState(false);
+  const [initialTab, setInitialTab] = useState<MediaType>("video");
+  const [modalSession, setModalSession] = useState(0);
+  const [room, setRoom] = useState<FeelingId | null>(null);
+  const [shareFeeling, setShareFeeling] = useState<FeelingId | undefined>(undefined);
+
+  const filtered = thoughts.filter((t) => {
+    const mOk = media === "all" || t.mediaType === media;
+    const fOk = feeling === "all" || t.feeling === feeling;
+    const tOk = tags.length === 0 || t.tags.some((tag) => tags.includes(tag));
+    return mOk && fOk && tOk;
+  });
+
+  const openShare = (tabPref: MediaType = "video", presetFeeling?: FeelingId) => {
+    setInitialTab(tabPref);
+    setShareFeeling(presetFeeling);
+    setModalSession((s) => s + 1);
+    setShareOpen(true);
+  };
+
+  const handleOpenRoom = (id: FeelingId) => {
+    setFeeling(id);
+    setRoom(id);
+  };
+
+  const backFromRoom = () => {
+    setRoom(null);
+    setFeeling("all");
+  };
+
+  const handleShareInRoom = (id: FeelingId) => {
+    openShare("video", id);
+  };
+
+  const onReport = useCallback((thoughtId: string, reason: ReportReason) => {
+    if (!isLive()) return;
+    const t = INITIAL_THOUGHTS.find((x) => x.id === thoughtId);
+    void reportPost(thoughtId, reason, {
+      handle: t?.handle,
+      content: t?.content,
+    });
+  }, []);
+
+  const publish = useCallback(
+    async (data: SharePayload, clip?: CapturedClip): Promise<boolean> => {
+      const idx = INITIAL_THOUGHTS.reduce(
+        (n, t) => (t.tags.some((tag) => data.tags.includes(tag)) ? n + 1 : n),
+        0
+      );
+
+      const userHandle = data.handle.startsWith("@") ? data.handle : `@${data.handle}`;
+      if (profile.handle !== userHandle) save({ ...profile, handle: userHandle });
+
+      // Real integrity: fingerprint the actual captured clip when there is one.
+      let integrity = data.integrity;
+      if (clip?.blob) {
+        const hash = await digestBytes(clip.blob);
+        integrity = {
+          hash,
+          verified: true,
+          statusLabel: "Capture chip · unmodified",
+        };
+      }
+
+      const refined: SharePayload = { ...data, integrity };
+
+      // Live mode: upload the clip (if any) and persist. Failure surfaces to the user.
+      if (isLive()) {
+        const posted = await publishPost(refined, clip?.blob ?? null);
+        if (posted) {
+          setThoughts((prev) => [posted, ...prev]);
+          setMine((prev) => [posted, ...prev]);
+          return true;
+        }
+        return false;
+      }
+
+      const newThought: Thought = {
+        ...refined,
+        id: `t${Date.now()}`,
+        reactions: [
+          { type: "🔥", count: 1 + (idx % 3) },
+          { type: "🤔", count: idx % 2 },
+        ],
+        timeLabel: "now",
+      };
+
+      setThoughts((prev) => [newThought, ...prev]);
+      setMine((prev) => [newThought, ...prev]);
+      return true;
+    },
+    [profile, save]
+  );
+
+  const onReact = useCallback((thoughtId: string, reaction: Reaction) => {
+    if (isLive()) void addReaction(thoughtId, reaction);
+  }, []);
+
+  // Live mode: load the real pulse on mount (demo data is the default).
+  useEffect(() => {
+    if (!isLive()) return;
+    let cancelled = false;
+    fetchPulsePosts().then((posts) => {
+      if (!cancelled && posts && posts.length > 0) setThoughts(posts);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Simulated "live" activity so the pulse feels alive in demo mode.
+  useEffect(() => {
+    if (isLive()) return; // real counts in live mode
+    const id = setInterval(() => {
+      setThoughts((prev) => {
+        if (prev.length === 0) return prev;
+        const tIdx = (Date.now() / 1000) % prev.length;
+        const target = prev[Math.floor(tIdx)];
+        if (!target) return prev;
+        const rIdx = Math.floor(Math.random() * Math.max(target.reactions.length, 1));
+        return prev.map((t) =>
+          t.id === target.id
+            ? {
+                ...t,
+                reactions: t.reactions.map((r, i) =>
+                  i === rIdx ? { ...r, count: r.count + 1 } : r
+                ),
+              }
+            : t
+        );
+      });
+    }, 5000);
+    return () => clearInterval(id);
+  }, []);
+
+  const feelingTally = useMemo(() => computeTally(thoughts), [thoughts]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="mx-auto flex min-h-dvh w-full max-w-[430px] flex-col sm:border-x sm:border-zinc-800/40">
+      <Header onShare={() => openShare("video")} />
+
+      <main className="flex-1 pb-28">
+        {tab === "home" && (
+          <>
+            {room ? (
+              <FeelingRoom
+                feelingId={room}
+                thoughts={thoughts}
+                onCreate={() => handleShareInRoom(room)}
+                onBack={backFromRoom}
+                onReact={onReact}
+              />
+            ) : (
+              <>
+                <FilterBar
+                  media={media}
+                  onMediaChange={setMedia}
+                  feeling={feeling}
+                  onFeelingChange={setFeeling}
+                  tags={tags}
+                  onTagToggle={(t) =>
+                    setTags((prev) =>
+                      prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]
+                    )
+                  }
+                />
+
+                <PulseOverview
+                  thoughts={thoughts}
+                  tally={feelingTally}
+                  activeId={room}
+                  onOpenRoom={handleOpenRoom}
+                />
+
+                <FeelWith tally={feelingTally} onOpenRoom={handleOpenRoom} />
+
+                <div className="px-4 pt-5">
+                  <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    The feed
+                  </div>
+                  <FeedGrid thoughts={filtered} onReact={onReact} onReport={onReport} />
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        {tab === "you" && (
+          <ProfileView myThoughts={mine} onCreate={() => openShare("video")} />
+        )}
+      </main>
+
+      {/* All-ages banner above the nav */}
+      <div className="fixed inset-x-0 bottom-16 z-30 sm:bottom-16">
+        <div className="mx-auto flex max-w-[430px] px-4">
+          <p className="mx-auto flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-zinc-950/90 px-3 py-1.5 text-[11px] font-medium text-emerald-300/90 backdrop-blur">
+            <HeartHandshake className="h-3.5 w-3.5" />
+            All ages. All feelings. It&apos;s okay to feel bad about AI too.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </div>
+
+      <MobileNav active={tab} onTab={setTab} onCreate={() => openShare("video")} />
+
+      <SubmitModal
+        key={modalSession}
+        open={shareOpen}
+        initialTab={initialTab}
+        presetHandle={profile.handle}
+        presetAuthor={profile.author}
+        presetFeeling={shareFeeling}
+        onClose={() => setShareOpen(false)}
+        onPublish={publish}
+      />
     </div>
   );
+}
+
+function computeTally(thoughts: Thought[]): FeelingTally[] {
+  const counts: Record<string, number> = {};
+  for (const t of thoughts) if (t.feeling) counts[t.feeling] = (counts[t.feeling] ?? 0) + 1;
+  return (Object.entries(counts) as [FeelingId, number][])
+    .map(([id, count]) => ({ id, count }))
+    .sort((a, b) => b.count - a.count);
 }

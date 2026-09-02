@@ -1,0 +1,75 @@
+export type MediaType = "audio" | "video" | "text";
+
+export type VerificationStatus = "verified" | "simulated";
+
+/** A feeling people have about AI — the emotional heart of each take. */
+export type FeelingId =
+  | "using-it"
+  | "love-it"
+  | "hurts"
+  | "blown-away"
+  | "worried"
+  | "need-support"
+  | "confused";
+
+export interface Feeling {
+  id: FeelingId;
+  emoji: string;
+  label: string;
+  /** Short caption used on the tiny badges. */
+  short: string;
+  /** Soft pill color classes for the badge. */
+  chip: string;
+}
+
+export type Reaction = "🔥" | "😂" | "🤔" | "💯" | "🚀" | "😴" | "👏" | "🙌";
+
+export interface ReactionCount {
+  type: Reaction;
+  count: number;
+}
+
+export interface Integrity {
+  /** SHA-256 hex of the original media/content, captured at upload. */
+  hash: string;
+  /** True when the hash was digitally signed by the capture device/our backend. */
+  verified: boolean;
+  /** Human label like "Unmodified" or "Capture incomplete". */
+  statusLabel: string;
+}
+
+/** One line of a spoken transcript, tied to a media timestamp (seconds). */
+export interface TranscriptSegment {
+  time: number;
+  text: string;
+}
+
+export interface LanguageOption {
+  code: string;
+  label: string;
+  flag?: string;
+}
+
+export interface Thought {
+  id: string;
+  author: string;
+  handle: string;
+  content: string;
+  mediaType: MediaType;
+  /** How the author feels about AI right now (the heart of every take). */
+  feeling?: FeelingId;
+  mediaUrl?: string;
+  mediaDuration?: string;
+  tags: string[];
+  timestamp: string;
+  reactions: ReactionCount[];
+  /** Human relative time label like "2m" */
+  timeLabel: string;
+  integrity: Integrity;
+  /** Spoken transcript for audio/video takes (time-coded). */
+  transcript?: TranscriptSegment[];
+  /** BCP-47 language code, e.g. "en", "es", "hi". */
+  language?: string;
+  /** Human label, e.g. "English", "Español". */
+  languageLabel?: string;
+}
