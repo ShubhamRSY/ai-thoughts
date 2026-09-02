@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { HeartHandshake, Sparkles } from "lucide-react";
+import { HeartHandshake } from "lucide-react";
 import Header from "@/components/Header";
 import MobileNav, { type TabId } from "@/components/MobileNav";
 import FilterBar, { type FeelingFilter } from "@/components/Feed/FilterBar";
@@ -12,7 +12,6 @@ import type { CapturedClip } from "@/components/Submit/MediaRecorderView";
 import PulseOverview, { type FeelingTally } from "@/components/Pulse/PulseOverview";
 import FeelWith from "@/components/Pulse/FeelWith";
 import FeelingRoom from "@/components/Pulse/FeelingRoom";
-import PulseEpisode from "@/components/Pulse/PulseEpisode";
 import StreakCard from "@/components/StreakCard";
 import { INITIAL_THOUGHTS } from "@/lib/mock-data";
 import { digestBytes } from "@/lib/integrity";
@@ -37,7 +36,6 @@ export default function Home() {
   const [mine, setMine] = useState<Thought[]>([]);
   const [media, setMedia] = useState<MediaFilter>("all");
   const [feeling, setFeeling] = useState<FeelingFilter>("all");
-  const [tags, setTags] = useState<string[]>([]);
   const [tab, setTab] = useState<TabId>("home");
   const [shareOpen, setShareOpen] = useState(false);
   const [initialTab, setInitialTab] = useState<MediaType>("video");
@@ -48,8 +46,7 @@ export default function Home() {
   const filtered = thoughts.filter((t) => {
     const mOk = media === "all" || t.mediaType === media;
     const fOk = feeling === "all" || t.feeling === feeling;
-    const tOk = tags.length === 0 || t.tags.some((tag) => tags.includes(tag));
-    return mOk && fOk && tOk;
+    return mOk && fOk;
   });
 
   const openShare = (tabPref: MediaType = "video", presetFeeling?: FeelingId) => {
@@ -84,15 +81,9 @@ export default function Home() {
 
   const publish = useCallback(
     async (data: SharePayload, clip?: CapturedClip): Promise<boolean> => {
-      const idx = INITIAL_THOUGHTS.reduce(
-        (n, t) => (t.tags.some((tag) => data.tags.includes(tag)) ? n + 1 : n),
-        0
-      );
-
       const userHandle = data.handle.startsWith("@") ? data.handle : `@${data.handle}`;
       if (profile.handle !== userHandle) save({ ...profile, handle: userHandle });
 
-      // Real integrity: fingerprint the actual captured clip when there is one.
       let integrity = data.integrity;
       if (clip?.blob) {
         const hash = await digestBytes(clip.blob);
@@ -105,7 +96,6 @@ export default function Home() {
 
       const refined: SharePayload = { ...data, integrity };
 
-      // Live mode: upload the clip (if any) and persist. Failure surfaces to the user.
       if (isLive()) {
         const posted = await publishPost(refined, clip?.blob ?? null);
         if (posted) {
@@ -121,8 +111,8 @@ export default function Home() {
         ...refined,
         id: `t${Date.now()}`,
         reactions: [
-          { type: "🔥", count: 1 + (idx % 3) },
-          { type: "🤔", count: idx % 2 },
+          { type: "🔥", count: 1 },
+          { type: "🤔", count: 0 },
         ],
         timeLabel: "now",
       };
@@ -139,7 +129,6 @@ export default function Home() {
     if (isLive()) void addReaction(thoughtId, reaction);
   }, []);
 
-  // Live mode: load the real pulse on mount (demo data is the default).
   useEffect(() => {
     if (!isLive()) return;
     let cancelled = false;
@@ -151,9 +140,8 @@ export default function Home() {
     };
   }, []);
 
-  // Simulated "live" activity so the pulse feels alive in demo mode.
   useEffect(() => {
-    if (isLive()) return; // real counts in live mode
+    if (isLive()) return;
     const id = setInterval(() => {
       setThoughts((prev) => {
         if (prev.length === 0) return prev;
@@ -201,19 +189,6 @@ export default function Home() {
               />
             ) : (
               <>
-                <FilterBar
-                  media={media}
-                  onMediaChange={setMedia}
-                  feeling={feeling}
-                  onFeelingChange={setFeeling}
-                  tags={tags}
-                  onTagToggle={(t) =>
-                    setTags((prev) =>
-                      prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]
-                    )
-                  }
-                />
-
                 <PulseOverview
                   thoughts={thoughts}
                   tally={feelingTally}
@@ -221,15 +196,16 @@ export default function Home() {
                   onOpenRoom={handleOpenRoom}
                 />
 
-                <PulseEpisode thoughts={thoughts} onOpenRoom={handleOpenRoom} />
+                <FilterBar
+                  media={media}
+                  onMediaChange={setMedia}
+                  feeling={feeling}
+                  onFeelingChange={setFeeling}
+                />
 
                 <FeelWith tally={feelingTally} onOpenRoom={handleOpenRoom} />
 
-                <div className="px-4 pt-5">
-                  <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    The feed
-                  </div>
+                <div className="mt-5 px-4">
                   <FeedGrid
                     thoughts={filtered}
                     onReact={onReact}
@@ -244,7 +220,7 @@ export default function Home() {
         )}
 
         {tab === "you" && (
-          <div className="px-4">
+          <div className="px-4 pt-4">
             <ProfileView myThoughts={mine} onCreate={() => openShare("video")} />
             <StreakCard
               count={streak.count}

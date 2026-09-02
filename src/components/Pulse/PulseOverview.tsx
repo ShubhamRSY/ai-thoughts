@@ -1,7 +1,7 @@
 "use client";
 
-import { AudioWaveform, Radio, ArrowRight } from "lucide-react";
-import type { Thought, FeelingId } from "@/lib/types";
+import { Radio, ArrowRight, TrendingUp } from "lucide-react";
+import type { Thought, FeelingId, ReactionCount } from "@/lib/types";
 import { FEELINGS, feelingOf } from "@/lib/feelings";
 
 export interface FeelingTally {
@@ -12,9 +12,13 @@ export interface FeelingTally {
 interface PulseOverviewProps {
   thoughts: Thought[];
   tally: FeelingTally[];
-  /** Sorted normalized [0..1] amplitude for each feeling, matching FEELINGS order. */
   activeId: FeelingId | null;
   onOpenRoom: (id: FeelingId) => void;
+}
+
+function topReaction(reactions: ReactionCount[]): string {
+  const top = [...reactions].sort((a, b) => b.count - a.count)[0];
+  return top ? `${top.type} ${top.count}` : "";
 }
 
 export default function PulseOverview({
@@ -28,98 +32,91 @@ export default function PulseOverview({
   const dominant = tally[0];
   const dominantMeta = dominant ? feelingOf(dominant.id) : undefined;
 
-  return (
-    <section className="px-4 pt-4">
-      <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-gradient-to-b from-zinc-900/80 to-zinc-950/60">
-        <div className="px-4 pt-4">
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-400">
-            <Radio className="h-3.5 w-3.5" />
-            Live Pulse right now
-          </div>
+  const ep = Math.max(1, (total * 7 + (dominant?.count ?? 1) * 13) % 120);
+  const langs = new Set(thoughts.map((t) => t.language ?? "en").filter(Boolean));
+  const pct = Math.min(100, 15 + (thoughts.reduce((s, t) => s + t.reactions.reduce((a, r) => a + r.count, 0), 0) % 60));
+  const topTake = [...thoughts].sort((a, b) => {
+    const ra = a.reactions.reduce((s, r) => s + r.count, 0);
+    const rb = b.reactions.reduce((s, r) => s + r.count, 0);
+    return rb - ra;
+  })[0];
 
-          <div className="mt-2 flex items-end justify-between gap-3">
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-zinc-100">
-                {total > 0 && dominantMeta
-                  ? `Most hearts feel ${dominantMeta.short.toLowerCase()}`
-                  : "The pulse is warming up"}
-              </h1>
-              <p className="mt-0.5 text-xs text-zinc-400">
-                {total > 0
-                  ? `${total} voice${total === 1 ? "" : "s"} on the pulse · every feeling belongs`
-                  : "Real voices about AI — all ages, every language."}
-              </p>
-            </div>
-            {dominantMeta && (
-              <div
-                aria-hidden
-                className="flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-800/60 text-2xl"
-              >
-                {dominantMeta.emoji}
-              </div>
-            )}
+  return (
+    <section className="mx-4 mt-4 overflow-hidden rounded-2xl border border-zinc-800/80 bg-gradient-to-b from-zinc-900/80 to-zinc-950/60">
+      <div className="px-4 pt-3.5">
+        {/* Top line: label + EP */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-violet-400">
+            <Radio className="h-3 w-3" />
+            Live Pulse
           </div>
+          <span className="rounded-full border border-zinc-800 bg-zinc-900/60 px-2 py-0.5 text-[10px] font-bold tabular-nums text-zinc-500">
+            EP {ep}
+          </span>
         </div>
 
-        {/* Mood wave — each feeling is a wave bar sized by its share of voices */}
-        <div className="mt-4 flex h-24 items-end gap-1.5 px-4">
+        {/* Headline */}
+        <h1 className="mt-2 text-lg font-bold leading-snug tracking-tight text-zinc-100">
+          {total > 0 && dominantMeta
+            ? `Most hearts feel ${dominantMeta.short.toLowerCase()}`
+            : "The pulse is warming up"}
+        </h1>
+        <p className="mt-0.5 text-[11px] text-zinc-500">
+          {total} voice{total === 1 ? "" : "s"} · {langs.size} language{langs.size === 1 ? "" : "s"}
+          {topTake ? ` · top: ${topReaction(topTake.reactions)}` : ""}
+        </p>
+
+        {/* Mini wave */}
+        <div className="mt-3 flex h-10 items-end gap-1">
           {FEELINGS.map((f) => {
             const count = tally.find((t) => t.id === f.id)?.count ?? 0;
             const amp = count > 0 ? 0.35 + 0.65 * (count / max) : 0.06;
-            const isActive = activeId === f.id;
             return (
               <button
                 key={f.id}
                 onClick={() => onOpenRoom(f.id)}
-                aria-label={`${f.short}: ${count} voices`}
-                className="group flex min-w-0 flex-1 flex-col items-center gap-1"
+                aria-label={`${f.short}: ${count}`}
+                className="group flex min-w-0 flex-1 flex-col items-center gap-0.5"
               >
-                <div className="flex w-full flex-1 items-end justify-center overflow-hidden rounded-md bg-zinc-950/60">
+                <div className="flex w-full flex-1 items-end justify-center overflow-hidden rounded-sm bg-zinc-950/60">
                   <div
-                    className={`w-full rounded-md transition-all duration-500 ${
+                    className={`w-full rounded-sm transition-all duration-500 ${
                       count > 0
-                        ? isActive
+                        ? activeId === f.id
                           ? "bg-gradient-to-t from-violet-600 to-indigo-400"
                           : "bg-gradient-to-t from-zinc-700 to-zinc-600"
-                        : isActive
-                          ? "bg-violet-500/30"
-                          : "bg-zinc-800"
+                        : "bg-zinc-800"
                     }`}
                     style={{ height: `${Math.max(6, amp * 100)}%` }}
                   />
                 </div>
-                <span
-                  className={`text-[10px] font-medium ${
-                    count > 0 ? "text-zinc-300" : "text-zinc-600"
-                  }`}
-                >
-                  {f.short}
-                </span>
-                <span className="-mt-1 text-[10px] tabular-nums text-zinc-500">
-                  {count > 0 ? count : "·"}
-                </span>
+                <span className="hidden text-[8px] text-zinc-500 sm:inline">{f.short}</span>
               </button>
             );
           })}
         </div>
 
-        {/* Voice chips + open active room */}
-        <div className="flex items-center gap-2 px-4 pb-4 pt-3">
-          <AudioWaveform className="h-4 w-4 shrink-0 text-violet-400" />
-          {activeId ? (
-            <button
-              onClick={() => onOpenRoom(activeId)}
-              className="flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full border border-violet-500/40 bg-violet-500/10 px-3 py-1.5 text-xs font-semibold text-violet-200 transition hover:bg-violet-500/20"
-            >
-              <span aria-hidden>{feelingOf(activeId)?.emoji}</span>
-              Feeling this too — join the room
-              <ArrowRight className="h-3.5 w-3.5" />
-            </button>
-          ) : (
-            <p className="text-xs text-zinc-500">
-              Tap a wave to hear everyone who feels that way.
-            </p>
-          )}
+        {/* Bottom: alive meter + join room */}
+        <div className="mt-2.5 flex items-center gap-3 pb-3.5">
+          <div className="flex items-center gap-1.5">
+            <div className="h-1 w-14 overflow-hidden rounded-full bg-zinc-800">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-400"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <span className="flex items-center gap-0.5 text-[10px] text-zinc-500">
+              <TrendingUp className="h-2.5 w-2.5 text-emerald-400" />
+              {pct}%
+            </span>
+          </div>
+          <button
+            onClick={() => dominant && onOpenRoom(dominant.id)}
+            className="ml-auto flex items-center gap-1 rounded-full border border-violet-500/30 bg-violet-500/10 px-2.5 py-1 text-[10px] font-semibold text-violet-200 transition hover:bg-violet-500/20"
+          >
+            {dominantMeta?.emoji} Join
+            <ArrowRight className="h-2.5 w-2.5" />
+          </button>
         </div>
       </div>
     </section>
