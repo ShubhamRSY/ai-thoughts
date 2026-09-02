@@ -21,13 +21,11 @@ function isIOS(): boolean {
 export default function PWAInstall() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [show, setShow] = useState(false);
-  const [isIos, setIsIos] = useState(false);
+  const [isIos] = useState(() => isIOS());
 
   useEffect(() => {
     if (isStandalone()) return;
     if (localStorage.getItem(DISMISS_KEY)) return;
-
-    setIsIos(isIOS());
 
     const timer = setTimeout(() => {
       if (!isStandalone() && !localStorage.getItem(DISMISS_KEY)) {

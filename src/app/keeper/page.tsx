@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ShieldCheck, ArrowLeft, Flag, RefreshCw, Check } from "lucide-react";
 import {
@@ -28,12 +28,32 @@ export default function KeeperPage() {
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    if (!isLive()) {
-      setAuthorized(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!isLive()) {
+        if (!cancelled) {
+          setAuthorized(false);
+          setLoading(false);
+        }
+        return;
+      }
+      const keeper = await isKeeper();
+      if (cancelled) return;
+      setAuthorized(keeper);
+      if (keeper) {
+        const rows = await fetchReports(true);
+        if (!cancelled) setReports(rows ?? []);
+      }
       setLoading(false);
-      return;
-    }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const refresh = async () => {
+    if (!isLive()) return;
     const keeper = await isKeeper();
     setAuthorized(keeper);
     if (keeper) {
@@ -41,11 +61,7 @@ export default function KeeperPage() {
       setReports(rows ?? []);
     }
     setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  };
 
   const handleDelete = async (r: ReportRow) => {
     setWorking(r.id);
@@ -117,7 +133,7 @@ export default function KeeperPage() {
           </div>
         </div>
         <button
-          onClick={() => void load()}
+          onClick={() => void refresh()}
           aria-label="Refresh"
           className="flex h-9 items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 text-xs font-medium text-zinc-300 transition hover:text-zinc-100"
         >
