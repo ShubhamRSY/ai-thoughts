@@ -3,8 +3,6 @@
 import { useRef, useState } from "react";
 import {
   MessageCircle,
-  Repeat2,
-  Share2,
   Flame,
   Globe,
   Bookmark,
@@ -129,13 +127,13 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
   };
 
   return (
-    <article className="animate-rise-in overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/40 backdrop-blur-sm">
+    <article className="animate-rise-in overflow-hidden rounded-2xl border border-zinc-800/70 bg-[#141419]/95 shadow-sm shadow-black/20 ring-1 ring-inset ring-white/[0.03]">
       {/* Header */}
-      <div className="flex items-center gap-3 p-3">
+      <div className="flex items-center gap-3 p-3 pb-1">
         <div
           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${avatarGradient(
             thought.handle
-          )} text-xs font-bold text-white`}
+          )} text-xs font-bold text-white shadow-sm`}
         >
           {initials(thought.author)}
         </div>
@@ -144,14 +142,14 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
             <span className="truncate text-sm font-semibold text-zinc-100">
               {thought.author}
             </span>
-            <span className="shrink-0 whitespace-nowrap text-xs text-zinc-500">
+            <span className="shrink-0 whitespace-nowrap text-xs text-zinc-600">
               · {thought.timeLabel}
             </span>
           </div>
           <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
             <FeelingBadge feeling={thought.feeling} size="sm" />
             {thought.languageLabel && (
-              <span className="flex items-center gap-1 rounded-md bg-zinc-800/70 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400">
+              <span className="flex items-center gap-1 rounded-md bg-zinc-800/60 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">
                 <Globe className="h-2.5 w-2.5" />
                 {thought.languageLabel}
               </span>
@@ -213,26 +211,20 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
       </div>
 
       {/* Action bar */}
-      <div className="flex items-center gap-4 px-3 pt-3 text-zinc-400">
+      <div className="flex items-center gap-3 px-3 pt-3 text-zinc-400">
         <button
           onClick={like}
           aria-label={liked ? "Unlike" : "Like"}
-          className={`transition active:scale-90 ${liked ? "scale-105 text-rose-500" : "hover:text-zinc-200"}`}
+          className={`transition active:scale-90 ${liked ? "text-rose-500" : "hover:text-zinc-200"}`}
         >
-          <Flame className="h-6 w-6" fill={liked ? "currentColor" : "none"} />
+          <Flame className="h-[22px] w-[22px]" fill={liked ? "currentColor" : "none"} strokeWidth={2.2} />
         </button>
         <button
           onClick={() => setChatOpen(true)}
           className="transition hover:text-zinc-200"
           aria-label="Comment"
         >
-          <MessageCircle className="h-6 w-6" />
-        </button>
-        <button className="transition hover:text-zinc-200" aria-label="Boost">
-          <Repeat2 className="h-6 w-6" />
-        </button>
-        <button className="transition hover:text-zinc-200" aria-label="Share">
-          <Share2 className="h-6 w-6" />
+          <MessageCircle className="h-[22px] w-[22px]" strokeWidth={2.2} />
         </button>
         <button
           onClick={() => setSaved((v) => !v)}
@@ -241,7 +233,7 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
             saved ? "text-violet-400" : "hover:text-zinc-200"
           }`}
         >
-          <Bookmark className="h-6 w-6" fill={saved ? "currentColor" : "none"} />
+          <Bookmark className="h-[22px] w-[22px]" fill={saved ? "currentColor" : "none"} strokeWidth={2.2} />
         </button>
       </div>
 
@@ -280,9 +272,9 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
           {thought.tags.map((t) => (
             <span
               key={t}
-              className="rounded-md bg-violet-500/10 px-1.5 py-0.5 text-[11px] font-medium text-violet-300"
+              className="rounded-full bg-zinc-800/60 px-2 py-0.5 text-[11px] font-medium text-zinc-400"
             >
-              {t}
+              #{t}
             </span>
           ))}
         </div>

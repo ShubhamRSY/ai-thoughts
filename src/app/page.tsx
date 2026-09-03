@@ -11,7 +11,6 @@ import ProfileView from "@/components/ProfileView";
 import SubmitModal, { type SharePayload } from "@/components/Submit/SubmitModal";
 import type { CapturedClip } from "@/components/Submit/MediaRecorderView";
 import PulseOverview, { type FeelingTally } from "@/components/Pulse/PulseOverview";
-import FeelWith from "@/components/Pulse/FeelWith";
 import FeelingRoom from "@/components/Pulse/FeelingRoom";
 import StreakCard from "@/components/StreakCard";
 import { INITIAL_THOUGHTS } from "@/lib/mock-data";
@@ -209,9 +208,15 @@ export default function Home() {
                   onFeelingChange={setFeeling}
                 />
 
-                <FeelWith tally={feelingTally} onOpenRoom={handleOpenRoom} />
-
                 <div className="mt-5 px-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                      Latest takes
+                    </h2>
+                    <span className="text-[11px] tabular-nums text-zinc-600">
+                      {filtered.length} shown
+                    </span>
+                  </div>
                   <FeedGrid
                     thoughts={filtered}
                     onReact={onReact}

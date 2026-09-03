@@ -57,7 +57,7 @@ export default function MobileNav({ active, onTab, onCreate }: MobileNavProps) {
           <button
             onClick={onCreate}
             aria-label="Share how you feel"
-            className="animate-glow relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-500 text-white shadow-lg shadow-violet-500/30 transition active:scale-90"
+            className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-500 text-white shadow-lg shadow-violet-500/30 transition hover:brightness-110 active:scale-90"
           >
             <Heart className="h-6 w-6" fill="currentColor" strokeWidth={2} />
             <span className="absolute -bottom-1 rounded-full bg-violet-500/20 px-1.5 text-[8px] font-bold uppercase tracking-wider text-violet-200">

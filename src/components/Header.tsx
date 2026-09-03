@@ -15,7 +15,13 @@ export default function Header({ onShare }: HeaderProps) {
             <BrainCircuit className="h-5 w-5 text-white" strokeWidth={2.2} />
           </div>
           <div className="leading-tight">
-            <div className="text-base font-bold tracking-tight text-zinc-100">AI·Thoughts</div>
+            <div className="flex items-center gap-1.5 text-base font-bold tracking-tight text-zinc-100">
+              AI·Thoughts
+              <span className="relative flex h-1.5 w-1.5" aria-hidden>
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              </span>
+            </div>
             <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500">
               The Pulse
             </div>
@@ -23,16 +29,9 @@ export default function Header({ onShare }: HeaderProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="hidden items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-300 sm:flex">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            </span>
-            Live
-          </span>
           <button
             onClick={onShare}
-            className="flex h-9 items-center gap-1.5 rounded-lg bg-gradient-to-r from-violet-500 to-indigo-500 px-3 text-xs font-semibold text-white shadow-lg shadow-violet-500/25 transition hover:brightness-110"
+            className="flex h-9 items-center gap-1.5 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 px-3.5 text-xs font-semibold text-white shadow-lg shadow-violet-500/25 transition hover:brightness-110 active:scale-95"
           >
             <Plus className="h-4 w-4" strokeWidth={2.6} />
             <span>Share</span>

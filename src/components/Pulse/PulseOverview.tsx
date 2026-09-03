@@ -42,8 +42,9 @@ export default function PulseOverview({
   })[0];
 
   return (
-    <section className="mx-4 mt-4 overflow-hidden rounded-2xl border border-zinc-800/80 bg-gradient-to-b from-zinc-900/80 to-zinc-950/60">
-      <div className="px-4 pt-3.5">
+    <section className="relative mx-4 mt-4 overflow-hidden rounded-3xl border border-zinc-800/70 bg-gradient-to-b from-[#17171d] to-[#121216] shadow-sm shadow-black/20 ring-1 ring-inset ring-white/[0.03]">
+      <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-violet-500/10 blur-3xl" />
+      <div className="relative px-4 pt-4">
         {/* Top line: label + EP */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-violet-400">
@@ -56,18 +57,18 @@ export default function PulseOverview({
         </div>
 
         {/* Headline */}
-        <h1 className="mt-2 text-lg font-bold leading-snug tracking-tight text-zinc-100">
+        <h1 className="mt-2 text-xl font-bold leading-snug tracking-tight text-zinc-50">
           {total > 0 && dominantMeta
             ? `Most hearts feel ${dominantMeta.short.toLowerCase()}`
             : "The pulse is warming up"}
         </h1>
-        <p className="mt-0.5 text-[11px] text-zinc-500">
+        <p className="mt-1 text-[11px] text-zinc-500">
           {total} voice{total === 1 ? "" : "s"} · {langs.size} language{langs.size === 1 ? "" : "s"}
           {topTake ? ` · top: ${topReaction(topTake.reactions)}` : ""}
         </p>
 
         {/* Mini wave */}
-        <div className="mt-3 flex h-10 items-end gap-1">
+        <div className="mt-3.5 flex h-10 items-end gap-1">
           {FEELINGS.map((f) => {
             const count = tally.find((t) => t.id === f.id)?.count ?? 0;
             const amp = count > 0 ? 0.35 + 0.65 * (count / max) : 0.06;
@@ -97,25 +98,25 @@ export default function PulseOverview({
         </div>
 
         {/* Bottom: alive meter + join room */}
-        <div className="mt-2.5 flex items-center gap-3 pb-3.5">
-          <div className="flex items-center gap-1.5">
-            <div className="h-1 w-14 overflow-hidden rounded-full bg-zinc-800">
+        <div className="mt-2.5 flex items-center gap-3 pb-4">
+          <div className="flex items-center gap-2">
+            <div className="h-1 w-16 overflow-hidden rounded-full bg-zinc-800">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-400"
                 style={{ width: `${pct}%` }}
               />
             </div>
-            <span className="flex items-center gap-0.5 text-[10px] text-zinc-500">
-              <TrendingUp className="h-2.5 w-2.5 text-emerald-400" />
-              {pct}%
+            <span className="flex items-center gap-0.5 text-[10px] font-medium text-zinc-500">
+              <TrendingUp className="h-3 w-3 text-emerald-400" />
+              {pct}% alive
             </span>
           </div>
           <button
             onClick={() => dominant && onOpenRoom(dominant.id)}
-            className="ml-auto flex items-center gap-1 rounded-full border border-violet-500/30 bg-violet-500/10 px-2.5 py-1 text-[10px] font-semibold text-violet-200 transition hover:bg-violet-500/20"
+            className="ml-auto flex items-center gap-1.5 rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 px-3 py-1.5 text-[11px] font-semibold text-white shadow-md shadow-violet-500/25 transition hover:brightness-110 active:scale-95"
           >
             {dominantMeta?.emoji} Join
-            <ArrowRight className="h-2.5 w-2.5" />
+            <ArrowRight className="h-3 w-3" />
           </button>
         </div>
       </div>

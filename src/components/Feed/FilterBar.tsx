@@ -21,6 +21,13 @@ const MEDIA_FILTERS: { id: MediaFilter; label: string; icon: typeof LayoutGrid }
   { id: "text", label: "Text", icon: Type },
 ];
 
+const pill = (active: boolean) =>
+  `flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-medium transition ${
+    active
+      ? "bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-sm shadow-violet-500/25"
+      : "border border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+  }`;
+
 export default function FilterBar({
   media,
   onMediaChange,
@@ -28,7 +35,7 @@ export default function FilterBar({
   onFeelingChange,
 }: FilterBarProps) {
   return (
-    <div className="no-scrollbar mx-4 mt-3 flex gap-1.5 overflow-x-auto py-1">
+    <div className="no-scrollbar -mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1">
       {MEDIA_FILTERS.map((f) => {
         const active = media === f.id;
         const Icon = f.icon;
@@ -36,11 +43,7 @@ export default function FilterBar({
           <button
             key={f.id}
             onClick={() => onMediaChange(f.id)}
-            className={`flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition ${
-              active
-                ? "border-violet-500/60 bg-violet-500/15 text-violet-200"
-                : "border-zinc-800 bg-zinc-900/50 text-zinc-500 hover:border-zinc-700 hover:text-zinc-300"
-            }`}
+            className={pill(active)}
           >
             <Icon className="h-3 w-3" />
             {f.label}
@@ -48,34 +51,19 @@ export default function FilterBar({
         );
       })}
 
-      <span className="my-0.5 w-px shrink-0 bg-zinc-800" />
+      <span className="my-auto h-5 w-px shrink-0 bg-zinc-800" />
 
       <button
         onClick={() => onFeelingChange("all")}
-        className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium transition ${
-          feeling === "all"
-            ? "border-violet-500/60 bg-violet-500/15 text-violet-200"
-            : "border-zinc-800 bg-zinc-900/50 text-zinc-500 hover:border-zinc-700 hover:text-zinc-300"
-        }`}
+        className={pill(feeling === "all")}
       >
         All feels
       </button>
-      {FEELINGS.map((f) => {
-        const active = feeling === f.id;
-        return (
-          <button
-            key={f.id}
-            onClick={() => onFeelingChange(f.id)}
-            className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium transition ${
-              active
-                ? "border-violet-500/60 bg-violet-500/15 text-violet-200"
-                : "border-zinc-800 bg-zinc-900/50 text-zinc-500 hover:border-zinc-700 hover:text-zinc-300"
-            }`}
-          >
-            {f.emoji} {f.short}
-          </button>
-        );
-      })}
+      {FEELINGS.map((f) => (
+        <button key={f.id} onClick={() => onFeelingChange(f.id)} className={pill(feeling === f.id)}>
+          {f.emoji} {f.short}
+        </button>
+      ))}
     </div>
   );
 }
