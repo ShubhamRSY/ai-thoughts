@@ -279,31 +279,33 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
           ))}
         </div>
 
-        {/* Reactions row */}
-        {reactions.some((r) => r.count > 0) && (
-          <div className="flex flex-wrap items-center gap-1.5 border-t border-zinc-800/70 pt-2">
-            {REACTION_TYPES.map((r) => {
-              const count = reactions.find((e) => e.type === r)?.count ?? 0;
-              if (count === 0 && mine !== r) return null;
-              const isMine = mine === r;
-              return (
-                <button
-                  key={r}
-                  onClick={() => react(r)}
-                  aria-label={`React ${r}`}
-                  className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium transition active:scale-90 ${
-                    isMine
-                      ? "border-violet-500/70 bg-violet-500/20 text-violet-100"
-                      : "border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
-                  }`}
-                >
-                  <span className="text-sm leading-none">{r}</span>
-                  <span className="tabular-nums">{count}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
+        {/* Reactions — always visible so you know how to express */}
+        <div className="flex flex-wrap items-center gap-1.5 border-t border-zinc-800/70 pt-2.5">
+          <span className="mr-0.5 text-[10px] font-medium uppercase tracking-wider text-zinc-600">
+            React
+          </span>
+          {REACTION_TYPES.map((r) => {
+            const count = reactions.find((e) => e.type === r)?.count ?? 0;
+            const isMine = mine === r;
+            return (
+              <button
+                key={r}
+                onClick={() => react(r)}
+                aria-label={`React ${r}`}
+                className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium transition active:scale-90 ${
+                  isMine
+                    ? "border-violet-500/70 bg-violet-500/20 text-violet-100"
+                    : count > 0
+                      ? "border-zinc-800 bg-zinc-900/60 text-zinc-300 hover:border-zinc-700"
+                      : "border-transparent bg-transparent text-zinc-600 hover:text-zinc-300"
+                }`}
+              >
+                <span className="text-sm leading-none">{r}</span>
+                {count > 0 && <span className="tabular-nums">{count}</span>}
+              </button>
+            );
+          })}
+        </div>
 
         {/* Safety in numbers — others feel this too */}
         {thought.feeling && others && others > 1 && onOpenRoom && (
@@ -378,6 +380,7 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
       <ChatPanel
         postId={thought.id}
         postAuthor={thought.author}
+        integrity={thought.integrity}
         open={chatOpen}
         onClose={() => setChatOpen(false)}
       />

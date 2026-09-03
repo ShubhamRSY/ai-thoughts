@@ -1,18 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Send, X, MessageCircle } from "lucide-react";
+import { Send, X, MessageCircle, ShieldCheck } from "lucide-react";
 import {
   fetchMessages,
   sendMessage,
   subscribeToMessages,
   type ChatMessage,
 } from "@/lib/db";
+import type { Integrity } from "@/lib/types";
 import { useLocalProfile } from "@/hooks/useLocalProfile";
 
 interface ChatPanelProps {
   postId: string;
   postAuthor: string;
+  integrity?: Integrity;
   open: boolean;
   onClose: () => void;
 }
@@ -52,7 +54,7 @@ function timeLabel(iso: string): string {
   return new Date(iso).toLocaleDateString();
 }
 
-export default function ChatPanel({ postId, postAuthor, open, onClose }: ChatPanelProps) {
+export default function ChatPanel({ postId, postAuthor, integrity, open, onClose }: ChatPanelProps) {
   const { profile } = useLocalProfile();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -132,29 +134,44 @@ export default function ChatPanel({ postId, postAuthor, open, onClose }: ChatPan
       <div className="absolute inset-0" onClick={onClose} />
       <div className="relative flex max-h-[75vh] w-full max-w-[430px] flex-col overflow-hidden rounded-t-2xl border border-zinc-800 bg-zinc-900 shadow-2xl sm:rounded-2xl">
         {/* Header */}
-        <div className="flex items-center gap-3 border-b border-zinc-800 px-4 py-3">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-indigo-500 text-white">
-            <MessageCircle className="h-4 w-4" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-bold text-zinc-100">Talk</h3>
-            <p className="truncate text-[11px] text-zinc-500">
-              On {postAuthor}&apos;s take
-              {live && (
-                <span className="ml-1.5 inline-flex items-center gap-1 text-emerald-400">
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-                  live
-                </span>
-              )}
-            </p>
+        <div className="border-b border-zinc-800 px-4 py-3">
+          <div className="flex items-center gap-3">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-indigo-500 text-white">
+              <MessageCircle className="h-4 w-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-bold text-zinc-100">Talk</h3>
+              <p className="truncate text-[11px] text-zinc-500">
+                On {postAuthor}&apos;s take
+                {live && (
+                  <span className="ml-1.5 inline-flex items-center gap-1 text-emerald-400">
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+                    live
+                  </span>
+                )}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              aria-label="Close chat"
+              className="rounded-lg p-1.5 text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-200"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            aria-label="Close chat"
-            className="rounded-lg p-1.5 text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-200"
-          >
-            <X className="h-5 w-5" />
-          </button>
+
+          {integrity && (
+            <div
+              className={`mt-2.5 flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium ${
+                integrity.verified
+                  ? "bg-emerald-500/10 text-emerald-300"
+                  : "bg-amber-500/10 text-amber-300"
+              }`}
+            >
+              <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+              {integrity.verified ? "Verified" : "Unverified"}
+            </div>
+          )}
         </div>
 
         {/* Messages */}
