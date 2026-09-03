@@ -1,4 +1,4 @@
-import { MongoClient, type Db } from "mongodb";
+import { MongoClient, ServerApiVersion, type Db } from "mongodb";
 
 const MONGODB_URI = process.env.MONGODB_URI ?? "";
 const DB_NAME = process.env.MONGODB_DB ?? "aithoughts";
@@ -20,13 +20,18 @@ export async function connectToDatabase(): Promise<{ client: MongoClient; db: Db
   }
 
   const client = await MongoClient.connect(MONGODB_URI, {
-    // Serverless environments (e.g. Vercel) can hit SRV/DNS IPv4-vs-IPv6
-    // handshake failures ("tlsv1 alert internal error"). Pinning the family
-    // to IPv4 and widening the selection timeout makes Atlas reliable there.
+    serverApi: {
+      version: ServerApiVersion.v1,
+      strict: false,
+      deprecationErrors: false,
+    },
     autoSelectFamily: false,
     family: 4,
     serverSelectionTimeoutMS: 30000,
     connectTimeoutMS: 15000,
+    socketTimeoutMS: 45000,
+    retryWrites: true,
+    tls: true,
   });
   const db = client.db(DB_NAME);
 
