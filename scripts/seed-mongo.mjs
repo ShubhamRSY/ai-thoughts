@@ -1,5 +1,5 @@
 // Seed MongoDB with initial collections and demo data.
-// Usage:  npm run seed   (loads MONGODB_URI from .env.local)
+// Usage:  npm run seed   (loads MONGODB_URL from .env.local)
 import { MongoClient } from "mongodb";
 import fs from "node:fs";
 import path from "node:path";
@@ -15,9 +15,9 @@ if (fs.existsSync(envPath)) {
   }
 }
 
-const uri = process.env.MONGODB_URI;
+const uri = process.env.MONGODB_URL || process.env.MONGODB_URI;
 if (!uri) {
-  console.error("Set MONGODB_URI first (e.g. mongodb+srv://user:pass@cluster/...)");
+  console.error("Set MONGODB_URL first (e.g. mongodb+srv://user:pass@cluster/...)");
   process.exit(1);
 }
 const dbName = process.env.MONGODB_DB || "aithoughts";

@@ -1,6 +1,6 @@
 import { MongoClient, ServerApiVersion, type Db } from "mongodb";
 
-const MONGODB_URI = process.env.MONGODB_URI ?? "";
+const MONGODB_URI = process.env.MONGODB_URL ?? process.env.MONGODB_URI ?? "";
 const DB_NAME = process.env.MONGODB_DB ?? "aithoughts";
 
 let cachedClient: MongoClient | null = null;
