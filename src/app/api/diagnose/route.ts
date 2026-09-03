@@ -20,7 +20,9 @@ export async function GET() {
 
   // 2. TLS handshake (Node default, no SNI tweak)
   result.tls = await new Promise<string>((res) => {
-    const s = tls.connect({ host: HOST, port: PORT, family: 4, servername: HOST });
+    const s = tls.connect(
+      { host: HOST, port: PORT, family: 4, servername: HOST } as tls.ConnectionOptions
+    );
     const to = setTimeout(() => { s.destroy(); res("tls-timeout"); }, 15000);
     s.on("secureConnect", () => {
       clearTimeout(to);
