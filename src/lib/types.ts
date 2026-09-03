@@ -68,6 +68,9 @@ export interface Thought {
   feeling?: FeelingId;
   mediaUrl?: string;
   mediaDuration?: string;
+  /** HLS manifest URL (.m3u8) once a take has been transcoded for streaming. */
+  streamUrl?: string;
+  streamReady?: boolean;
   tags: string[];
   timestamp: string;
   reactions: ReactionCount[];

@@ -27,6 +27,8 @@ create table if not exists public.posts (
   feeling           text,
   media_url         text,
   media_duration    text,
+  stream_url        text,        -- HLS manifest (.m3u8) once transcoded
+  stream_ready      boolean not null default false,
   tags              text[] not null default '{}',
   language          text,
   language_label    text,
@@ -127,3 +129,8 @@ create policy "keepers read keepers" on public.keepers
   for select using (public.is_keeper());
 create policy "keepers insert keepers" on public.keepers
   for insert with check (public.is_keeper());
+-- ------------------------------------------------------------
+-- Streaming (HLS) columns — safe to re-run on an existing DB.
+-- ------------------------------------------------------------
+alter table public.posts add column if not exists stream_url text;
+alter table public.posts add column if not exists stream_ready boolean not null default false;

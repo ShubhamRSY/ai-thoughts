@@ -24,6 +24,7 @@ import VideoPlayer from "@/components/Player/VideoPlayer";
 import IntegrityBadge from "@/components/IntegrityBadge";
 import TranscriptPanel from "@/components/Feed/TranscriptPanel";
 import FeelingBadge from "@/components/FeelingBadge";
+import ChatPanel from "@/components/Chat/ChatPanel";
 
 // Initials avatar with deterministic gradient
 const GRADIENTS = [
@@ -83,12 +84,14 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
   const [menuOpen, setMenuOpen] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [reported, setReported] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
   const mediaElRef = useRef<HTMLMediaElement | null>(null);
   const [mediaTime, setMediaTime] = useState(0);
   const hasTranscript = Boolean(
     (thought.mediaType === "audio" || thought.mediaType === "video") && thought.transcript?.length
   );
+  const mediaSrc = thought.streamReady && thought.streamUrl ? thought.streamUrl : thought.mediaUrl;
 
   const react = (r: Reaction) => {
     if (mine === r) {
@@ -189,7 +192,7 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
       <div className="px-0">
         {thought.mediaType === "audio" && (
           <AudioPlayer
-            src={thought.mediaUrl}
+            src={mediaSrc}
             durationLabel={thought.mediaDuration}
             onProgress={setMediaTime}
             onElement={(el) => {
@@ -199,7 +202,7 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
         )}
         {thought.mediaType === "video" && (
           <VideoPlayer
-            src={thought.mediaUrl}
+            src={mediaSrc}
             durationLabel={thought.mediaDuration}
             onProgress={setMediaTime}
             onElement={(el) => {
@@ -218,7 +221,11 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
         >
           <Flame className="h-6 w-6" fill={liked ? "currentColor" : "none"} />
         </button>
-        <button className="transition hover:text-zinc-200" aria-label="Comment">
+        <button
+          onClick={() => setChatOpen(true)}
+          className="transition hover:text-zinc-200"
+          aria-label="Comment"
+        >
           <MessageCircle className="h-6 w-6" />
         </button>
         <button className="transition hover:text-zinc-200" aria-label="Boost">
@@ -376,6 +383,12 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
           </div>
         </div>
       )}
+      <ChatPanel
+        postId={thought.id}
+        postAuthor={thought.author}
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+      />
     </article>
   );
 }

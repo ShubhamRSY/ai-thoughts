@@ -1,4 +1,5 @@
 import { getSupabaseBrowser } from "./client";
+import { uploadResumable } from "./resumable";
 import { SUPABASE_CONFIGURED } from "./config";
 import type { Thought } from "@/lib/types";
 
@@ -12,6 +13,8 @@ interface PostRow {
   feeling?: string | null;
   media_url?: string | null;
   media_duration?: string | null;
+  stream_url?: string | null;
+  stream_ready?: boolean | null;
   tags: string[];
   language?: string | null;
   language_label?: string | null;
@@ -91,6 +94,8 @@ function rowToThought(row: PostRow, reacts: ReactRow[]): Thought {
     feeling: (row.feeling as Thought["feeling"]) || undefined,
     mediaUrl: row.media_url ?? undefined,
     mediaDuration: row.media_duration ?? undefined,
+    streamUrl: row.stream_url ?? undefined,
+    streamReady: Boolean(row.stream_ready),
     tags: Array.isArray(row.tags) ? row.tags : [],
     timestamp: row.created_at,
     timeLabel: timeLabelFor(row.created_at),
@@ -128,12 +133,8 @@ export async function fetchPulsePosts(): Promise<Thought[] | null> {
 
 export type PublishInput = Omit<Thought, "id" | "reactions" | "timeLabel">;
 
-const TAKES_BUCKET = "takes";
-
 /** Upload a raw audio/video clip to Storage, returning its public URL (or null on failure). */
-export async function uploadTake(blob: Blob): Promise<string | null> {
-  const sb = getSupabaseBrowser();
-  if (!sb) return null;
+export async function uploadTake(blob: Blob, onProgress?: (fraction: number) => void): Promise<string | null> {
   const ext = blob.type.includes("webm")
     ? "webm"
     : blob.type.includes("mp4")
@@ -141,18 +142,9 @@ export async function uploadTake(blob: Blob): Promise<string | null> {
       : blob.type.includes("mp3")
         ? "mp3"
         : "webm";
-  const path = `${crypto.randomUUID()}.${ext}`;
-  const { error } = await sb.storage.from(TAKES_BUCKET).upload(path, blob, {
-    contentType: blob.type || "application/octet-stream",
-    upsert: false,
-    cacheControl: "3600",
+  return uploadResumable(blob, ext, {
+    onProgress: (p) => onProgress?.(p.fraction),
   });
-  if (error) {
-    console.error("uploadTake:", error.message);
-    return null;
-  }
-  const { data } = sb.storage.from(TAKES_BUCKET).getPublicUrl(path);
-  return data.publicUrl;
 }
 
 export async function publishPost(
@@ -178,6 +170,8 @@ export async function publishPost(
       feeling: payload.feeling ?? null,
       media_url: mediaUrl,
       media_duration: payload.mediaDuration ?? null,
+      stream_url: payload.streamUrl ?? null,
+      stream_ready: Boolean(payload.streamReady),
       tags: payload.tags,
       language: payload.language ?? null,
       language_label: payload.languageLabel ?? null,
