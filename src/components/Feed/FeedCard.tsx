@@ -16,7 +16,6 @@ import type {
   FeelingId,
 } from "@/lib/types";
 import { REACTION_TYPES } from "@/lib/mock-data";
-import { feelingOf } from "@/lib/feelings";
 import AudioPlayer from "@/components/Player/AudioPlayer";
 import VideoPlayer from "@/components/Player/VideoPlayer";
 import IntegrityBadge from "@/components/IntegrityBadge";
@@ -307,7 +306,7 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
               key={t}
               className="rounded-full bg-zinc-800/60 px-2 py-0.5 text-[11px] font-medium text-zinc-400"
             >
-              #{t}
+              {t}
             </span>
           ))}
         </div>
@@ -349,7 +348,7 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
             <span aria-hidden className="text-sm leading-none">
               🤝
             </span>
-            You&apos;re not alone — {others} others feel {feelingOf(thought.feeling)?.short.toLowerCase()} too
+            You&apos;re not alone — {others} other{others === 1 ? "" : "s"} feel this too
             <span className="ml-auto text-zinc-600">open room →</span>
           </button>
         )}
