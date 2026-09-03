@@ -8,7 +8,7 @@ const HOST = "ac-jyd0fi8-shard-00-00.fc1wbd0.mongodb.net";
 const PORT = 27017;
 
 export async function GET() {
-  const result = { tcp: null, tls: null, tlsError: null };
+  const result: { tcp: string | null; tls: string | null; tlsError: string | null } = { tcp: null, tls: null, tlsError: null };
 
   // 1. Raw TCP connect
   result.tcp = await new Promise<string>((res) => {
