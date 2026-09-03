@@ -70,10 +70,22 @@ const REPORT_REASONS: ReportReason[] = [
   "Harms someone",
 ];
 
+function makeFloater(r: Reaction) {
+  return {
+    id: Date.now() + Math.random(),
+    r,
+    x: -24 + Math.random() * 48,
+    rot: -14 + Math.random() * 28,
+  };
+}
+
 export default function FeedCard({ thought, onReact, onReport, onOpenRoom, others }: FeedCardProps) {
   const [reactions, setReactions] = useState(thought.reactions);
   const [mine, setMine] = useState<Reaction | null>(null);
   const [burst, setBurst] = useState<Reaction | null>(null);
+  const [floaters, setFloaters] = useState<{ id: number; r: Reaction; x: number; rot: number }[]>(
+    []
+  );
   const [liked, setLiked] = useState(false);
   const [likes, setLikes] = useState(
     thought.reactions.reduce((s, e) => s + e.count, 0) + 12
@@ -108,6 +120,9 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
     );
     setMine(r);
     setBurst(r);
+    const floater = makeFloater(r);
+    setFloaters((prev) => [...prev, floater]);
+    setTimeout(() => setFloaters((prev) => prev.filter((f) => f.id !== floater.id)), 750);
     setTimeout(() => setBurst(null), 500);
     onReact?.(thought.id, r);
   };
@@ -127,7 +142,7 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
   };
 
   return (
-    <article className="animate-rise-in overflow-hidden rounded-2xl border border-zinc-800/70 bg-[#141419]/95 shadow-sm shadow-black/20 ring-1 ring-inset ring-white/[0.03]">
+    <article className="animate-rise-in relative overflow-hidden rounded-2xl border border-zinc-800/70 bg-[#141419]/95 shadow-sm shadow-black/20 ring-1 ring-inset ring-white/[0.03]">
       {/* Header */}
       <div className="flex items-center gap-3 p-3 pb-1">
         <div
@@ -248,11 +263,29 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
       {/* Feeling + reaction burst */}
       {burst && (
         <div className="px-3 pt-2">
-          <span className="animate-pop-in inline-flex items-center gap-1 rounded-full bg-zinc-800 px-3 py-1 text-sm shadow-lg">
+          <span className="animate-spring inline-flex items-center gap-1 rounded-full bg-zinc-800 px-3 py-1 text-sm shadow-lg">
             {burst} You feel this too
           </span>
         </div>
       )}
+
+      {/* Floating reaction emojis */}
+      {floaters.map((f) => (
+        <span
+          key={f.id}
+          aria-hidden
+          className="animate-reaction-jump pointer-events-none absolute text-lg"
+          style={
+            {
+              left: `calc(50% + ${f.x}px)`,
+              top: "38%",
+              "--r": `${f.rot}deg`,
+            } as React.CSSProperties
+          }
+        >
+          {f.r}
+        </span>
+      ))}
 
       {/* Content + transcript */}
       <div className="space-y-2 px-3 pb-3 pt-2">

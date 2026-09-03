@@ -43,7 +43,7 @@ export default function PulseOverview({
 
   return (
     <section className="relative mx-4 mt-4 overflow-hidden rounded-3xl border border-zinc-800/70 bg-gradient-to-b from-[#17171d] to-[#121216] shadow-sm shadow-black/20 ring-1 ring-inset ring-white/[0.03]">
-      <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-violet-500/10 blur-3xl" />
+      <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-violet-500/10 blur-3xl animate-aurora" />
       <div className="relative px-4 pt-4">
         {/* Top line: label + EP */}
         <div className="flex items-center justify-between">
@@ -113,7 +113,7 @@ export default function PulseOverview({
           </div>
           <button
             onClick={() => dominant && onOpenRoom(dominant.id)}
-            className="ml-auto flex items-center gap-1.5 rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 px-3 py-1.5 text-[11px] font-semibold text-white shadow-md shadow-violet-500/25 transition hover:brightness-110 active:scale-95"
+            className="animate-shimmer relative ml-auto flex items-center gap-1.5 overflow-hidden rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 px-3 py-1.5 text-[11px] font-semibold text-white shadow-md shadow-violet-500/25 transition hover:brightness-110 active:scale-95"
           >
             {dominantMeta?.emoji} Join
             <ArrowRight className="h-3 w-3" />
