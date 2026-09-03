@@ -5,14 +5,14 @@ export const FEELINGS: Feeling[] = [
     id: "using-it",
     emoji: "🤖",
     label: "I use it every day",
-    short: "Daily using",
+    short: "Use it daily",
     chip: "bg-sky-500/15 text-sky-300 border-sky-500/30",
   },
   {
     id: "love-it",
     emoji: "💜",
     label: "I genuinely love it",
-    short: "Loves it",
+    short: "Love it",
     chip: "bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30",
   },
   {
@@ -26,7 +26,7 @@ export const FEELINGS: Feeling[] = [
     id: "hurts",
     emoji: "😔",
     label: "It makes me feel bad",
-    short: "Feeling bad",
+    short: "Feel bad",
     chip: "bg-rose-500/15 text-rose-300 border-rose-500/30",
   },
   {
@@ -47,7 +47,7 @@ export const FEELINGS: Feeling[] = [
     id: "need-support",
     emoji: "🤝",
     label: "I need support with it",
-    short: "Needs support",
+    short: "Need help",
     chip: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
   },
 ];

@@ -22,10 +22,10 @@ const MEDIA_FILTERS: { id: MediaFilter; label: string; icon: typeof LayoutGrid }
 ];
 
 const pill = (active: boolean) =>
-  `flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-medium transition ${
+  `flex shrink-0 items-center gap-1.5 rounded-full py-1.5 text-xs transition ${
     active
-      ? "bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-sm shadow-violet-500/25"
-      : "border border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+      ? "text-zinc-100"
+      : "text-zinc-500 hover:text-zinc-300"
   }`;
 
 export default function FilterBar({
@@ -35,35 +35,52 @@ export default function FilterBar({
   onFeelingChange,
 }: FilterBarProps) {
   return (
-    <div className="no-scrollbar -mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1">
-      {MEDIA_FILTERS.map((f) => {
-        const active = media === f.id;
-        const Icon = f.icon;
-        return (
-          <button
-            key={f.id}
-            onClick={() => onMediaChange(f.id)}
-            className={pill(active)}
-          >
-            <Icon className="h-3 w-3" />
-            {f.label}
-          </button>
-        );
-      })}
+    <div className="mt-4 border-b border-zinc-800/60">
+      <div className="no-scrollbar -mx-4 flex items-center gap-4 overflow-x-auto px-4">
+        {MEDIA_FILTERS.map((f) => {
+          const active = media === f.id;
+          const Icon = f.icon;
+          return (
+            <button
+              key={f.id}
+              onClick={() => onMediaChange(f.id)}
+              className={`relative shrink-0 pb-2.5 ${pill(active)}`}
+            >
+              <Icon className="hidden h-3.5 w-3.5 sm:block" />
+              {f.label}
+              {active && (
+                <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-gradient-to-r from-violet-500 to-indigo-500" />
+              )}
+            </button>
+          );
+        })}
 
-      <span className="my-auto h-5 w-px shrink-0 bg-zinc-800" />
+        <span className="my-auto h-4 shrink-0 w-px bg-zinc-800/70" />
 
-      <button
-        onClick={() => onFeelingChange("all")}
-        className={pill(feeling === "all")}
-      >
-        All feels
-      </button>
-      {FEELINGS.map((f) => (
-        <button key={f.id} onClick={() => onFeelingChange(f.id)} className={pill(feeling === f.id)}>
-          {f.emoji} {f.short}
+        <button
+          onClick={() => onFeelingChange("all")}
+          className={`shrink-0 text-xs transition ${
+            feeling === "all" ? "font-semibold text-zinc-100" : "text-zinc-500 hover:text-zinc-300"
+          }`}
+        >
+          All
         </button>
-      ))}
+        {FEELINGS.map((f) => {
+          const active = feeling === f.id;
+          return (
+            <button
+              key={f.id}
+              onClick={() => onFeelingChange(f.id)}
+              className={`shrink-0 whitespace-nowrap transition ${
+                active ? "font-semibold text-zinc-100" : "text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              <span className="mr-1">{f.emoji}</span>
+              {f.short}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -229,6 +229,11 @@ export default function Home() {
                 <div className="mt-8">
                   <Footer />
                 </div>
+
+                <p className="mx-4 mt-4 flex items-center justify-center gap-1.5 pb-2 text-[11px] font-medium text-zinc-500">
+                  <HeartHandshake className="h-3.5 w-3.5 text-emerald-400" />
+                  All ages. All feelings. It&apos;s okay to feel bad about AI too.
+                </p>
               </>
             )}
           </>
@@ -246,16 +251,6 @@ export default function Home() {
           </div>
         )}
       </main>
-
-      {/* All-ages banner above the nav */}
-      <div className="fixed inset-x-0 bottom-16 z-30 sm:bottom-16">
-        <div className="mx-auto flex max-w-[430px] px-4">
-          <p className="mx-auto flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-zinc-950/90 px-3 py-1.5 text-[11px] font-medium text-emerald-300/90 backdrop-blur">
-            <HeartHandshake className="h-3.5 w-3.5" />
-            All ages. All feelings. It&apos;s okay to feel bad about AI too.
-          </p>
-        </div>
-      </div>
 
       <MobileNav active={tab} onTab={setTab} onCreate={() => openShare("video")} />
 
