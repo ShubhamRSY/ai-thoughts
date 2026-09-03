@@ -7,7 +7,7 @@ import {
   sendMessage,
   subscribeToMessages,
   type ChatMessage,
-} from "@/lib/supabase/chat";
+} from "@/lib/db";
 import { useLocalProfile } from "@/hooks/useLocalProfile";
 
 interface ChatPanelProps {

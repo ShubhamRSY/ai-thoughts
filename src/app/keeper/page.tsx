@@ -9,8 +9,8 @@ import {
   deletePost,
   isKeeper,
   type ReportRow,
-} from "@/lib/supabase/feed";
-import { isLive } from "@/lib/supabase/feed";
+  isLive,
+} from "@/lib/db";
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -42,7 +42,7 @@ export default function KeeperPage() {
       if (cancelled) return;
       setAuthorized(keeper);
       if (keeper) {
-        const rows = await fetchReports(true);
+        const rows = await fetchReports();
         if (!cancelled) setReports(rows ?? []);
       }
       setLoading(false);
@@ -57,7 +57,7 @@ export default function KeeperPage() {
     const keeper = await isKeeper();
     setAuthorized(keeper);
     if (keeper) {
-      const rows = await fetchReports(true);
+      const rows = await fetchReports();
       setReports(rows ?? []);
     }
     setLoading(false);
@@ -104,7 +104,7 @@ export default function KeeperPage() {
           </p>
           {!isLive() && (
             <p className="text-xs text-amber-400/90">
-              Supabase isn&apos;t configured in this environment, so the desk is offline.
+              The database isn&apos;t connected in this environment, so the desk is offline.
             </p>
           )}
         </div>

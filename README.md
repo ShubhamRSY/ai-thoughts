@@ -44,8 +44,8 @@ The home screen is a **live mood reading**: a wave of feelings sized by how many
 - **15-second publish cooldown** — browser-side guard prevents rapid spam (app-side, no login needed).
 - **Content length cap** (2800 chars) + empty-content rejection surfaced to users.
 - **Keeper moderation desk** (`/keeper`) — invite-only; lists open reports with reason + snippet, "Remove take" deletes the post and resolves the report, "Keep & resolve" dismisses without deleting.
-- **RLS schema with `is_keeper()` SQL function** — keepers can read/resolve reports and delete posts via row-level security.
-- **Seed data** (`supabase/seed.sql`) — one-shot SQL inserts 8 demo takes + reactions so the pulse is never empty on first launch.
+- **Stored by handle** — keepers are users whose handle is added to the `keepers` collection; reports are open by default.
+- **Seed data** (`scripts/seed-mongo.mjs`) — one-shot script (`npm run seed`) creates indexes + inserts demo takes so the pulse is never empty on first launch.
 
 ### 📄 Legal pages (no sign-up friction)
 - `/terms` — Terms of Use (public posting, all-ages rules, keeper moderation rights).
@@ -60,8 +60,8 @@ The home screen is a **live mood reading**: a wave of feelings sized by how many
 - Posting a take keeps your **pulse streak** alive (localStorage-backed, no backend needed). The You tab shows "N days on the pulse", today's mood chip, and a "check in today" nudge — a gentle reason to return tomorrow.
 
 ### 🗄️ Live backend (optional)
-- Zero-setup demo mode on fixtures when Supabase isn't configured.
-- When configured: real accounts (magic-link sign-in), posts, reactions, profiles, and public Storage clips — all read/write live.
+- Zero-setup demo mode on fixtures when MongoDB isn't configured.
+- When configured: posts, reactions, comments, profiles, reports, keepers, and media (GridFS) — all read/write live.
 
 ---
 
@@ -71,7 +71,8 @@ The home screen is a **live mood reading**: a wave of feelings sized by how many
 | --- | --- |
 | Framework | Next.js 16 (App Router, Turbopack) + React 19 + TypeScript |
 | Styling | Tailwind CSS v4 |
-| Backend | Supabase (Postgres, Auth, Storage) |
+| Backend | MongoDB (via Mongoose-free official `mongodb` driver + Next.js API routes) |
+| Media | GridFS (audio/video stored in MongoDB) |
 | Icons | lucide-react |
 | PWA | Web app manifest + service worker |
 
@@ -89,32 +90,35 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000). Without configuration the app runs entirely on demo data with fake camera/audio support in the share flow, so you can experience the full product immediately.
 
-### Going live with Supabase
+### Going live with MongoDB
 
-1. Create a project at [supabase.com](https://supabase.com).
+1. Create a free MongoDB cluster at [mongodb.com](https://www.mongodb.com/cloud/atlas) (or use a local instance).
 2. Copy the environment template:
 
    ```bash
    cp .env.local.example .env.local
    ```
 
-3. Fill in your values:
+3. Fill in your connection string (a **server-side** secret — never `NEXT_PUBLIC_`):
 
    ```env
-   NEXT_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=<your publishable anon key>
+   MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/?retryWrites=true&w=majority
+   MONGODB_DB=aithoughts
    ```
 
-4. Run the schema in the **Supabase SQL editor**:
-   - `supabase/schema.sql` — tables (`profiles`, `posts`, `post_reactions`, `reports`, `keepers`) + RLS + `is_keeper()` SQL function.
-   - `supabase/storage.sql` — the public `takes` Storage bucket policies (upload/read for everyone).
-   - `supabase/seed.sql` — one-shot: inserts 8 demo takes + reactions so the pulse is never empty.
+4. Seed collections + initial demo takes and create indexes:
 
-> **Security note:** only the *publishable* anon key goes into the app (via env). Never expose your `service_role`/secret key — it's for admin tasks only (and never committed to git).
+   ```bash
+   npm run seed
+   ```
+
+5. Restart the dev server. The pulse now reads/writes real posts, reactions, and comments from MongoDB; media is stored in GridFS.
+
+> **Security note:** `MONGODB_URI` is used only by server-side API routes — never expose it to the browser. The API routes live under `src/app/api/`.
 
 ### That's it
 
-With env vars set, empty database → app still runs on demo fixtures. First posted take → the pulse goes live with real voices.
+With env vars set, an empty database → app still runs on demo fixtures. First posted take → the pulse goes live with real voices.
 
 ---
 

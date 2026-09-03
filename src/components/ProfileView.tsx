@@ -1,20 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { User } from "@supabase/supabase-js";
-import { PencilLine, Check, Settings2, Mail, KeyRound, LogOut } from "lucide-react";
+import { useState } from "react";
+import { PencilLine, Check, Settings2 } from "lucide-react";
 import type { Thought } from "@/lib/types";
 import FeelingBadge from "@/components/FeelingBadge";
 import { useLocalProfile } from "@/hooks/useLocalProfile";
-import {
-  isLive,
-  getSessionUser,
-  getProfile,
-  requestMagicLink,
-  verifyOtp,
-  signOut,
-  saveProfile,
-} from "@/lib/supabase/feed";
+import { saveProfile } from "@/lib/db";
 
 interface ProfileViewProps {
   myThoughts: Thought[];
@@ -49,68 +40,16 @@ export default function ProfileView({ myThoughts, onCreate }: ProfileViewProps) 
   const [editing, setEditing] = useState(false);
   const [handle, setHandle] = useState(profile.handle || "");
   const [author, setAuthor] = useState(profile.author || "");
-
-  // Live-mode auth (only active when Supabase is configured)
-  const live = isLive();
-  const [user, setUser] = useState<User | null | undefined>(undefined);
-  const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
-  const [codeSent, setCodeSent] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [authMsg, setAuthMsg] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!live) return;
-    let cancelled = false;
-    getSessionUser().then(async (u) => {
-      if (cancelled) return;
-      setUser(u);
-      if (u) {
-        const p = await getProfile(u.id);
-        if (p && !cancelled) {
-          if (p.handle && !profile.handle) save({ ...profile, handle: p.handle });
-          if (p.author && !profile.author) save({ ...profile, author: p.author });
-        }
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [live]);
+  const [saved, setSaved] = useState(false);
 
   const commit = async () => {
     const handleValue = handle.trim() ? (handle.trim().startsWith("@") ? handle.trim() : `@${handle.trim()}`) : "";
     const authorValue = author.trim();
     save({ handle: handleValue, author: authorValue });
-    if (live && user) {
-      const err = await saveProfile(user.id, handleValue || `@user_${user.id.slice(0, 6)}`, authorValue);
-      if (err) setAuthMsg(err);
-    }
+    await saveProfile("local", handleValue || "@you", authorValue);
     setEditing(false);
-  };
-
-  const sendCode = async () => {
-    setBusy(true);
-    setAuthMsg(null);
-    const err = await requestMagicLink(email.trim());
-    setBusy(false);
-    if (err) setAuthMsg(err ?? "Something went wrong.");
-    else setCodeSent(true);
-  };
-
-  const verifyCode = async () => {
-    setBusy(true);
-    setAuthMsg(null);
-    const err = await verifyOtp(email.trim(), code.trim());
-    setBusy(false);
-    if (err) {
-      setAuthMsg(err);
-      return;
-    }
-    setCodeSent(false);
-    setCode("");
-    setUser((await getSessionUser()) ?? null);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1500);
   };
 
   const name = profile.author || profile.handle.replace(/^@/, "") || "You";
@@ -179,76 +118,10 @@ export default function ProfileView({ myThoughts, onCreate }: ProfileViewProps) 
           </div>
         )}
 
-        {/* Live-mode account / sign-in */}
-        {live && user !== undefined && (
-          <div className="mt-4 border-t border-zinc-800/80 pt-4">
-            {user ? (
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="flex items-center gap-1.5 text-xs font-semibold text-emerald-300">
-                    <Check className="h-3.5 w-3.5" /> Signed in
-                  </p>
-                  <p className="truncate text-xs text-zinc-400">{user.email}</p>
-                </div>
-                <button
-                  onClick={() => signOut().then(() => setUser(null))}
-                  className="flex items-center gap-1 rounded-lg border border-zinc-800 px-2.5 py-1.5 text-xs font-medium text-zinc-400 transition hover:border-zinc-700 hover:text-zinc-200"
-                >
-                  <LogOut className="h-3.5 w-3.5" /> Sign out
-                </button>
-              </div>
-            ) : (
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
-                  Claim your handle (free, no password)
-                </p>
-                {!codeSent ? (
-                  <div className="mt-2 flex gap-2">
-                    <div className="relative flex-1">
-                      <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="you@email.com"
-                        inputMode="email"
-                        autoComplete="email"
-                        className="w-full rounded-lg border border-zinc-800 bg-zinc-900/60 py-2 pl-9 pr-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-violet-500/60 focus:outline-none"
-                      />
-                    </div>
-                    <button
-                      onClick={sendCode}
-                      disabled={busy || email.trim().length < 5}
-                      className="shrink-0 rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-violet-500 disabled:opacity-40"
-                    >
-                      {busy ? "Sending…" : "Send code"}
-                    </button>
-                  </div>
-                ) : (
-                  <div className="mt-2 flex gap-2">
-                    <div className="relative flex-1">
-                      <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
-                      <input
-                        value={code}
-                        onChange={(e) => setCode(e.target.value)}
-                        placeholder="6-digit code"
-                        inputMode="numeric"
-                        className="w-full rounded-lg border border-zinc-800 bg-zinc-900/60 py-2 pl-9 pr-3 text-sm tracking-[0.3em] text-zinc-100 placeholder:tracking-normal placeholder:text-zinc-600 focus:border-violet-500/60 focus:outline-none"
-                      />
-                    </div>
-                    <button
-                      onClick={verifyCode}
-                      disabled={busy || code.trim().length < 6}
-                      className="shrink-0 rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-violet-500 disabled:opacity-40"
-                    >
-                      {busy ? "Verifying…" : "Verify"}
-                    </button>
-                  </div>
-                )}
-                {authMsg && <p className="mt-2 text-[11px] text-rose-400">{authMsg}</p>}
-              </div>
-            )}
-          </div>
+        {saved && (
+          <p className="mt-3 flex items-center gap-1.5 text-xs font-medium text-emerald-300">
+            <Check className="h-3.5 w-3.5" /> Profile saved
+          </p>
         )}
 
         {/* Stats */}

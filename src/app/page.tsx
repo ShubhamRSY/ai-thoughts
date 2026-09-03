@@ -27,7 +27,7 @@ import {
   reportPost,
   checkPublishGuard,
   markPublished,
-} from "@/lib/supabase/feed";
+} from "@/lib/db";
 import type { ReportReason } from "@/components/Feed/FeedCard";
 
 type MediaFilter = "all" | MediaType;
