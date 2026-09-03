@@ -162,14 +162,12 @@ export default function ChatPanel({ postId, postAuthor, integrity, open, onClose
 
           {integrity && (
             <div
-              className={`mt-2.5 flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium ${
-                integrity.verified
-                  ? "bg-emerald-500/10 text-emerald-300"
-                  : "bg-amber-500/10 text-amber-300"
+              title={integrity.verified ? "Authentication verified" : "Authentication incomplete"}
+              className={`mt-2 flex h-6 w-6 items-center justify-center rounded-full ${
+                integrity.verified ? "bg-emerald-500/15 text-emerald-400" : "bg-amber-500/15 text-amber-400"
               }`}
             >
-              <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
-              {integrity.verified ? "Verified" : "Unverified"}
+              <ShieldCheck className="h-3.5 w-3.5" />
             </div>
           )}
         </div>
