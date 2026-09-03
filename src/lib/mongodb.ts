@@ -19,7 +19,15 @@ export async function connectToDatabase(): Promise<{ client: MongoClient; db: Db
     throw new Error("MONGODB_URI is not set");
   }
 
-  const client = await MongoClient.connect(MONGODB_URI);
+  const client = await MongoClient.connect(MONGODB_URI, {
+    // Serverless environments (e.g. Vercel) can hit SRV/DNS IPv4-vs-IPv6
+    // handshake failures ("tlsv1 alert internal error"). Pinning the family
+    // to IPv4 and widening the selection timeout makes Atlas reliable there.
+    autoSelectFamily: false,
+    family: 4,
+    serverSelectionTimeoutMS: 30000,
+    connectTimeoutMS: 15000,
+  });
   const db = client.db(DB_NAME);
 
   cachedClient = client;
