@@ -1,6 +1,19 @@
 // Seed MongoDB with initial collections and demo data.
-// Usage:  MONGODB_URI="mongodb+srv://..." node scripts/seed-mongo.mjs
+// Usage:  npm run seed   (loads MONGODB_URI from .env.local)
 import { MongoClient } from "mongodb";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+// Load .env.local manually (avoid adding a dotenv dependency).
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const envPath = path.resolve(__dirname, "../.env.local");
+if (fs.existsSync(envPath)) {
+  for (const line of fs.readFileSync(envPath, "utf8").split("\n")) {
+    const m = line.match(/^([^#=]+)=(.*)$/);
+    if (m && !(m[1].trim() in process.env)) process.env[m[1].trim()] = m[2].trim();
+  }
+}
 
 const uri = process.env.MONGODB_URI;
 if (!uri) {
