@@ -1,4 +1,5 @@
 import { MongoClient, ServerApiVersion, type Db } from "mongodb";
+import { attachDatabasePool } from "@vercel/functions";
 
 const MONGODB_URI = process.env.MONGODB_URL ?? process.env.MONGODB_URI ?? "";
 const DB_NAME = process.env.MONGODB_DB ?? "aithoughts";
@@ -32,7 +33,13 @@ export async function connectToDatabase(): Promise<{ client: MongoClient; db: Db
     socketTimeoutMS: 45000,
     retryWrites: true,
     tls: true,
+    maxIdleTimeMS: 10000,
   });
+
+  // Register the pool with Vercel serverless so connections are suspended and
+  // resumed cleanly (prevents connection leaks / exhausted pools on cold starts).
+  attachDatabasePool(client);
+
   const db = client.db(DB_NAME);
 
   cachedClient = client;
