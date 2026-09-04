@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Smartphone, ShieldCheck, Download, Sparkles, CheckCircle2 } from "lucide-react";
+import { Smartphone, ShieldCheck, Download, CheckCircle2 } from "lucide-react";
+import BrandMark from "@/components/BrandMark";
 
 function isIOS(): boolean {
   if (typeof navigator === "undefined") return false;
@@ -37,7 +38,7 @@ export default function InstallPage() {
 
       <div className="mb-8 flex flex-col items-center gap-4 text-center">
         <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-violet-500 to-indigo-500 text-4xl shadow-lg shadow-violet-500/30">
-          <Sparkles className="h-9 w-9 text-white" />
+          <BrandMark className="h-11 w-11" />
         </div>
         <div>
           <h1 className="text-2xl font-bold text-zinc-50">AI·Thoughts</h1>

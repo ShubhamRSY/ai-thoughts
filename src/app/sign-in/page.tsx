@@ -3,8 +3,9 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { BrainCircuit, ArrowRight, Lock, ShieldCheck } from "lucide-react";
+import { ArrowRight, Lock, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import BrandMark from "@/components/BrandMark";
 
 export default function SignInPage() {
   return (
@@ -48,15 +49,23 @@ function SignInForm() {
   };
 
   return (
-    <div className="relative mx-auto flex min-h-dvh w-full max-w-[430px] flex-col items-center justify-center overflow-hidden px-6 py-12">
-      <div className="animate-aurora pointer-events-none absolute inset-x-0 top-0 h-80 opacity-30">
-        <div className="absolute inset-0 rounded-full bg-gradient-to-b from-violet-600/30 to-transparent blur-3xl" />
+    <div className="relative mx-auto flex min-h-dvh w-full max-w-[430px] flex-col items-center justify-center overflow-hidden bg-zinc-950 px-6 py-12">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.07]"
+        style={{
+          backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)",
+          backgroundSize: "22px 22px",
+        }}
+        aria-hidden
+      />
+      <div className="animate-aurora pointer-events-none absolute inset-x-0 top-0 h-80 opacity-40">
+        <div className="absolute inset-0 rounded-full bg-gradient-to-b from-violet-600/40 to-transparent blur-3xl" />
       </div>
 
       <div className="relative z-10 w-full">
         <div className="mb-8 flex flex-col items-center text-center">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 shadow-xl shadow-violet-500/30">
-            <BrainCircuit className="h-8 w-8 text-white" strokeWidth={1.8} />
+            <BrandMark className="h-10 w-10" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-100">Welcome back</h1>
           <p className="mt-1 text-sm text-zinc-500">Sign in to join the pulse</p>

@@ -1,8 +1,9 @@
 "use client";
 
-import { BrainCircuit, Plus, LogOut } from "lucide-react";
+import { Plus, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import BrandMark from "@/components/BrandMark";
 
 interface HeaderProps {
   onShare: () => void;
@@ -23,7 +24,7 @@ export default function Header({ onShare }: HeaderProps) {
       <div className="mx-auto flex h-14 w-full max-w-[430px] items-center justify-between px-4">
         <div className="flex items-center gap-2.5">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-indigo-500 shadow-lg shadow-violet-500/30">
-            <BrainCircuit className="h-5 w-5 text-white" strokeWidth={2.2} />
+            <BrandMark className="h-6 w-6" />
           </div>
           <div className="leading-tight">
             <div className="flex items-center gap-1.5 text-base font-bold tracking-tight text-zinc-100">
