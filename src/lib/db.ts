@@ -1,3 +1,4 @@
+import { upload } from "@vercel/blob/client";
 import type { Thought, PublishResult } from "@/lib/types";
 type PublishInput = Omit<Thought, "id" | "reactions" | "timeLabel">;
 
@@ -99,7 +100,6 @@ export async function publishPost(
   try {
     let mediaUrl = payload.mediaUrl ?? null;
     if (mediaBlob) {
-      const fd = new FormData();
       const ext = mediaBlob.type.includes("webm")
         ? "webm"
         : mediaBlob.type.includes("mp4")
@@ -107,13 +107,15 @@ export async function publishPost(
           : mediaBlob.type.includes("mp3")
             ? "mp3"
             : "webm";
-      fd.append("file", mediaBlob, `take.${ext}`);
-      const up = await jsonFetch<{ ok: boolean; id: string; filename: string }>(`${API}/upload`, {
-        method: "POST",
-        body: fd,
+      // Uploads straight from the browser to Vercel Blob storage — the
+      // file never passes through our server, so there's no request-body
+      // size ceiling on how long a recording can be.
+      const uploaded = await upload(`take-${Date.now()}.${ext}`, mediaBlob, {
+        access: "public",
+        contentType: mediaBlob.type || "application/octet-stream",
+        handleUploadUrl: `${API}/upload`,
       });
-      if (!up.ok) return null;
-      mediaUrl = `${API}/uploads/${up.id}`;
+      mediaUrl = uploaded.url;
     }
 
     const row = await jsonFetch<RawPost>(`${API}/posts`, {
@@ -245,19 +247,13 @@ export function subscribeToMessages(
 // Profile / keeper helpers (thin)
 // ---------------------------------------------------------------------------
 
-export async function isKeeper(): Promise<boolean> {
+export async function isKeeper(handle: string): Promise<boolean> {
   // Simple handle-based keeper check against the keepers collection.
+  // The server independently re-checks this on every keeper-only action —
+  // this is only used to decide what to show in the UI.
+  if (!handle) return false;
   try {
     const data = await jsonFetch<{ keepers: string[] }>(`${API}/keepers`);
-    const local = localStorage.getItem("aithoughts.profile.v1");
-    let handle = "";
-    if (local) {
-      try {
-        handle = (JSON.parse(local) as { handle?: string }).handle ?? "";
-      } catch {
-        /* ignore */
-      }
-    }
     return data.keepers.includes(handle);
   } catch {
     return false;

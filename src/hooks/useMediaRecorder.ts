@@ -41,6 +41,10 @@ export function useMediaRecorder(kind: "audio" | "video"): UseMediaRecorderRetur
   const previewUrlRef = useRef<string | null>(null);
 
   const mimeType = kind === "audio" ? "audio/webm" : "video/webm";
+  // Keeps clips a reasonable size for a "quick take" and bounds storage
+  // cost — recordings upload straight to Blob storage now, so nothing else
+  // enforces a ceiling on how long someone could otherwise record.
+  const MAX_DURATION_SEC = 120;
 
   const releasePreview = useCallback(() => {
     if (previewUrlRef.current) {
@@ -137,10 +141,11 @@ export function useMediaRecorder(kind: "audio" | "video"): UseMediaRecorderRetur
       setDuration(0);
       setStatus("recording");
       const startTime = Date.now();
-      timerRef.current = setInterval(
-        () => setDuration(Math.floor((Date.now() - startTime) / 1000)),
-        250
-      );
+      timerRef.current = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        setDuration(elapsed);
+        if (elapsed >= MAX_DURATION_SEC) stop();
+      }, 250);
     } catch (e) {
       stopTracks();
       setError(
@@ -152,7 +157,7 @@ export function useMediaRecorder(kind: "audio" | "video"): UseMediaRecorderRetur
       );
       setStatus("error");
     }
-  }, [kind, mimeType, stopTracks, releasePreview]);
+  }, [kind, mimeType, stopTracks, releasePreview, stop]);
 
   useEffect(() => {
     return () => {

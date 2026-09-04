@@ -105,7 +105,7 @@ export default function PulseEpisode({ thoughts, onOpenRoom }: PulseEpisodeProps
                       </span>
                     ) : null}
                   </p>
-                  <p className="truncate text-[11px] text-zinc-400">{t.content}</p>
+                  <p dir="auto" className="truncate text-[11px] text-zinc-400">{t.content}</p>
                 </div>
                 <Play className="h-4 w-4 shrink-0 text-zinc-500" />
               </button>

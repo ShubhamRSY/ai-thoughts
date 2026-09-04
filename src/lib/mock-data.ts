@@ -5,17 +5,60 @@ export const TAG_OPTIONS = ["#Sleek", "#Slop", "#Jobs", "#Ethics", "#Future", "#
 
 export const REACTION_TYPES: Reaction[] = ["🔥", "😂", "🤔", "💯", "🚀", "😴", "👏", "🙌"];
 
+// Ordered roughly by global speaker count within each region cluster.
+// RTL scripts (ar, he, fa, ur) are flagged in isRtlLang() below — content
+// itself renders with dir="auto" regardless, this list just drives the
+// picker and the "language" chip shown on a take.
 export const LANGS: LanguageOption[] = [
+  // Global / Americas
   { code: "en", label: "English", flag: "🇬🇧" },
   { code: "es", label: "Español", flag: "🇪🇸" },
-  { code: "de", label: "Deutsch", flag: "🇩🇪" },
-  { code: "fr", label: "Français", flag: "🇫🇷" },
-  { code: "hi", label: "हिन्दी", flag: "🇮🇳" },
   { code: "pt", label: "Português", flag: "🇧🇷" },
-  { code: "ar", label: "العربية", flag: "🇸🇦" },
-  { code: "ja", label: "日本語", flag: "🇯🇵" },
+  { code: "fr", label: "Français", flag: "🇫🇷" },
+  { code: "de", label: "Deutsch", flag: "🇩🇪" },
+  { code: "it", label: "Italiano", flag: "🇮🇹" },
+  { code: "nl", label: "Nederlands", flag: "🇳🇱" },
+  { code: "pl", label: "Polski", flag: "🇵🇱" },
+  { code: "ro", label: "Română", flag: "🇷🇴" },
+  { code: "sv", label: "Svenska", flag: "🇸🇪" },
+  { code: "el", label: "Ελληνικά", flag: "🇬🇷" },
+  { code: "uk", label: "Українська", flag: "🇺🇦" },
+  { code: "ru", label: "Русский", flag: "🇷🇺" },
+  { code: "tr", label: "Türkçe", flag: "🇹🇷" },
+  // South / Southeast / East Asia
+  { code: "hi", label: "हिन्दी", flag: "🇮🇳" },
+  { code: "bn", label: "বাংলা", flag: "🇧🇩" },
+  { code: "ta", label: "தமிழ்", flag: "🇮🇳" },
+  { code: "te", label: "తెలుగు", flag: "🇮🇳" },
+  { code: "mr", label: "मराठी", flag: "🇮🇳" },
+  { code: "gu", label: "ગુજરાતી", flag: "🇮🇳" },
+  { code: "pa", label: "ਪੰਜਾਬੀ", flag: "🇮🇳" },
+  { code: "ur", label: "اردو", flag: "🇵🇰" },
+  { code: "id", label: "Bahasa Indonesia", flag: "🇮🇩" },
+  { code: "ms", label: "Bahasa Melayu", flag: "🇲🇾" },
+  { code: "th", label: "ไทย", flag: "🇹🇭" },
+  { code: "vi", label: "Tiếng Việt", flag: "🇻🇳" },
+  { code: "tl", label: "Filipino", flag: "🇵🇭" },
   { code: "zh", label: "中文", flag: "🇨🇳" },
+  { code: "ja", label: "日本語", flag: "🇯🇵" },
+  { code: "ko", label: "한국어", flag: "🇰🇷" },
+  // Middle East / Africa
+  { code: "ar", label: "العربية", flag: "🇸🇦" },
+  { code: "he", label: "עברית", flag: "🇮🇱" },
+  { code: "fa", label: "فارسی", flag: "🇮🇷" },
+  { code: "sw", label: "Kiswahili", flag: "🇰🇪" },
+  { code: "am", label: "አማርኛ", flag: "🇪🇹" },
+  { code: "ha", label: "Hausa", flag: "🇳🇬" },
+  { code: "yo", label: "Yorùbá", flag: "🇳🇬" },
+  { code: "zu", label: "isiZulu", flag: "🇿🇦" },
+  { code: "af", label: "Afrikaans", flag: "🇿🇦" },
 ];
+
+const RTL_LANG_CODES = new Set(["ar", "he", "fa", "ur"]);
+
+export function isRtlLang(code?: string | null): boolean {
+  return Boolean(code && RTL_LANG_CODES.has(code));
+}
 
 const BASE_THOUGHTS: Array<Omit<Thought, "integrity">> = [
   {

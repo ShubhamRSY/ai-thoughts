@@ -1,31 +1,62 @@
-import { NextRequest, NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/mongodb";
-import { GridFSBucket } from "mongodb";
+import { NextResponse } from "next/server";
+import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
+import { getSession } from "@/lib/auth";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 
-export async function POST(request: NextRequest) {
+const IP_UPLOAD_LIMIT = 20;
+const IP_UPLOAD_WINDOW_MS = 10 * 60_000;
+
+// Only the audio/video types the recorder can actually produce (plus common
+// fallbacks) are accepted — this is what keeps an uploaded file from ever
+// being served back as executable HTML/JS from our own origin.
+const ALLOWED_CONTENT_TYPES = [
+  "audio/webm",
+  "audio/mp4",
+  "audio/mpeg",
+  "audio/ogg",
+  "video/webm",
+  "video/mp4",
+  "video/ogg",
+];
+const MAX_FILE_BYTES = 150 * 1024 * 1024; // 150MB — the browser never uploads through our Function (client uploads straight to Blob), so this is just a sane cap, not a workaround for a body-size limit.
+
+// The browser uploads the file directly to Vercel Blob (bypassing the
+// Function entirely, so there is no 4.5MB request-body ceiling here) — this
+// route only ever exchanges a short-lived, scoped upload token. See
+// https://vercel.com/docs/vercel-blob/client-upload
+export async function POST(request: Request): Promise<NextResponse> {
+  const body = (await request.json()) as HandleUploadBody;
+
   try {
-    const { db } = await connectToDatabase();
-    const formData = await request.formData();
-    const file = formData.get("file") as File | null;
-    if (!file) return NextResponse.json({ error: "No file" }, { status: 400 });
+    const jsonResponse = await handleUpload({
+      body,
+      request,
+      onBeforeGenerateToken: async () => {
+        const session = await getSession();
+        if (!session) throw new Error("Sign in required");
 
-    const bucket = new GridFSBucket(db, { bucketName: "uploads" });
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const ext = file.name.split(".").pop() ?? "bin";
-    const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const ip = clientIp(request);
+        const { ok: ipOk } = rateLimit(`upload:${ip}`, IP_UPLOAD_LIMIT, IP_UPLOAD_WINDOW_MS);
+        if (!ipOk) throw new Error("Too many uploads — slow down");
 
-    const uploadStream = bucket.openUploadStream(filename, {
-      metadata: { contentType: file.type || "application/octet-stream" },
+        return {
+          allowedContentTypes: ALLOWED_CONTENT_TYPES,
+          maximumSizeInBytes: MAX_FILE_BYTES,
+          addRandomSuffix: true,
+          tokenPayload: JSON.stringify({ userId: session.id }),
+        };
+      },
+      onUploadCompleted: async ({ blob }) => {
+        console.log("blob upload completed:", blob.url);
+      },
     });
 
-    await new Promise<void>((resolve, reject) => {
-      uploadStream.on("error", reject);
-      uploadStream.on("finish", resolve);
-      uploadStream.end(buffer);
-    });
-
-    return NextResponse.json({ ok: true, id: uploadStream.id.toString(), filename });
+    return NextResponse.json(jsonResponse);
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    console.error(error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Upload failed" },
+      { status: 400 }
+    );
   }
 }

@@ -21,6 +21,7 @@ interface SubmitModalProps {
   presetHandle?: string;
   presetAuthor?: string;
   presetFeeling?: FeelingId;
+  lockedIdentity?: boolean;
 }
 
 const TABS: { id: Tab; label: string; icon: typeof AudioLines }[] = [
@@ -28,6 +29,16 @@ const TABS: { id: Tab; label: string; icon: typeof AudioLines }[] = [
   { id: "audio", label: "Audio", icon: AudioLines },
   { id: "text", label: "Text", icon: Type },
 ];
+
+function detectDefaultLanguage(): string {
+  if (typeof navigator === "undefined") return "en";
+  const candidates = navigator.languages?.length ? navigator.languages : [navigator.language];
+  for (const tag of candidates) {
+    const primary = tag?.split("-")[0]?.toLowerCase();
+    if (primary && LANGS.some((l) => l.code === primary)) return primary;
+  }
+  return "en";
+}
 
 function fmtDur(s: number) {
   const m = Math.floor(s / 60);
@@ -43,6 +54,7 @@ export default function SubmitModal({
   presetHandle = "",
   presetAuthor = "",
   presetFeeling,
+  lockedIdentity = false,
 }: SubmitModalProps) {
   const [tab, setTab] = useState<Tab>(initialTab);
   const [feeling, setFeeling] = useState<FeelingId | null>(presetFeeling ?? null);
@@ -50,7 +62,7 @@ export default function SubmitModal({
   const [author, setAuthor] = useState(presetAuthor);
   const [content, setContent] = useState("");
   const [tags, setTags] = useState<string[]>([]);
-  const [language, setLanguage] = useState("en");
+  const [language, setLanguage] = useState(detectDefaultLanguage);
   const [published, setPublished] = useState(false);
   const [captured, setCaptured] = useState<CapturedClip | null>(null);
   const [publishError, setPublishError] = useState<string | null>(null);
@@ -68,7 +80,9 @@ export default function SubmitModal({
     setTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
 
   const canSubmit =
-    feeling !== null && handle.trim().length > 0 && (tab !== "text" || content.trim().length >= 3);
+    feeling !== null &&
+    handle.trim().length > 0 &&
+    (tab === "text" ? content.trim().length >= 3 : !!captured?.blob);
 
   const switchTab = (t: Tab) => {
     setTab(t);
@@ -79,6 +93,7 @@ export default function SubmitModal({
   const submit = async () => {
     if (!feeling) return;
     if (tab === "text" && content.trim().length < 3) return;
+    if (tab !== "text" && !captured?.blob) return;
     if (!handle.trim()) return;
     setPublishError(null);
     const handleValue = handle.startsWith("@") ? handle.trim() : `@${handle.trim().toLowerCase().replace(/\s+/g, "")}`;
@@ -218,31 +233,45 @@ export default function SubmitModal({
               {tab === "text" && <TextForm value={content} onChange={setContent} />}
 
               {/* Handle + name */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
-                    Handle
-                  </label>
-                  <input
-                    value={handle}
-                    onChange={(e) => setHandle(e.target.value)}
-                    placeholder="@yourname"
-                    inputMode="text"
-                    className="w-full rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-violet-500/60 focus:outline-none"
-                  />
+              {lockedIdentity ? (
+                <div className="flex items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2.5">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-500 text-xs font-bold text-white">
+                    {(author || handle).replace("@", "").slice(0, 1).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 leading-tight">
+                    <p className="truncate text-sm font-semibold text-zinc-100">
+                      {author || handle}
+                    </p>
+                    <p className="truncate text-xs text-zinc-500">Posting as {handle}</p>
+                  </div>
                 </div>
-                <div>
-                  <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
-                    Display name <span className="normal-case text-zinc-600">(optional)</span>
-                  </label>
-                  <input
-                    value={author}
-                    onChange={(e) => setAuthor(e.target.value)}
-                    placeholder="Your name"
-                    className="w-full rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-violet-500/60 focus:outline-none"
-                  />
+              ) : (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
+                      Handle
+                    </label>
+                    <input
+                      value={handle}
+                      onChange={(e) => setHandle(e.target.value)}
+                      placeholder="@yourname"
+                      inputMode="text"
+                      className="w-full rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-violet-500/60 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
+                      Display name <span className="normal-case text-zinc-600">(optional)</span>
+                    </label>
+                    <input
+                      value={author}
+                      onChange={(e) => setAuthor(e.target.value)}
+                      placeholder="Your name"
+                      className="w-full rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-violet-500/60 focus:outline-none"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               {tab !== "text" && (
                 <div>
@@ -253,6 +282,7 @@ export default function SubmitModal({
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
                     placeholder="What's on your mind?"
+                    dir="auto"
                     className="w-full rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-violet-500/60 focus:outline-none"
                   />
                 </div>

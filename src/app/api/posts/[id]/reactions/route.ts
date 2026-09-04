@@ -1,19 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
+import { getSession } from "@/lib/auth";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+
     const { id } = await params;
     const body = await request.json();
+    const reaction = typeof body.reaction === "string" ? body.reaction.slice(0, 8) : "";
+    if (!reaction) return NextResponse.json({ error: "Invalid reaction" }, { status: 400 });
+
     const { db } = await connectToDatabase();
 
     const existing = await db.collection("reactions").findOne({
       post_id: id,
-      handle: body.handle ?? "anonymous",
-      reaction: body.reaction,
+      handle: session.handle,
+      reaction,
     });
 
     if (existing) {
@@ -23,13 +30,14 @@ export async function POST(
 
     await db.collection("reactions").insertOne({
       post_id: id,
-      handle: body.handle ?? "anonymous",
-      reaction: body.reaction,
+      handle: session.handle,
+      reaction,
       created_at: new Date(),
     });
 
     return NextResponse.json({ ok: true, action: "added" });
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }

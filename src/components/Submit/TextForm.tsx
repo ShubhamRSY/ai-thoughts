@@ -18,6 +18,7 @@ export default function TextForm({ value, onChange }: TextFormProps) {
         onChange={(e) => onChange(e.target.value.slice(0, MAX_CHARS))}
         placeholder="Spill it. What's your raw take on AI right now?"
         rows={5}
+        dir="auto"
         className="w-full resize-none rounded-t-xl bg-transparent px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none"
       />
       <div className="flex items-center justify-between border-t border-zinc-800/70 px-4 py-2">

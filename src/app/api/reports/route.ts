@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
+import { getSession, isKeeperHandle } from "@/lib/auth";
 
 export async function GET() {
   try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+    if (!(await isKeeperHandle(session.handle))) {
+      return NextResponse.json({ error: "Keepers only" }, { status: 403 });
+    }
+
     const { db } = await connectToDatabase();
     const reports = await db
       .collection("reports")
@@ -22,6 +29,7 @@ export async function GET() {
       }))
     );
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }

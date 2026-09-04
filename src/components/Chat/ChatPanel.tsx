@@ -202,7 +202,7 @@ export default function ChatPanel({ postId, postAuthor, integrity, open, onClose
                     </span>
                     <span className="text-[10px] text-zinc-500">{timeLabel(m.created_at)}</span>
                   </div>
-                  <p className="mt-0.5 break-words text-sm leading-snug text-zinc-300">
+                  <p dir="auto" className="mt-0.5 break-words text-sm leading-snug text-zinc-300">
                     {m.body}
                   </p>
                 </div>
@@ -231,6 +231,7 @@ export default function ChatPanel({ postId, postAuthor, integrity, open, onClose
                 }
               }}
               rows={1}
+              dir="auto"
               placeholder={`Say something on ${postAuthor}'s take…`}
               className="max-h-24 min-h-[40px] flex-1 resize-none rounded-xl border border-zinc-800 bg-zinc-950/60 px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none transition focus:border-violet-600"
             />

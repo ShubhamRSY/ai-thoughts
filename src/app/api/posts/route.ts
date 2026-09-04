@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { getSession } from "@/lib/auth";
+import { FEELINGS } from "@/lib/feelings";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
+
+const MEDIA_TYPES = new Set(["audio", "video", "text"]);
+const FEELING_IDS = new Set(FEELINGS.map((f) => f.id));
+const MAX_CONTENT_LENGTH = 2800;
+const COOLDOWN_MS = 15_000;
+const IP_POST_LIMIT = 20;
+const IP_POST_WINDOW_MS = 10 * 60_000;
 
 interface PostDoc {
   _id?: ObjectId;
@@ -75,32 +85,81 @@ export async function GET() {
 
     return NextResponse.json(result);
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+
+    const ip = clientIp(request);
+    const { ok: ipOk } = rateLimit(`post:${ip}`, IP_POST_LIMIT, IP_POST_WINDOW_MS);
+    if (!ipOk) {
+      return NextResponse.json({ error: "Too many posts — slow down" }, { status: 429 });
+    }
+
     const body = await request.json();
+
+    const content = typeof body.content === "string" ? body.content.trim() : "";
+    if (!content) {
+      return NextResponse.json({ error: "Content is required" }, { status: 400 });
+    }
+    if (content.length > MAX_CONTENT_LENGTH) {
+      return NextResponse.json(
+        { error: `Content must be ${MAX_CONTENT_LENGTH} characters or fewer` },
+        { status: 400 }
+      );
+    }
+
+    const mediaType = typeof body.media_type === "string" ? body.media_type : "text";
+    if (!MEDIA_TYPES.has(mediaType)) {
+      return NextResponse.json({ error: "Invalid media_type" }, { status: 400 });
+    }
+
+    const feeling =
+      typeof body.feeling === "string" && FEELING_IDS.has(body.feeling as never)
+        ? body.feeling
+        : null;
+
     const { db } = await connectToDatabase();
 
+    const lastPost = await db
+      .collection<PostDoc>("posts")
+      .find({ user_id: session.id })
+      .sort({ created_at: -1 })
+      .limit(1)
+      .toArray();
+    if (lastPost[0]) {
+      const elapsed = Date.now() - new Date(lastPost[0].created_at).getTime();
+      if (elapsed < COOLDOWN_MS) {
+        return NextResponse.json(
+          { error: "cooldown", retry_in_sec: Math.ceil((COOLDOWN_MS - elapsed) / 1000) },
+          { status: 429 }
+        );
+      }
+    }
+
     const doc: PostDoc = {
-      handle: body.handle ?? "",
-      author: body.author ?? "",
-      content: body.content ?? "",
-      media_type: body.media_type ?? "text",
-      feeling: body.feeling ?? null,
-      media_url: body.media_url ?? null,
-      media_duration: body.media_duration ?? null,
-      stream_url: body.stream_url ?? null,
-      stream_ready: Boolean(body.stream_ready),
-      tags: body.tags ?? [],
-      language: body.language ?? null,
-      language_label: body.language_label ?? null,
-      integrity_hash: body.integrity_hash ?? null,
+      user_id: session.id,
+      handle: session.handle,
+      author: session.displayName || session.handle,
+      content,
+      media_type: mediaType as PostDoc["media_type"],
+      feeling,
+      media_url: typeof body.media_url === "string" ? body.media_url : null,
+      media_duration: typeof body.media_duration === "string" ? body.media_duration : null,
+      stream_url: null,
+      stream_ready: false,
+      tags: Array.isArray(body.tags) ? body.tags.filter((t: unknown) => typeof t === "string").slice(0, 10) : [],
+      language: typeof body.language === "string" ? body.language : null,
+      language_label: typeof body.language_label === "string" ? body.language_label : null,
+      integrity_hash: typeof body.integrity_hash === "string" ? body.integrity_hash : null,
       integrity_verified: Boolean(body.integrity_verified),
-      integrity_label: body.integrity_label ?? null,
-      transcript: body.transcript ?? null,
+      integrity_label: typeof body.integrity_label === "string" ? body.integrity_label : null,
+      transcript: null,
       boosts: 0,
       created_at: new Date(),
     };
@@ -114,6 +173,7 @@ export async function POST(request: NextRequest) {
       reactions: [],
     });
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }

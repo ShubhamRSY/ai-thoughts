@@ -5,6 +5,7 @@ import { PencilLine, Check, Settings2 } from "lucide-react";
 import type { Thought } from "@/lib/types";
 import FeelingBadge from "@/components/FeelingBadge";
 import { useLocalProfile } from "@/hooks/useLocalProfile";
+import { useAuth } from "@/hooks/useAuth";
 import { saveProfile } from "@/lib/db";
 
 interface ProfileViewProps {
@@ -37,6 +38,7 @@ function initials(name: string) {
 
 export default function ProfileView({ myThoughts, onCreate }: ProfileViewProps) {
   const { profile, save } = useLocalProfile();
+  const { user } = useAuth();
   const [editing, setEditing] = useState(false);
   const [handle, setHandle] = useState(profile.handle || "");
   const [author, setAuthor] = useState(profile.author || "");
@@ -52,8 +54,8 @@ export default function ProfileView({ myThoughts, onCreate }: ProfileViewProps) 
     setTimeout(() => setSaved(false), 1500);
   };
 
-  const name = profile.author || profile.handle.replace(/^@/, "") || "You";
-  const displayHandle = profile.handle || "@you";
+  const name = user?.displayName || profile.author || profile.handle.replace(/^@/, "") || "You";
+  const displayHandle = user?.handle || profile.handle || "@you";
 
   return (
     <div className="px-4 py-5">
@@ -70,13 +72,15 @@ export default function ProfileView({ myThoughts, onCreate }: ProfileViewProps) 
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <h2 className="truncate text-lg font-bold text-zinc-100">{name}</h2>
-              <button
-                onClick={() => setEditing((v) => !v)}
-                aria-label="Edit profile"
-                className="rounded-lg p-1.5 text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-200"
-              >
-                {editing ? <Check className="h-4 w-4" /> : <PencilLine className="h-4 w-4" />}
-              </button>
+              {!user && (
+                <button
+                  onClick={() => setEditing((v) => !v)}
+                  aria-label="Edit profile"
+                  className="rounded-lg p-1.5 text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-200"
+                >
+                  {editing ? <Check className="h-4 w-4" /> : <PencilLine className="h-4 w-4" />}
+                </button>
+              )}
             </div>
             <p className="text-sm text-zinc-500">{displayHandle}</p>
             <p className="mt-1 text-xs text-zinc-400">
@@ -162,7 +166,7 @@ export default function ProfileView({ myThoughts, onCreate }: ProfileViewProps) 
                 className="flex items-center gap-3 rounded-xl border border-zinc-800/80 bg-zinc-900/40 px-3 py-2.5"
               >
                 <FeelingBadge feeling={t.feeling} />
-                <p className="min-w-0 flex-1 truncate text-sm text-zinc-200">{t.content}</p>
+                <p dir="auto" className="min-w-0 flex-1 truncate text-sm text-zinc-200">{t.content}</p>
                 <span className="shrink-0 text-xs text-zinc-500 tabular-nums">{t.timeLabel}</span>
               </div>
             ))}

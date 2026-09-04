@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { getSession, isKeeperHandle } from "@/lib/auth";
+
+function parseObjectId(id: string): ObjectId | null {
+  try {
+    return new ObjectId(id);
+  } catch {
+    return null;
+  }
+}
 
 export async function GET(
   _request: NextRequest,
@@ -8,8 +17,10 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const objectId = parseObjectId(id);
+    if (!objectId) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
     const { db } = await connectToDatabase();
-    const post = await db.collection("posts").findOne({ _id: new ObjectId(id) });
+    const post = await db.collection("posts").findOne({ _id: objectId });
     if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
     const reactions = await db
       .collection("reactions")
@@ -39,7 +50,8 @@ export async function GET(
       reactions: Object.entries(reactMap).map(([type, count]) => ({ type, count })),
     });
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }
 
@@ -48,14 +60,24 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+    if (!(await isKeeperHandle(session.handle))) {
+      return NextResponse.json({ error: "Keepers only" }, { status: 403 });
+    }
+
     const { id } = await params;
+    const objectId = parseObjectId(id);
+    if (!objectId) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+
     const { db } = await connectToDatabase();
-    await db.collection("posts").deleteOne({ _id: new ObjectId(id) });
+    await db.collection("posts").deleteOne({ _id: objectId });
     await db.collection("messages").deleteMany({ post_id: id });
     await db.collection("reactions").deleteMany({ post_id: id });
     await db.collection("reports").deleteMany({ post_id: id });
     return NextResponse.json({ ok: true });
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }

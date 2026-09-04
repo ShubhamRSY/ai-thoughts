@@ -11,6 +11,7 @@ import {
   type ReportRow,
   isLive,
 } from "@/lib/db";
+import { useAuth } from "@/hooks/useAuth";
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -23,22 +24,24 @@ function timeAgo(iso: string): string {
 }
 
 export default function KeeperPage() {
+  const { user, loading: authLoading } = useAuth();
   const [authorized, setAuthorized] = useState<boolean | null>(null);
   const [reports, setReports] = useState<ReportRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState<string | null>(null);
 
   useEffect(() => {
+    if (authLoading) return;
     let cancelled = false;
     (async () => {
-      if (!isLive()) {
+      if (!isLive() || !user) {
         if (!cancelled) {
           setAuthorized(false);
           setLoading(false);
         }
         return;
       }
-      const keeper = await isKeeper();
+      const keeper = await isKeeper(user.handle);
       if (cancelled) return;
       setAuthorized(keeper);
       if (keeper) {
@@ -50,11 +53,11 @@ export default function KeeperPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [authLoading, user]);
 
   const refresh = async () => {
-    if (!isLive()) return;
-    const keeper = await isKeeper();
+    if (!isLive() || !user) return;
+    const keeper = await isKeeper(user.handle);
     setAuthorized(keeper);
     if (keeper) {
       const rows = await fetchReports();

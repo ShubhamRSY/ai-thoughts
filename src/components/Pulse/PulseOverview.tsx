@@ -3,6 +3,16 @@
 import type { Thought, FeelingId } from "@/lib/types";
 import { FEELINGS, feelingOf } from "@/lib/feelings";
 
+const BAR_COLOR: Record<FeelingId, string> = {
+  "using-it": "bg-gradient-to-t from-sky-600 to-sky-400",
+  "love-it": "bg-gradient-to-t from-fuchsia-600 to-fuchsia-400",
+  "blown-away": "bg-gradient-to-t from-amber-600 to-amber-400",
+  hurts: "bg-gradient-to-t from-rose-600 to-rose-400",
+  worried: "bg-gradient-to-t from-orange-600 to-orange-400",
+  confused: "bg-gradient-to-t from-zinc-500 to-zinc-300",
+  "need-support": "bg-gradient-to-t from-emerald-600 to-emerald-400",
+};
+
 export interface FeelingTally {
   id: FeelingId;
   count: number;
@@ -51,7 +61,7 @@ export default function PulseOverview({
       )}
 
       {/* Slim wave */}
-      <div className="flex h-8 min-w-0 flex-1 items-end gap-[3px]">
+      <div className="flex min-w-0 flex-1 items-end gap-1.5">
         {FEELINGS.map((f) => {
           const count = tally.find((t) => t.id === f.id)?.count ?? 0;
           const amp = count > 0 ? 0.35 + 0.65 * (count / max) : 0.08;
@@ -60,15 +70,25 @@ export default function PulseOverview({
               key={f.id}
               onClick={() => onOpenRoom(f.id)}
               aria-label={`${f.short}: ${count}`}
-              className={`min-w-0 flex-1 rounded-full transition-all duration-500 ${
-                count > 0
-                  ? activeId === f.id
-                    ? "bg-gradient-to-t from-violet-600 to-indigo-400"
-                    : "bg-zinc-600"
-                  : "bg-zinc-800"
-              }`}
-              style={{ height: `${Math.max(18, amp * 100)}%`, alignSelf: "flex-end" }}
-            />
+              title={`${f.short}: ${count}`}
+              className="flex min-w-0 flex-1 flex-col items-center gap-1"
+            >
+              <div className="flex h-8 w-full items-end">
+                <div
+                  className={`w-full rounded-full transition-all duration-500 ${
+                    count > 0
+                      ? activeId === f.id
+                        ? "bg-gradient-to-t from-violet-600 to-indigo-400 shadow-[0_0_8px_rgba(139,92,246,0.5)]"
+                        : BAR_COLOR[f.id]
+                      : "bg-zinc-800"
+                  }`}
+                  style={{ height: `${Math.max(18, amp * 100)}%` }}
+                />
+              </div>
+              <span className={`text-[11px] leading-none ${count > 0 ? "opacity-100" : "opacity-30"}`}>
+                {f.emoji}
+              </span>
+            </button>
           );
         })}
       </div>
