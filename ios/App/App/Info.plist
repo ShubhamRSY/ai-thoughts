@@ -24,6 +24,10 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>AI·Thoughts uses your camera to record video takes for the pulse.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>AI·Thoughts uses your microphone to record voice and video takes for the pulse.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
