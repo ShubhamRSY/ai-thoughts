@@ -44,7 +44,7 @@ async function validateToken(token: string): Promise<boolean> {
 // Security headers (X-Frame-Options, CSP, etc.) live in next.config.ts's
 // headers() — that's the single source of truth so it can't drift out of
 // sync with a second copy here.
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const response = NextResponse.next();

@@ -253,8 +253,10 @@ export async function isKeeper(handle: string): Promise<boolean> {
   // this is only used to decide what to show in the UI.
   if (!handle) return false;
   try {
-    const data = await jsonFetch<{ keepers: string[] }>(`${API}/keepers`);
-    return data.keepers.includes(handle);
+    const data = await jsonFetch<{ isKeeper: boolean }>(
+      `${API}/keepers?handle=${encodeURIComponent(handle)}`
+    );
+    return data.isKeeper;
   } catch {
     return false;
   }
