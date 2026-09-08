@@ -251,6 +251,9 @@ body {
   content: "";
   position: absolute;
   inset: 0;
+  /* Covers the whole button (inset: 0) purely for visual effect — must
+     not eat clicks meant for the button underneath. */
+  pointer-events: none;
   background: linear-gradient(
     100deg,
     transparent 20%,
