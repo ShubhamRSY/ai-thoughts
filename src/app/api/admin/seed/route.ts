@@ -1,32 +1,29 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { ObjectId } from "mongodb";
 import { connectToDatabase } from "@/lib/mongodb";
 import { GLOBAL_SEED_POSTS } from "@/lib/seed-posts";
 
-function authorized(req: NextRequest): boolean {
-  const expected =
-    process.env.SEED_SECRET?.trim() ||
-    process.env.AUTH_SECRET?.trim() ||
-    process.env.NEXTAUTH_SECRET?.trim();
-  if (!expected) return false;
-  const header = req.headers.get("x-seed-secret")?.trim();
-  const query = req.nextUrl.searchParams.get("secret")?.trim();
-  return header === expected || query === expected;
-}
-
 function hash(s: string) {
   return createHash("sha256").update(s).digest("hex").slice(0, 16);
 }
 
-/** POST /api/admin/seed — insert missing global demo takes (idempotent). */
-export async function POST(req: NextRequest) {
-  if (!authorized(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+/**
+ * POST /api/admin/seed — insert missing global demo takes (idempotent).
+ * Open only while the pulse is still tiny (< 10 posts), so launch seeding
+ * works without leaking a long-lived secret into the client.
+ */
+export async function POST() {
   try {
     const { db } = await connectToDatabase();
+    const totalBefore = await db.collection("posts").countDocuments();
+    if (totalBefore >= 10) {
+      return NextResponse.json(
+        { error: "Seed locked — pulse already has enough voices", total: totalBefore },
+        { status: 403 }
+      );
+    }
+
     await db.collection("posts").createIndex({ seed_id: 1 }, { unique: true, sparse: true });
 
     const ids = GLOBAL_SEED_POSTS.map((p) => p.seed_id);
@@ -57,7 +54,6 @@ export async function POST(req: NextRequest) {
       await db.collection("posts").insertMany(docs);
     }
 
-    // Drop the original 3 untagged demos if they duplicate seeded authors
     const removed = await db.collection("posts").deleteMany({
       seed_id: { $exists: false },
       handle: { $in: ["@maravoss", "@dexbuilds", "@priyathinks"] },
