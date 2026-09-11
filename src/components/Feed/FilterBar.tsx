@@ -1,7 +1,6 @@
 "use client";
 
 import { AudioLines, Video, Type, LayoutGrid } from "lucide-react";
-import { FEELINGS } from "@/lib/feelings";
 import type { FeelingId, MediaType } from "@/lib/types";
 
 type MediaFilter = "all" | MediaType;
@@ -21,65 +20,35 @@ const MEDIA_FILTERS: { id: MediaFilter; label: string; icon: typeof LayoutGrid }
   { id: "text", label: "Text", icon: Type },
 ];
 
+/** Media-only filter — feelings are chosen from the Live mood card above. */
 export default function FilterBar({
   media,
   onMediaChange,
-  feeling,
-  onFeelingChange,
 }: FilterBarProps) {
   return (
-    <div className="mt-3 space-y-2 border-b border-[var(--border-base)] pb-1">
-      <div className="no-scrollbar flex items-center gap-1 overflow-x-auto px-[var(--shell-pad)]">
+    <div className="mt-4 px-[var(--shell-pad)]">
+      <div
+        role="tablist"
+        aria-label="Filter by format"
+        className="inline-flex w-full max-w-full overflow-x-auto rounded-xl border border-[var(--border-base)] bg-[var(--surface-2)] p-1"
+      >
         {MEDIA_FILTERS.map((f) => {
           const active = media === f.id;
           const Icon = f.icon;
           return (
             <button
               key={f.id}
+              role="tab"
+              aria-selected={active}
               onClick={() => onMediaChange(f.id)}
-              className={`relative shrink-0 px-3 pb-2.5 text-xs transition ${
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition ${
                 active
-                  ? "font-semibold text-[var(--foreground)]"
+                  ? "bg-white text-[var(--foreground)] shadow-sm shadow-slate-900/5"
                   : "text-[var(--muted)] hover:text-[var(--foreground)]"
               }`}
             >
-              <span className="inline-flex items-center gap-1.5">
-                <Icon className="h-3.5 w-3.5 opacity-70" />
-                {f.label}
-              </span>
-              {active && (
-                <span className="absolute inset-x-2 -bottom-px h-0.5 rounded bg-[var(--accent)]" />
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="no-scrollbar flex items-center gap-2 overflow-x-auto px-[var(--shell-pad)] pb-2">
-        <button
-          onClick={() => onFeelingChange("all")}
-          className={`shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-medium transition ${
-            feeling === "all"
-              ? "bg-[var(--accent)] text-white"
-              : "bg-[var(--surface)] text-[var(--muted)] ring-1 ring-[var(--border-base)] hover:text-[var(--foreground)]"
-          }`}
-        >
-          All feelings
-        </button>
-        {FEELINGS.map((f) => {
-          const active = feeling === f.id;
-          return (
-            <button
-              key={f.id}
-              onClick={() => onFeelingChange(f.id)}
-              className={`shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-medium transition ${
-                active
-                  ? "bg-[var(--accent)] text-white"
-                  : `border ${f.chip}`
-              }`}
-            >
-              <span className="mr-1 opacity-70">{f.emoji}</span>
-              {f.short}
+              <Icon className="h-3.5 w-3.5 shrink-0 opacity-70" strokeWidth={2.2} />
+              {f.label}
             </button>
           );
         })}

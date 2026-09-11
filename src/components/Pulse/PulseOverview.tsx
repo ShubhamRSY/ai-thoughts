@@ -3,16 +3,6 @@
 import type { Thought, FeelingId } from "@/lib/types";
 import { FEELINGS, feelingOf } from "@/lib/feelings";
 
-const BAR_COLOR: Record<FeelingId, string> = {
-  "using-it": "bg-gradient-to-t from-sky-500 to-sky-300",
-  "love-it": "bg-gradient-to-t from-teal-600 to-teal-400",
-  "blown-away": "bg-gradient-to-t from-amber-500 to-amber-300",
-  hurts: "bg-gradient-to-t from-rose-500 to-rose-300",
-  worried: "bg-gradient-to-t from-orange-500 to-orange-300",
-  confused: "bg-gradient-to-t from-slate-400 to-slate-300",
-  "need-support": "bg-gradient-to-t from-emerald-600 to-emerald-400",
-};
-
 export interface FeelingTally {
   id: FeelingId;
   count: number;
@@ -36,62 +26,99 @@ export default function PulseOverview({
   const dominant = tally[0];
   const dominantMeta = dominant ? feelingOf(dominant.id) : undefined;
 
-  return (
-    <div className="mt-4 flex items-center gap-3 px-[var(--shell-pad)]">
-      {/* Dominant feeling chip */}
-      {dominantMeta ? (
-        <button
-          onClick={() => dominant && onOpenRoom(dominant.id)}
-          className="flex shrink-0 items-center gap-2 rounded-full border border-[var(--border-base)] bg-white px-3 py-1.5 shadow-sm shadow-slate-900/5 transition hover:border-teal-200 active:scale-95"
-        >
-          <span className="text-base leading-none">{dominantMeta.emoji}</span>
-          <div className="flex flex-col items-start leading-none">
-            <span className="text-xs font-semibold text-[var(--foreground)]">
-              {dominantMeta.short} right now
-            </span>
-            <span className="mt-0.5 text-[10px] text-[var(--muted)]">
-              {total} voice{total === 1 ? "" : "s"}
-            </span>
-          </div>
-        </button>
-      ) : (
-        <span className="shrink-0 rounded-full border border-[var(--border-base)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--muted)]">
-          The pulse is warming up
-        </span>
-      )}
+  const ranked = [...FEELINGS]
+    .map((f) => ({
+      feeling: f,
+      count: tally.find((t) => t.id === f.id)?.count ?? 0,
+    }))
+    .sort((a, b) => b.count - a.count);
 
-      {/* Slim wave */}
-      <div className="flex min-w-0 flex-1 items-end gap-1.5">
-        {FEELINGS.map((f) => {
-          const count = tally.find((t) => t.id === f.id)?.count ?? 0;
-          const amp = count > 0 ? 0.35 + 0.65 * (count / max) : 0.08;
-          return (
+  return (
+    <section className="px-[var(--shell-pad)] pt-4">
+      <div className="rounded-2xl border border-[var(--border-base)] bg-white p-4 shadow-sm shadow-slate-900/5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+              Live mood
+            </p>
+            <h2 className="font-display mt-1 text-lg font-semibold leading-snug text-[var(--foreground)]">
+              {dominantMeta ? (
+                <>
+                  Most voices feel{" "}
+                  <span className="text-[var(--accent)]">{dominantMeta.short.toLowerCase()}</span>
+                </>
+              ) : (
+                "The pulse is warming up"
+              )}
+            </h2>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              {total === 0
+                ? "Be the first to share how AI makes you feel"
+                : `${total.toLocaleString()} voice${total === 1 ? "" : "s"} on the pulse`}
+            </p>
+          </div>
+          {dominantMeta && (
             <button
-              key={f.id}
-              onClick={() => onOpenRoom(f.id)}
-              aria-label={`${f.short}: ${count}`}
-              title={`${f.short}: ${count}`}
-              className="flex min-w-0 flex-1 flex-col items-center gap-1"
+              type="button"
+              onClick={() => dominant && onOpenRoom(dominant.id)}
+              className={`shrink-0 rounded-xl border px-3 py-2 text-left transition hover:border-teal-300 ${dominantMeta.chip}`}
             >
-              <div className="flex h-8 w-full items-end">
-                <div
-                  className={`w-full rounded-full transition-all duration-500 ${
-                    count > 0
-                      ? activeId === f.id
-                        ? "bg-[var(--accent)]"
-                        : BAR_COLOR[f.id]
-                      : "bg-[var(--border-base)]"
-                  }`}
-                  style={{ height: `${Math.max(18, amp * 100)}%` }}
-                />
-              </div>
-              <span className={`text-[11px] leading-none text-[var(--muted)] ${count > 0 ? "opacity-100" : "opacity-30"}`}>
-                {f.emoji}
-              </span>
+              <div className="text-xs font-semibold">{dominantMeta.short}</div>
+              <div className="mt-0.5 text-[10px] opacity-80">Open room</div>
             </button>
-          );
-        })}
+          )}
+        </div>
+
+        <ul className="mt-4 space-y-2">
+          {ranked.map(({ feeling: f, count }) => {
+            const pct = count > 0 ? Math.max(8, Math.round((count / max) * 100)) : 0;
+            const active = activeId === f.id;
+            return (
+              <li key={f.id}>
+                <button
+                  type="button"
+                  onClick={() => onOpenRoom(f.id)}
+                  aria-label={`${f.label}: ${count} voices`}
+                  className={`group flex w-full items-center gap-3 rounded-xl px-2 py-1.5 text-left transition ${
+                    active
+                      ? "bg-[var(--accent-soft)]"
+                      : "hover:bg-[var(--surface-2)]"
+                  }`}
+                >
+                  <span
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-sm font-semibold ${f.chip}`}
+                    aria-hidden
+                  >
+                    {f.emoji}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="truncate text-sm font-medium text-[var(--foreground)]">
+                        {f.short}
+                      </span>
+                      <span className="shrink-0 text-[11px] tabular-nums text-[var(--muted)]">
+                        {count > 0 ? `${count}` : "—"}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[var(--surface-2)]">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          active || count === max && count > 0
+                            ? "bg-[var(--accent)]"
+                            : count > 0
+                              ? "bg-teal-300"
+                              : "bg-transparent"
+                        }`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       </div>
-    </div>
+    </section>
   );
 }

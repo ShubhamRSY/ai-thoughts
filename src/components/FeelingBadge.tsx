@@ -14,18 +14,22 @@ export default function FeelingBadge({
   const f = feelingOf(feeling);
   if (!f) return null;
 
-  const pad = size === "sm" ? "px-1.5 py-0.5 text-[10px]" : size === "lg" ? "px-3 py-1.5 text-sm" : "px-2 py-1 text-xs";
-  const emoji = size === "lg" ? "text-lg" : size === "sm" ? "text-[12px]" : "text-sm";
+  const pad =
+    size === "sm"
+      ? "px-1.5 py-0.5 text-[10px]"
+      : size === "lg"
+        ? "px-3 py-1.5 text-sm"
+        : "px-2 py-1 text-xs";
 
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full border font-semibold ${f.chip} ${pad}`}
+      className={`inline-flex items-center gap-1 rounded-lg border font-semibold ${f.chip} ${pad}`}
       title={`Feeling: ${f.label}`}
     >
-      <span className={`leading-none ${emoji}`} aria-hidden>
+      <span className="leading-none opacity-70" aria-hidden>
         {f.emoji}
       </span>
-      {size !== "sm" && f.short}
+      {f.short}
     </span>
   );
 }

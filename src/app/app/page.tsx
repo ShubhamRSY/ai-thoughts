@@ -214,7 +214,7 @@ export default function Home() {
 
                 <div className="mt-5 px-[var(--shell-pad)]">
                   <div className="mb-3 flex items-center justify-between">
-                    <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                    <h2 className="font-display text-sm font-semibold text-[var(--foreground)]">
                       Latest takes
                     </h2>
                     <span className="text-[11px] tabular-nums text-[var(--muted)]">
@@ -234,7 +234,7 @@ export default function Home() {
                   <Footer />
                 </div>
 
-                <p className="mx-4 mt-4 flex items-center justify-center gap-1.5 pb-2 text-[11px] font-medium text-[var(--muted)]">
+                <p className="mx-[var(--shell-pad)] mt-4 flex items-center justify-center gap-1.5 pb-2 text-[11px] font-medium text-[var(--muted)]">
                   <HeartHandshake className="h-3.5 w-3.5 text-emerald-600" />
                   All ages. All feelings. It&apos;s okay to feel bad about AI too.
                 </p>

@@ -311,11 +311,8 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
           ))}
         </div>
 
-        {/* Reactions — always visible so you know how to express */}
+        {/* Reactions */}
         <div className="flex flex-wrap items-center gap-1.5 border-t border-[var(--border-base)] pt-2.5">
-          <span className="mr-0.5 text-[10px] font-medium uppercase tracking-wider text-[var(--muted)]">
-            React
-          </span>
           {REACTION_TYPES.map((r) => {
             const count = reactions.find((e) => e.type === r)?.count ?? 0;
             const isMine = mine === r;
@@ -324,32 +321,30 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
                 key={r}
                 onClick={() => react(r)}
                 aria-label={`React ${r}`}
-                className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium transition active:scale-90 ${
+                className={`flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium transition active:scale-95 ${
                   isMine
                     ? "border-teal-300 bg-teal-50 text-teal-800"
                     : count > 0
                       ? "border-[var(--border-base)] bg-[var(--surface-2)] text-[var(--foreground)] hover:border-teal-200"
-                      : "border-transparent bg-transparent text-[var(--muted)] hover:text-[var(--foreground)]"
+                      : "border-[var(--border-base)] bg-white text-[var(--muted)] hover:text-[var(--foreground)]"
                 }`}
               >
                 <span className="text-sm leading-none">{r}</span>
-                {count > 0 && <span className="tabular-nums">{count}</span>}
+                {count > 0 && <span className="tabular-nums text-[10px]">{count}</span>}
               </button>
             );
           })}
         </div>
 
-        {/* Safety in numbers — others feel this too */}
         {thought.feeling && others && others > 1 && onOpenRoom && (
           <button
             onClick={() => onOpenRoom(thought.feeling!)}
-            className="mt-2 flex w-full items-center gap-1.5 rounded-lg border border-[var(--border-base)] bg-[var(--surface-2)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--muted)] transition hover:border-teal-200 hover:text-[var(--foreground)]"
+            className="mt-2 flex w-full items-center gap-2 rounded-xl border border-[var(--border-base)] bg-[var(--surface-2)] px-3 py-2 text-left text-[11px] font-medium text-[var(--muted)] transition hover:border-teal-200 hover:text-[var(--foreground)]"
           >
-            <span aria-hidden className="text-sm leading-none">
-              🤝
+            <span className="min-w-0 flex-1">
+              You&apos;re not alone — {others} other{others === 1 ? "" : "s"} feel this too
             </span>
-            You&apos;re not alone — {others} other{others === 1 ? "" : "s"} feel this too
-            <span className="ml-auto text-[var(--muted)]/70">open room →</span>
+            <span className="shrink-0 text-[var(--accent)]">Open room</span>
           </button>
         )}
       </div>
