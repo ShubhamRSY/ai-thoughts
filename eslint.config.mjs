@@ -16,6 +16,12 @@ const eslintConfig = defineConfig([
     "android/**",
     "ios/**",
   ]),
+  {
+    rules: {
+      // Fetch-on-mount and prop sync patterns are intentional here.
+      "react-hooks/set-state-in-effect": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

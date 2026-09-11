@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   MessageCircle,
   Heart,
@@ -89,10 +89,8 @@ export default function FeedCard({
   const [showReact, setShowReact] = useState(false);
   const [feeling, setFeeling] = useState(Boolean(feelingWith));
   const isAuthor = sameHandle(currentHandle, thought.handle);
-
-  useEffect(() => {
-    setFeeling(Boolean(feelingWith));
-  }, [feelingWith]);
+  // Prefer prop when parent knows follow state; fall back to optimistic local toggle.
+  const feelingActive = feelingWith !== undefined ? Boolean(feelingWith) : feeling;
 
   const mediaElRef = useRef<HTMLMediaElement | null>(null);
   const [mediaTime, setMediaTime] = useState(0);
@@ -191,7 +189,7 @@ export default function FeedCard({
                       <button
                         type="button"
                         onClick={() => {
-                          const next = !feeling;
+                          const next = !feelingActive;
                           setFeeling(next);
                           setMenuOpen(false);
                           onFeelWith(thought.handle, next);
@@ -199,7 +197,7 @@ export default function FeedCard({
                         className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-[var(--surface-2)]"
                       >
                         <HeartHandshake className="h-3.5 w-3.5" />
-                        {feeling ? "Stop feeling with" : "Feel with"}
+                        {feelingActive ? "Stop feeling with" : "Feel with"}
                       </button>
                     )}
                     {!isAuthor && (

@@ -21,7 +21,7 @@ export async function getPrefs(db: Db, handle: string): Promise<UserPrefs> {
     handle,
     email: row?.email,
     email_digest: Boolean(row?.email_digest),
-    weekly_digest: Boolean(row?.weekly_digest ?? true),
+    weekly_digest: Boolean(row?.weekly_digest),
     push_enabled: Boolean(row?.push_enabled),
     updated_at: row?.updated_at instanceof Date ? row.updated_at : new Date(),
   };
@@ -43,7 +43,7 @@ export async function upsertPrefs(
 
   const $setOnInsert: Record<string, unknown> = {};
   if (patch.email_digest === undefined) $setOnInsert.email_digest = false;
-  if (patch.weekly_digest === undefined) $setOnInsert.weekly_digest = true;
+  if (patch.weekly_digest === undefined) $setOnInsert.weekly_digest = false;
   if (patch.push_enabled === undefined) $setOnInsert.push_enabled = false;
 
   await db.collection("user_prefs").updateOne(

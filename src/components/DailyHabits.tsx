@@ -48,20 +48,19 @@ export default function DailyHabits({
   displayHandle,
   signedIn,
 }: DailyHabitsProps) {
-  const [prefs, setPrefs] = useState<NudgePrefs>({ enabled: false, lastShownDay: "", hour: 9 });
-  const [perm, setPerm] = useState<NotificationPermission>("default");
+  const [prefs, setPrefs] = useState<NudgePrefs>(() =>
+    typeof window === "undefined" ? { enabled: false, lastShownDay: "", hour: 9 } : readPrefs()
+  );
+  const [perm, setPerm] = useState<NotificationPermission>(() =>
+    typeof Notification !== "undefined" ? Notification.permission : "default"
+  );
   const [copied, setCopied] = useState(false);
   const [pushOn, setPushOn] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushConfigured, setPushConfigured] = useState(true);
   const [emailDigest, setEmailDigest] = useState(false);
-  const [weeklyDigest, setWeeklyDigest] = useState(true);
+  const [weeklyDigest, setWeeklyDigest] = useState(false);
   const [prefsBusy, setPrefsBusy] = useState(false);
-
-  useEffect(() => {
-    setPrefs(readPrefs());
-    if (typeof Notification !== "undefined") setPerm(Notification.permission);
-  }, []);
 
   useEffect(() => {
     if (!signedIn) return;
@@ -76,7 +75,7 @@ export default function DailyHabits({
         if (prefsRes.ok) {
           const data = await prefsRes.json();
           setEmailDigest(Boolean(data.email_digest));
-          setWeeklyDigest(data.weekly_digest !== false);
+          setWeeklyDigest(Boolean(data.weekly_digest));
           setPushOn(Boolean(data.push_enabled));
         }
         if (vapidRes.ok) {
@@ -193,7 +192,7 @@ export default function DailyHabits({
         if (res.ok) {
           const data = await res.json();
           setEmailDigest(Boolean(data.email_digest));
-          setWeeklyDigest(data.weekly_digest !== false);
+          setWeeklyDigest(Boolean(data.weekly_digest));
         }
       } finally {
         setPrefsBusy(false);
