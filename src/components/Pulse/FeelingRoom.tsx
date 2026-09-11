@@ -25,7 +25,7 @@ export default function FeelingRoom({
 
   return (
     <div className="flex-1">
-      <div className="sticky top-0 z-20 border-b border-[var(--border-base)] bg-[var(--surface)]/95 px-[var(--shell-pad)] py-4 backdrop-blur-sm">
+      <div className="sticky top-0 z-20 border-b border-[var(--border-base)] bg-[var(--surface)] px-[var(--shell-pad)] py-4">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}

@@ -140,9 +140,8 @@ body {
   font-family: var(--font-manrope), system-ui, sans-serif;
   font-size: 16px;
   line-height: 1.5;
-  background-image:
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(31, 77, 69, 0.06), transparent),
-    linear-gradient(180deg, #f7f5f1 0%, #f2f0eb 100%);
+  background-color: var(--background);
+  background-image: none;
   overscroll-behavior-y: none;
   -webkit-font-smoothing: antialiased;
 }
@@ -177,7 +176,7 @@ html.is-app-shell body {
   }
 }
 .animate-rise-in {
-  animation: riseIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: none;
 }
 
 .animate-pop-in,

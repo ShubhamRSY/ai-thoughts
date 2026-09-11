@@ -64,7 +64,7 @@ const demo = [
   {
     handle: "@priyathinks", author: "Priya Raman",
     content: "I asked an AI to explain recursion to my mum. It built a story about matryoshka dolls filling up the kitchen. She finally got it.",
-    media_type: "text", feeling: "loves-it", tags: ["#Future", "#Tools"],
+    media_type: "text", feeling: "love-it", tags: ["#Future", "#Tools"],
     language: "en", language_label: "English",
     integrity_hash: "a1b2c3d4", integrity_verified: true,
     integrity_label: "Verified · Unmodified",

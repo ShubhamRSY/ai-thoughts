@@ -20,20 +20,6 @@ interface ChatPanelProps {
   onClose: () => void;
 }
 
-const GRADIENTS = [
-  "from-teal-500 to-cyan-600",
-  "from-sky-500 to-blue-600",
-  "from-amber-500 to-orange-500",
-  "from-rose-400 to-rose-600",
-  "from-slate-500 to-slate-700",
-];
-
-function avatarGradient(seed: string) {
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) % 997;
-  return GRADIENTS[h % GRADIENTS.length];
-}
-
 function initials(name: string) {
   return name
     .split(" ")
@@ -69,7 +55,6 @@ export default function ChatPanel({ postId, postAuthor, integrity, open, onClose
     if (el) el.scrollTop = el.scrollHeight;
   }, []);
 
-  // Load history + subscribe whenever the panel opens
   useEffect(() => {
     if (!open || !postId) return;
 
@@ -113,7 +98,6 @@ export default function ChatPanel({ postId, postAuthor, integrity, open, onClose
       return;
     }
     setDraft("");
-    // Optimistically append the local echo if realtime is slow.
     setMessages((prev) => [
       ...prev,
       {
@@ -131,55 +115,53 @@ export default function ChatPanel({ postId, postAuthor, integrity, open, onClose
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/30 backdrop-blur-sm sm:items-center">
-      <div className="absolute inset-0" onClick={onClose} />
-      <div className="relative flex max-h-[min(75vh,var(--app-height))] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border border-[var(--border-base)] bg-white shadow-xl shadow-slate-900/10 sm:rounded-2xl">
-        {/* Header */}
-        <div className="border-b border-[var(--border-base)] px-4 py-3">
-          <div className="flex items-center gap-3">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent)] text-white">
-              <MessageCircle className="h-4 w-4" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <h3 className="font-display text-sm font-bold text-[var(--foreground)]">Talk</h3>
-              <p className="truncate text-[11px] text-[var(--muted)]">
-                On {postAuthor}&apos;s take
-                {live && (
-                  <span className="ml-1.5 inline-flex items-center gap-1 text-emerald-700">
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                    live
-                  </span>
-                )}
-              </p>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 sm:items-center">
+      <button type="button" className="absolute inset-0 cursor-default" aria-label="Close" onClick={onClose} />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Talk"
+        className="relative flex max-h-[min(80dvh,var(--app-height,80dvh))] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border border-[var(--border-base)] bg-[var(--surface)] sm:rounded-2xl"
+      >
+        <div className="flex shrink-0 items-center gap-3 border-b border-[var(--border-base)] px-4 py-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--surface)]">
+            <MessageCircle className="h-4 w-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <h3 className="font-display text-base font-semibold text-[var(--foreground)]">Talk</h3>
+              {integrity?.verified && (
+                <span title="Verified take" className="text-[var(--accent)]">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                </span>
+              )}
             </div>
-            <button
-              onClick={onClose}
-              aria-label="Close chat"
-              className="rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
-            >
-              <X className="h-5 w-5" />
-            </button>
+            <p className="truncate text-[11px] text-[var(--muted)]">
+              On {postAuthor}&apos;s take
+              {live && (
+                <span className="ml-1.5 inline-flex items-center gap-1 text-[var(--accent)]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+                  live
+                </span>
+              )}
+            </p>
           </div>
-
-          {integrity && (
-            <div
-              title={integrity.verified ? "Authentication verified" : "Authentication incomplete"}
-              className={`mt-2 flex h-6 w-6 items-center justify-center rounded-full ${
-                integrity.verified ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
-              }`}
-            >
-              <ShieldCheck className="h-3.5 w-3.5" />
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close chat"
+            className="rounded-full p-2 text-[var(--muted)] transition hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
-        {/* Messages */}
         <div
           ref={boxRef}
-          className="flex-1 space-y-3 overflow-y-auto bg-[var(--surface-2)] px-4 py-4"
+          className="min-h-[12rem] flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 py-4"
         >
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-10 text-center">
+            <div className="flex flex-col items-center gap-2 py-12 text-center">
               <MessageCircle className="h-6 w-6 text-[var(--muted)]" />
               <p className="text-sm font-medium text-[var(--foreground)]">No one&apos;s talking yet</p>
               <p className="max-w-[240px] text-xs text-[var(--muted)]">
@@ -189,14 +171,10 @@ export default function ChatPanel({ postId, postAuthor, integrity, open, onClose
           ) : (
             messages.map((m) => (
               <div key={m.id} className="flex items-start gap-2">
-                <div
-                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${avatarGradient(
-                    m.handle
-                  )} text-[9px] font-bold text-white`}
-                >
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--surface-2)] text-[9px] font-bold text-[var(--foreground)]">
                   {initials(m.author || m.handle)}
                 </div>
-                <div className="min-w-0 flex-1 rounded-xl border border-[var(--border-base)] bg-white px-2.5 py-1.5">
+                <div className="min-w-0 flex-1 rounded-xl border border-[var(--border-base)] bg-[var(--surface)] px-2.5 py-1.5">
                   <div className="flex items-baseline gap-1.5">
                     <span className="text-xs font-semibold text-[var(--foreground)]">
                       {m.handle}
@@ -213,9 +191,8 @@ export default function ChatPanel({ postId, postAuthor, integrity, open, onClose
           )}
         </div>
 
-        {/* Composer */}
-        <div className="border-t border-[var(--border-base)] bg-white px-4 py-3">
-          {error && <p className="mb-2 text-[11px] text-rose-600">{error}</p>}
+        <div className="shrink-0 border-t border-[var(--border-base)] px-4 py-3">
+          {error && <p className="mb-2 text-[11px] text-rose-700">{error}</p>}
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -234,14 +211,14 @@ export default function ChatPanel({ postId, postAuthor, integrity, open, onClose
               }}
               rows={1}
               dir="auto"
-              placeholder={`Say something on ${postAuthor}'s take…`}
-              className="max-h-24 min-h-[40px] flex-1 resize-none rounded-xl border border-[var(--border-base)] bg-[var(--surface-2)] px-3 py-2.5 text-sm text-[var(--foreground)] placeholder:text-[var(--muted)]/60 outline-none transition focus:border-[var(--accent)]"
+              placeholder={`Reply to ${postAuthor}…`}
+              className="max-h-24 min-h-[40px] flex-1 resize-none rounded-full border border-[var(--border-base)] bg-[var(--surface-2)] px-4 py-2.5 text-sm text-[var(--foreground)] placeholder:text-[var(--muted)] outline-none focus:border-[var(--accent)]"
             />
             <button
               type="submit"
               aria-label="Send"
               disabled={sending || !draft.trim()}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--accent)] text-white transition hover:bg-[var(--accent-2)] disabled:opacity-40"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--surface)] transition hover:bg-[var(--accent-2)] disabled:opacity-40"
             >
               <Send className="h-4 w-4" />
             </button>

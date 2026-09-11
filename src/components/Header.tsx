@@ -19,7 +19,7 @@ export default function Header({ onShare }: HeaderProps) {
   };
 
   return (
-    <header className="safe-top sticky top-0 z-40 border-b border-[var(--border-base)] bg-[var(--surface)]/95 backdrop-blur-sm">
+    <header className="safe-top sticky top-0 z-40 border-b border-[var(--border-base)] bg-[var(--surface)]">
       <div className="shell flex h-[var(--header-h)] items-center justify-between !px-[var(--shell-pad)]">
         <div className="min-w-0">
           <p className="font-display truncate text-[15px] font-semibold tracking-tight text-[var(--foreground)]">

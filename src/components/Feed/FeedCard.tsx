@@ -105,19 +105,20 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
   };
 
   return (
-    <article className="animate-rise-in border-b border-[var(--border-base)] py-5">
+    <article className="relative isolate border-b border-[var(--border-base)] bg-[var(--surface)] py-5">
       <div className="flex items-start gap-3">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-2)] text-[11px] font-semibold text-[var(--foreground)]">
           {initials(thought.author)}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-2">
+          <div className="flex items-center gap-2">
             <span className="truncate text-sm font-semibold text-[var(--foreground)]">
               {thought.author}
             </span>
             <span className="shrink-0 text-xs text-[var(--muted)]">{thought.timeLabel}</span>
             <div className="relative ml-auto shrink-0">
               <button
+                type="button"
                 onClick={() => setMenuOpen((v) => !v)}
                 aria-label="More"
                 className="rounded-md p-1 text-[var(--muted)] hover:text-[var(--foreground)]"
@@ -126,9 +127,15 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
               </button>
               {menuOpen && (
                 <>
-                  <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+                  <button
+                    type="button"
+                    className="fixed inset-0 z-10 cursor-default"
+                    aria-label="Close menu"
+                    onClick={() => setMenuOpen(false)}
+                  />
                   <div className="absolute right-0 top-7 z-20 w-40 overflow-hidden rounded-lg border border-[var(--border-base)] bg-[var(--surface)] shadow-md">
                     <button
+                      type="button"
                       onClick={() => {
                         setMenuOpen(false);
                         setReporting(true);
@@ -145,14 +152,16 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
           </div>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-[var(--muted)]">
             <FeelingBadge feeling={thought.feeling} size="sm" />
-            {thought.languageLabel && <span>{thought.languageLabel}</span>}
+            {thought.languageLabel && thought.language && !thought.language.toLowerCase().startsWith("en") && (
+              <span>{thought.languageLabel}</span>
+            )}
             <IntegrityBadge integrity={thought.integrity} />
           </div>
         </div>
       </div>
 
       {(thought.mediaType === "audio" || thought.mediaType === "video") && (
-        <div className="mt-3 overflow-hidden rounded-xl border border-[var(--border-base)]">
+        <div className="relative z-0 mt-3 overflow-hidden rounded-xl border border-[var(--border-base)]">
           {thought.mediaType === "audio" && (
             <AudioPlayer
               src={mediaSrc}
@@ -176,7 +185,7 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
         </div>
       )}
 
-      <div className="mt-3 space-y-2">
+      <div className="relative z-0 mt-3 space-y-2">
         {hasTranscript && thought.transcript && (
           <TranscriptPanel
             segments={thought.transcript}
@@ -189,7 +198,7 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
         <p
           lang={thought.language}
           dir="auto"
-          className="font-display text-[1.05rem] leading-relaxed text-[var(--foreground)]"
+          className="font-display text-[1.05rem] leading-[1.55] text-[var(--foreground)]"
         >
           {thought.content}
         </p>
@@ -203,7 +212,7 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
         )}
       </div>
 
-      <div className="mt-4 flex items-center gap-4 text-[var(--muted)]">
+      <div className="relative z-0 mt-4 flex items-center gap-4 text-[var(--muted)]">
         <button
           onClick={like}
           aria-label={liked ? "Unlike" : "Like"}
