@@ -7,6 +7,7 @@ import { FEELINGS } from "@/lib/feelings";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { checkDignity, normalizeTag } from "@/lib/dignity";
 import { GLOBAL_SEED_POSTS } from "@/lib/seed-posts";
+import { notifyFollowersOfPost } from "@/lib/activity";
 
 const MEDIA_TYPES = new Set(["audio", "video", "text"]);
 const FEELING_IDS = new Set(FEELINGS.map((f) => f.id));
@@ -237,9 +238,18 @@ export async function POST(request: NextRequest) {
     };
 
     const result = await db.collection<PostDoc>("posts").insertOne(doc);
+    const postId = result.insertedId.toString();
+
+    // Don't block the response on fan-out
+    void notifyFollowersOfPost(db, {
+      postId,
+      authorHandle: session.handle,
+      authorName: session.displayName || session.handle,
+      preview: content,
+    });
 
     return NextResponse.json({
-      id: result.insertedId.toString(),
+      id: postId,
       ...doc,
       created_at: doc.created_at.toISOString(),
       reactions: [],

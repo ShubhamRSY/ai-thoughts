@@ -12,6 +12,7 @@ import SubmitModal, { type SharePayload } from "@/components/Submit/SubmitModal"
 import type { CapturedClip } from "@/components/Submit/MediaRecorderView";
 import PulseOverview, { type FeelingTally } from "@/components/Pulse/PulseOverview";
 import FeelingRoom from "@/components/Pulse/FeelingRoom";
+import PulseEpisode from "@/components/Pulse/PulseEpisode";
 import StreakCard from "@/components/StreakCard";
 import DailyCheckIn from "@/components/DailyCheckIn";
 import DailyHabits from "@/components/DailyHabits";
@@ -64,6 +65,7 @@ export default function Home() {
   const [regionScope, setRegionScope] = useState<RegionScope>("near");
   const [undoId, setUndoId] = useState<string | null>(null);
   const [activityOpen, setActivityOpen] = useState(false);
+  const [following, setFollowing] = useState<string[]>([]);
   const { items: activityItems, unread: activityUnread, markAllRead, refresh: refreshActivity } =
     useActivity(!!user);
 
@@ -72,26 +74,75 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    if (!user) {
+      setFollowing([]);
+      return;
+    }
+    let cancelled = false;
+    fetch("/api/follows", { credentials: "include", cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.following) setFollowing(data.following);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  useEffect(() => {
     if (!undoId) return;
     const t = window.setTimeout(() => setUndoId(null), 10000);
     return () => window.clearTimeout(t);
   }, [undoId]);
 
   const preferred = useMemo(() => preferredLanguages(continent), [continent]);
+  const followingSet = useMemo(
+    () => new Set(following.map((h) => h.trim().toLowerCase().replace(/^@/, ""))),
+    [following]
+  );
 
   const filtered = useMemo(() => {
-    const base = thoughts.filter((t) => {
+    let base = thoughts.filter((t) => {
       const mOk = media === "all" || t.mediaType === media;
       const fOk = feeling === "all" || t.feeling === feeling;
       return mOk && fOk;
     });
 
-    // Always lift today's takes; Near you also ranks by regional languages.
+    if (regionScope === "circle") {
+      base = base.filter((t) =>
+        followingSet.has(t.handle.trim().toLowerCase().replace(/^@/, ""))
+      );
+      return rankByRegion(base, []);
+    }
+
     if (regionScope === "near") {
       return rankByRegion(base, preferred);
     }
     return rankByRegion(base, []);
-  }, [thoughts, media, feeling, regionScope, preferred]);
+  }, [thoughts, media, feeling, regionScope, preferred, followingSet]);
+
+  const onFeelWith = useCallback(
+    async (handle: string, next: boolean) => {
+      if (!user) return;
+      const norm = handle.trim().toLowerCase().replace(/^@/, "");
+      setFollowing((prev) => {
+        const without = prev.filter((h) => h.trim().toLowerCase().replace(/^@/, "") !== norm);
+        return next ? [`@${norm}`, ...without] : without;
+      });
+      try {
+        await fetch("/api/follows", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ handle, action: next ? "follow" : "unfollow" }),
+        });
+      } catch {
+        /* ignore */
+      }
+    },
+    [user]
+  );
 
   const openShare = (tabPref: MediaType = "video", presetFeeling?: FeelingId) => {
     setInitialTab(tabPref);
@@ -275,6 +326,8 @@ export default function Home() {
                   onShare={(feelingId) => openShare("text", feelingId)}
                 />
 
+                <PulseEpisode thoughts={thoughts} onOpenRoom={handleOpenRoom} />
+
                 <PulseOverview
                   thoughts={thoughts}
                   tally={feelingTally}
@@ -291,6 +344,7 @@ export default function Home() {
                   onRegionScopeChange={setRegionScope}
                   continent={continent}
                   onContinentChange={setContinent}
+                  circleCount={following.length}
                 />
 
                 <div className="app-pad mt-2">
@@ -302,7 +356,11 @@ export default function Home() {
                       <p className="mt-0.5 text-[11px] text-[var(--muted)]">
                         {regionScope === "near"
                           ? `${continentLabel(continent)} first · other languages still here · tap Translate`
-                          : "Voices from everywhere · tap Translate on any language"}
+                          : regionScope === "circle"
+                            ? following.length
+                              ? "People you feel with · Translate anytime"
+                              : "Feel with someone from ··· on a take"
+                            : "Voices from everywhere · tap Translate on any language"}
                       </p>
                     </div>
                     <span className="text-[11px] tabular-nums text-[var(--muted)]">
@@ -316,6 +374,8 @@ export default function Home() {
                     onDelete={onDelete}
                     currentHandle={user?.handle ?? null}
                     onOpenRoom={handleOpenRoom}
+                    onFeelWith={user ? onFeelWith : undefined}
+                    followingHandles={followingSet}
                     othersMap={othersMap}
                   />
                 </div>
@@ -349,6 +409,7 @@ export default function Home() {
             <DailyHabits
               checkedInToday={streak.last === todayKey()}
               displayHandle={identityHandle}
+              signedIn={!!user}
             />
           </div>
         )}

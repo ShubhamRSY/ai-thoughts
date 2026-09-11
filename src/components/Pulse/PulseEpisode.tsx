@@ -41,13 +41,13 @@ export default function PulseEpisode({ thoughts, onOpenRoom }: PulseEpisodeProps
   const topTake = featured[0];
 
   return (
-    <section className="px-4 pt-4">
-      <div className="overflow-hidden rounded-2xl border border-[var(--border-base)] bg-white shadow-sm shadow-slate-900/5">
+    <section className="app-pad pt-4">
+      <div className="overflow-hidden rounded-2xl border border-[var(--border-base)] bg-[var(--surface)]">
         {/* Episode header */}
         <div className="flex items-center justify-between px-4 pt-4">
           <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
             <CalendarDays className="h-3.5 w-3.5" />
-            Pulse Episode
+            Weekly Voices
           </div>
           <span className="rounded-full border border-teal-200 bg-teal-50 px-2 py-0.5 text-[10px] font-bold tabular-nums text-teal-800">
             EP {ep}
@@ -57,7 +57,7 @@ export default function PulseEpisode({ thoughts, onOpenRoom }: PulseEpisodeProps
         {/* Headline */}
         <div className="px-4 pt-3">
           <h2 className="font-display text-lg font-bold leading-snug text-[var(--foreground)]">
-            The pulse felt {top ? top.short.toLowerCase() : "alive"} today
+            This week felt {top ? top.short.toLowerCase() : "alive"}
           </h2>
           <p className="mt-1 text-xs text-[var(--muted)]">
             {thoughts.length} voice{thoughts.length === 1 ? "" : "s"} · {langs.size} language

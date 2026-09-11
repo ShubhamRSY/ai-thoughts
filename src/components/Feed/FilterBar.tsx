@@ -6,7 +6,7 @@ import { CONTINENTS, continentLabel } from "@/lib/region";
 
 type MediaFilter = "all" | MediaType;
 export type FeelingFilter = "all" | FeelingId;
-export type RegionScope = "near" | "world";
+export type RegionScope = "near" | "world" | "circle";
 
 interface FilterBarProps {
   media: MediaFilter;
@@ -17,6 +17,7 @@ interface FilterBarProps {
   onRegionScopeChange: (s: RegionScope) => void;
   continent: ContinentId;
   onContinentChange: (c: ContinentId) => void;
+  circleCount?: number;
 }
 
 const MEDIA_FILTERS: { id: MediaFilter; label: string }[] = [
@@ -33,6 +34,7 @@ export default function FilterBar({
   onRegionScopeChange,
   continent,
   onContinentChange,
+  circleCount = 0,
 }: FilterBarProps) {
   return (
     <div className="app-pad mt-4 space-y-3 border-y border-[var(--border-base)] py-3">
@@ -47,6 +49,17 @@ export default function FilterBar({
           }`}
         >
           Near you · {continentLabel(continent)}
+        </button>
+        <button
+          type="button"
+          onClick={() => onRegionScopeChange("circle")}
+          className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+            regionScope === "circle"
+              ? "bg-[var(--accent)] text-[var(--surface)]"
+              : "border border-[var(--border-base)] text-[var(--muted)] hover:text-[var(--foreground)]"
+          }`}
+        >
+          Feel with{circleCount > 0 ? ` · ${circleCount}` : ""}
         </button>
         <button
           type="button"
@@ -81,6 +94,12 @@ export default function FilterBar({
             );
           })}
         </div>
+      )}
+
+      {regionScope === "circle" && (
+        <p className="text-[11px] text-[var(--muted)]">
+          Takes from people you feel with. Tap Feel with on any voice to add them.
+        </p>
       )}
 
       <div className="flex gap-5 overflow-x-auto" role="tablist" aria-label="Format">

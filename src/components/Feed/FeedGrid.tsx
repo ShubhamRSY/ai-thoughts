@@ -9,8 +9,14 @@ interface FeedGridProps {
   onReport?: (thoughtId: string, reason: ReportReason) => void;
   onDelete?: (thoughtId: string) => void;
   onOpenRoom?: (id: FeelingId) => void;
+  onFeelWith?: (handle: string, next: boolean) => void;
+  followingHandles?: Set<string> | string[];
   currentHandle?: string | null;
   othersMap?: Record<string, number>;
+}
+
+function norm(h: string) {
+  return h.trim().toLowerCase().replace(/^@/, "");
 }
 
 export default function FeedGrid({
@@ -19,9 +25,20 @@ export default function FeedGrid({
   onReport,
   onDelete,
   onOpenRoom,
+  onFeelWith,
+  followingHandles,
   currentHandle,
   othersMap,
 }: FeedGridProps) {
+  const following = new Set(
+    (Array.isArray(followingHandles)
+      ? followingHandles
+      : followingHandles
+        ? Array.from(followingHandles)
+        : []
+    ).map(norm)
+  );
+
   if (thoughts.length === 0) {
     return (
       <div className="px-1 py-16 text-center">
@@ -43,6 +60,8 @@ export default function FeedGrid({
           onReport={onReport}
           onDelete={onDelete}
           onOpenRoom={onOpenRoom}
+          onFeelWith={onFeelWith}
+          feelingWith={following.has(norm(t.handle))}
           currentHandle={currentHandle}
           others={t.feeling ? othersMap?.[t.feeling] : undefined}
         />

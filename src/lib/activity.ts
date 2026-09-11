@@ -1,7 +1,8 @@
 import { ObjectId } from "mongodb";
 import type { Db } from "mongodb";
+import { sendPushToHandle } from "@/lib/push";
 
-export type ActivityKind = "reply" | "reaction";
+export type ActivityKind = "reply" | "reaction" | "follow_post";
 
 export interface ActivityDoc {
   recipient_handle: string;
@@ -12,6 +13,7 @@ export interface ActivityDoc {
   preview: string;
   read: boolean;
   created_at: Date;
+  emailed?: boolean;
 }
 
 function normHandle(h: string) {
@@ -43,14 +45,67 @@ export async function notifyPostOwner(
   if (!post?.handle) return;
   if (normHandle(String(post.handle)) === normHandle(opts.actorHandle)) return;
 
+  const recipient = String(post.handle);
   await db.collection("notifications").insertOne({
-    recipient_handle: String(post.handle),
+    recipient_handle: recipient,
     actor_handle: opts.actorHandle,
     actor_author: opts.actorAuthor,
     kind: opts.kind,
     post_id: opts.postId,
     preview: opts.preview.slice(0, 160),
     read: false,
+    emailed: false,
     created_at: new Date(),
   } satisfies ActivityDoc);
+
+  const title =
+    opts.kind === "reply"
+      ? `${opts.actorAuthor} replied`
+      : `${opts.actorAuthor} reacted ${opts.preview}`;
+  const body =
+    opts.kind === "reply"
+      ? opts.preview.slice(0, 120)
+      : "Someone felt your take. Open Voices to see.";
+
+  await sendPushToHandle(db, recipient, {
+    title,
+    body,
+    url: "/app",
+    tag: `post-${opts.postId}`,
+  });
+}
+
+/** Notify followers when someone they feel with shares a new take. */
+export async function notifyFollowersOfPost(
+  db: Db,
+  opts: {
+    postId: string;
+    authorHandle: string;
+    authorName: string;
+    preview: string;
+  }
+): Promise<void> {
+  const { listFollowers } = await import("@/lib/follows");
+  const followers = await listFollowers(db, opts.authorHandle);
+  for (const follower of followers) {
+    if (normHandle(follower) === normHandle(opts.authorHandle)) continue;
+    await db.collection("notifications").insertOne({
+      recipient_handle: follower.startsWith("@") ? follower : `@${normHandle(follower)}`,
+      actor_handle: opts.authorHandle,
+      actor_author: opts.authorName,
+      kind: "follow_post",
+      post_id: opts.postId,
+      preview: opts.preview.slice(0, 160),
+      read: false,
+      emailed: false,
+      created_at: new Date(),
+    } satisfies ActivityDoc);
+
+    await sendPushToHandle(db, follower, {
+      title: `${opts.authorName} shared a take`,
+      body: opts.preview.slice(0, 120),
+      url: "/app",
+      tag: `follow-${opts.postId}`,
+    });
+  }
 }

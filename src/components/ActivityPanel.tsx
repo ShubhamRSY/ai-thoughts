@@ -5,7 +5,7 @@ import { Bell, CheckCheck } from "lucide-react";
 
 export interface ActivityItem {
   id: string;
-  kind: "reply" | "reaction";
+  kind: "reply" | "reaction" | "follow_post";
   actor_handle: string;
   actor_author: string;
   post_id: string;
@@ -130,10 +130,14 @@ export default function ActivityPanel({
               >
                 <p className="text-sm text-[var(--foreground)]">
                   <span className="font-semibold">{item.actor_author}</span>
-                  {item.kind === "reply" ? " replied" : " reacted"}
+                  {item.kind === "reply"
+                    ? " replied"
+                    : item.kind === "follow_post"
+                      ? " shared a take"
+                      : " reacted"}
                   {item.kind === "reaction" ? ` ${item.preview}` : ""}
                 </p>
-                {item.kind === "reply" && (
+                {(item.kind === "reply" || item.kind === "follow_post") && (
                   <p className="mt-0.5 line-clamp-2 text-xs text-[var(--muted)]">{item.preview}</p>
                 )}
                 <p className="mt-1 text-[10px] tabular-nums text-[var(--muted)]">

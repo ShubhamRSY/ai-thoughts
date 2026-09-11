@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   MessageCircle,
   Heart,
@@ -9,6 +9,7 @@ import {
   Flag,
   ShieldCheck,
   Trash2,
+  HeartHandshake,
 } from "lucide-react";
 import type { Thought, Reaction, FeelingId } from "@/lib/types";
 import { REACTION_TYPES } from "@/lib/mock-data";
@@ -42,6 +43,8 @@ interface FeedCardProps {
   onReport?: (thoughtId: string, reason: ReportReason) => void;
   onDelete?: (thoughtId: string) => void;
   onOpenRoom?: (id: FeelingId) => void;
+  onFeelWith?: (handle: string, next: boolean) => void;
+  feelingWith?: boolean;
   /** Signed-in handle — only this author sees Delete on their take. */
   currentHandle?: string | null;
   others?: number;
@@ -65,6 +68,8 @@ export default function FeedCard({
   onReport,
   onDelete,
   onOpenRoom,
+  onFeelWith,
+  feelingWith,
   currentHandle,
   others,
 }: FeedCardProps) {
@@ -82,7 +87,12 @@ export default function FeedCard({
   const [chatOpen, setChatOpen] = useState(false);
   const [commentCount, setCommentCount] = useState<number | null>(null);
   const [showReact, setShowReact] = useState(false);
+  const [feeling, setFeeling] = useState(Boolean(feelingWith));
   const isAuthor = sameHandle(currentHandle, thought.handle);
+
+  useEffect(() => {
+    setFeeling(Boolean(feelingWith));
+  }, [feelingWith]);
 
   const mediaElRef = useRef<HTMLMediaElement | null>(null);
   const [mediaTime, setMediaTime] = useState(0);
@@ -175,6 +185,21 @@ export default function FeedCard({
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                         {deleting ? "Deleting…" : "Delete take"}
+                      </button>
+                    )}
+                    {!isAuthor && currentHandle && onFeelWith && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = !feeling;
+                          setFeeling(next);
+                          setMenuOpen(false);
+                          onFeelWith(thought.handle, next);
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-[var(--surface-2)]"
+                      >
+                        <HeartHandshake className="h-3.5 w-3.5" />
+                        {feeling ? "Stop feeling with" : "Feel with"}
                       </button>
                     )}
                     {!isAuthor && (

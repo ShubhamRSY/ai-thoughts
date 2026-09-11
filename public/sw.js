@@ -1,5 +1,5 @@
 // AI·Thoughts service worker — shell only; never cache the feed.
-const CACHE = "aithoughts-v5";
+const CACHE = "aithoughts-v6";
 const CORE = ["/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -17,6 +17,35 @@ self.addEventListener("activate", (event) => {
       .keys()
       .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener("push", (event) => {
+  let data = {
+    title: "AI·Thoughts",
+    body: "Something new on Voices",
+    url: "/app",
+    tag: "aithoughts",
+  };
+  try {
+    if (event.data) data = { ...data, ...event.data.json() };
+  } catch {
+    try {
+      const text = event.data && event.data.text();
+      if (text) data.body = text;
+    } catch {
+      /* ignore */
+    }
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(data.title || "AI·Thoughts", {
+      body: data.body,
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      tag: data.tag || "aithoughts",
+      data: { url: data.url || "/app" },
+    })
   );
 });
 
@@ -42,7 +71,6 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== location.origin) return;
 
-  // Never cache API or app pages — feed must stay live.
   if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/app")) return;
 
   if (request.mode === "navigate") {

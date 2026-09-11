@@ -1,0 +1,72 @@
+import { NextRequest, NextResponse } from "next/server";
+import { connectToDatabase } from "@/lib/mongodb";
+import { listDigestRecipients } from "@/lib/prefs";
+import { sendWeeklyVoicesEmail } from "@/lib/email";
+import { feelingOf } from "@/lib/feelings";
+import type { FeelingId } from "@/lib/types";
+
+function authorized(request: NextRequest): boolean {
+  const secret = process.env.CRON_SECRET?.trim();
+  if (!secret) return process.env.NODE_ENV !== "production";
+  const header = request.headers.get("authorization") || "";
+  return header === `Bearer ${secret}`;
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    if (!authorized(request)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { db } = await connectToDatabase();
+    const weekAgo = new Date(Date.now() - 7 * 864e5);
+    const posts = await db
+      .collection("posts")
+      .find({ created_at: { $gte: weekAgo } })
+      .sort({ created_at: -1 })
+      .limit(200)
+      .toArray();
+
+    const counts: Record<string, number> = {};
+    for (const p of posts) {
+      if (p.feeling) counts[p.feeling] = (counts[p.feeling] ?? 0) + 1;
+    }
+    const topFeelingId = (Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ||
+      "using-it") as FeelingId;
+    const topFeeling = feelingOf(topFeelingId)?.short || "alive";
+
+    const highlights = posts.slice(0, 4).map((p) => ({
+      author: String(p.author || p.handle || "Someone"),
+      content: String(p.content || "").slice(0, 160),
+    }));
+
+    const week = Math.ceil(
+      (Date.now() - Date.UTC(new Date().getFullYear(), 0, 1)) / (7 * 864e5)
+    );
+    const episodeTitle = `Week ${week} felt ${topFeeling.toLowerCase()}`;
+
+    const recipients = await listDigestRecipients(db, "weekly_digest");
+    let sent = 0;
+    for (const r of recipients) {
+      const ok = await sendWeeklyVoicesEmail(r.email, {
+        handle: r.handle,
+        episodeTitle,
+        topFeeling: topFeeling.toLowerCase(),
+        takeCount: posts.length,
+        highlights,
+      });
+      if (ok) sent += 1;
+    }
+
+    return NextResponse.json({
+      ok: true,
+      sent,
+      takeCount: posts.length,
+      episodeTitle,
+      recipients: recipients.length,
+    });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
+  }
+}
