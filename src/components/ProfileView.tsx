@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Camera, Check, PencilLine } from "lucide-react";
+import { Camera, Check, PencilLine, Trash2 } from "lucide-react";
 import { upload } from "@vercel/blob/client";
 import type { Thought } from "@/lib/types";
 import { useLocalProfile } from "@/hooks/useLocalProfile";
@@ -12,6 +12,7 @@ import { BRAND } from "@/lib/brand";
 interface ProfileViewProps {
   myThoughts: Thought[];
   onCreate: () => void;
+  onDelete?: (thoughtId: string) => void;
 }
 
 function initials(name: string) {
@@ -23,7 +24,7 @@ function initials(name: string) {
     .toUpperCase() || "?";
 }
 
-export default function ProfileView({ myThoughts, onCreate }: ProfileViewProps) {
+export default function ProfileView({ myThoughts, onCreate, onDelete }: ProfileViewProps) {
   const { profile, save } = useLocalProfile();
   const { user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -282,6 +283,23 @@ export default function ProfileView({ myThoughts, onCreate }: ProfileViewProps) 
                   {t.content}
                 </p>
                 <span className="shrink-0 text-xs tabular-nums text-[var(--muted)]">{t.timeLabel}</span>
+                {onDelete && (
+                  <button
+                    type="button"
+                    aria-label="Delete take"
+                    onClick={() => {
+                      if (
+                        !window.confirm("Delete this take? It will be removed for everyone.")
+                      ) {
+                        return;
+                      }
+                      onDelete(t.id);
+                    }}
+                    className="shrink-0 rounded-md p-1.5 text-[var(--muted)] hover:bg-rose-50 hover:text-rose-700"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
             ))}
           </div>

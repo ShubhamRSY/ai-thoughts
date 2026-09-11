@@ -297,7 +297,12 @@ export async function resolveReport(reportId: string): Promise<boolean> {
 
 export async function deletePost(postId: string): Promise<boolean> {
   try {
-    await jsonFetch(`${API}/posts/${postId}`, { method: "DELETE" });
+    // Local-only mock ids never hit Mongo
+    if (!/^[a-f0-9]{24}$/i.test(postId)) return true;
+    await jsonFetch(`${API}/posts/${postId}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
     return true;
   } catch (e) {
     console.error("deletePost:", e);

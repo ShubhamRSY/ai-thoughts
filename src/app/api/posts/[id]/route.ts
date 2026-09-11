@@ -55,6 +55,10 @@ export async function GET(
   }
 }
 
+function normHandle(h: string) {
+  return h.trim().toLowerCase().replace(/^@/, "");
+}
+
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -62,15 +66,21 @@ export async function DELETE(
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
-    if (!(await isKeeperHandle(session.handle))) {
-      return NextResponse.json({ error: "Keepers only" }, { status: 403 });
-    }
 
     const { id } = await params;
     const objectId = parseObjectId(id);
     if (!objectId) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
 
     const { db } = await connectToDatabase();
+    const post = await db.collection("posts").findOne({ _id: objectId });
+    if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    const isAuthor = normHandle(String(post.handle || "")) === normHandle(session.handle);
+    const isKeeper = await isKeeperHandle(session.handle);
+    if (!isAuthor && !isKeeper) {
+      return NextResponse.json({ error: "Only the author can delete this take" }, { status: 403 });
+    }
+
     await db.collection("posts").deleteOne({ _id: objectId });
     await db.collection("messages").deleteMany({ post_id: id });
     await db.collection("reactions").deleteMany({ post_id: id });

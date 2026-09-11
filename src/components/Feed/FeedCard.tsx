@@ -8,6 +8,7 @@ import {
   MoreHorizontal,
   Flag,
   ShieldCheck,
+  Trash2,
 } from "lucide-react";
 import type { Thought, Reaction, FeelingId } from "@/lib/types";
 import { REACTION_TYPES } from "@/lib/mock-data";
@@ -39,8 +40,16 @@ interface FeedCardProps {
   thought: Thought;
   onReact?: (thoughtId: string, reaction: Reaction) => void;
   onReport?: (thoughtId: string, reason: ReportReason) => void;
+  onDelete?: (thoughtId: string) => void;
   onOpenRoom?: (id: FeelingId) => void;
+  /** Signed-in handle — only this author sees Delete on their take. */
+  currentHandle?: string | null;
   others?: number;
+}
+
+function sameHandle(a?: string | null, b?: string | null) {
+  if (!a || !b) return false;
+  return a.trim().toLowerCase().replace(/^@/, "") === b.trim().toLowerCase().replace(/^@/, "");
 }
 
 const REPORT_REASONS: ReportReason[] = [
@@ -50,7 +59,15 @@ const REPORT_REASONS: ReportReason[] = [
   "Harms someone",
 ];
 
-export default function FeedCard({ thought, onReact, onReport, onOpenRoom, others }: FeedCardProps) {
+export default function FeedCard({
+  thought,
+  onReact,
+  onReport,
+  onDelete,
+  onOpenRoom,
+  currentHandle,
+  others,
+}: FeedCardProps) {
   const [reactions, setReactions] = useState(thought.reactions);
   const [mine, setMine] = useState<Reaction | null>(null);
   const [liked, setLiked] = useState(false);
@@ -61,9 +78,11 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
   const [menuOpen, setMenuOpen] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [reported, setReported] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [commentCount, setCommentCount] = useState<number | null>(null);
   const [showReact, setShowReact] = useState(false);
+  const isAuthor = sameHandle(currentHandle, thought.handle);
 
   const mediaElRef = useRef<HTMLMediaElement | null>(null);
   const [mediaTime, setMediaTime] = useState(0);
@@ -134,18 +153,43 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
                     aria-label="Close menu"
                     onClick={() => setMenuOpen(false)}
                   />
-                  <div className="absolute right-0 top-7 z-20 w-40 overflow-hidden rounded-lg border border-[var(--border-base)] bg-[var(--surface)] shadow-md">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMenuOpen(false);
-                        setReporting(true);
-                      }}
-                      className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-[var(--surface-2)]"
-                    >
-                      <Flag className="h-3.5 w-3.5" />
-                      Report
-                    </button>
+                  <div className="absolute right-0 top-7 z-20 w-44 overflow-hidden rounded-lg border border-[var(--border-base)] bg-[var(--surface)] shadow-md">
+                    {isAuthor && onDelete && (
+                      <button
+                        type="button"
+                        disabled={deleting}
+                        onClick={() => {
+                          if (
+                            !window.confirm(
+                              "Delete this take? It will be removed for everyone."
+                            )
+                          ) {
+                            setMenuOpen(false);
+                            return;
+                          }
+                          setDeleting(true);
+                          setMenuOpen(false);
+                          onDelete(thought.id);
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-rose-700 hover:bg-[var(--surface-2)] disabled:opacity-50"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        {deleting ? "Deleting…" : "Delete take"}
+                      </button>
+                    )}
+                    {!isAuthor && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          setReporting(true);
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-[var(--surface-2)]"
+                      >
+                        <Flag className="h-3.5 w-3.5" />
+                        Report
+                      </button>
+                    )}
                   </div>
                 </>
               )}

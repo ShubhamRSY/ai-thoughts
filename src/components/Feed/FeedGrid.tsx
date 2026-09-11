@@ -7,7 +7,9 @@ interface FeedGridProps {
   thoughts: Thought[];
   onReact?: (thoughtId: string, reaction: Reaction) => void;
   onReport?: (thoughtId: string, reason: ReportReason) => void;
+  onDelete?: (thoughtId: string) => void;
   onOpenRoom?: (id: FeelingId) => void;
+  currentHandle?: string | null;
   othersMap?: Record<string, number>;
 }
 
@@ -15,7 +17,9 @@ export default function FeedGrid({
   thoughts,
   onReact,
   onReport,
+  onDelete,
   onOpenRoom,
+  currentHandle,
   othersMap,
 }: FeedGridProps) {
   if (thoughts.length === 0) {
@@ -37,7 +41,9 @@ export default function FeedGrid({
           thought={t}
           onReact={onReact}
           onReport={onReport}
+          onDelete={onDelete}
           onOpenRoom={onOpenRoom}
+          currentHandle={currentHandle}
           others={t.feeling ? othersMap?.[t.feeling] : undefined}
         />
       ))}

@@ -25,6 +25,7 @@ import {
   publishPost,
   addReaction,
   reportPost,
+  deletePost,
   checkPublishGuard,
   markPublished,
 } from "@/lib/db";
@@ -58,10 +59,17 @@ export default function Home() {
   const [shareFeeling, setShareFeeling] = useState<FeelingId | undefined>(undefined);
   const [continent, setContinent] = useState<ContinentId>("americas");
   const [regionScope, setRegionScope] = useState<RegionScope>("near");
+  const [undoId, setUndoId] = useState<string | null>(null);
 
   useEffect(() => {
     setContinent(detectContinent());
   }, []);
+
+  useEffect(() => {
+    if (!undoId) return;
+    const t = window.setTimeout(() => setUndoId(null), 10000);
+    return () => window.clearTimeout(t);
+  }, [undoId]);
 
   const preferred = useMemo(() => preferredLanguages(continent), [continent]);
 
@@ -110,6 +118,33 @@ export default function Home() {
     });
   }, []);
 
+  const removeLocal = useCallback((thoughtId: string) => {
+    setThoughts((prev) => prev.filter((t) => t.id !== thoughtId));
+    setMine((prev) => prev.filter((t) => t.id !== thoughtId));
+    setUndoId((id) => (id === thoughtId ? null : id));
+  }, []);
+
+  const onDelete = useCallback(
+    async (thoughtId: string) => {
+      const snapshot = thoughts.find((t) => t.id === thoughtId);
+      removeLocal(thoughtId);
+      if (!isLive()) return;
+      const ok = await deletePost(thoughtId);
+      if (!ok && snapshot) {
+        setThoughts((prev) => [snapshot, ...prev]);
+        if (sameAuthor(snapshot.handle, identityHandle)) {
+          setMine((prev) => [snapshot, ...prev]);
+        }
+      }
+    },
+    [thoughts, removeLocal, identityHandle]
+  );
+
+  const undoPublish = useCallback(async () => {
+    if (!undoId) return;
+    await onDelete(undoId);
+  }, [undoId, onDelete]);
+
   const publish = useCallback(
     async (data: SharePayload, clip?: CapturedClip): Promise<PublishResult> => {
       const guard = checkPublishGuard(data.content);
@@ -136,6 +171,7 @@ export default function Home() {
         markPublished();
         setThoughts((prev) => [posted, ...prev]);
         setMine((prev) => [posted, ...prev]);
+        setUndoId(posted.id);
         bump(data.feeling);
         return { ok: true };
       }
@@ -153,6 +189,7 @@ export default function Home() {
 
       setThoughts((prev) => [newThought, ...prev]);
       setMine((prev) => [newThought, ...prev]);
+      setUndoId(newThought.id);
       bump(data.feeling);
       return { ok: true };
     },
@@ -167,12 +204,14 @@ export default function Home() {
     if (!isLive()) return;
     let cancelled = false;
     fetchPulsePosts().then((posts) => {
-      if (!cancelled && posts && posts.length > 0) setThoughts(posts);
+      if (cancelled || !posts || posts.length === 0) return;
+      setThoughts(posts);
+      setMine(posts.filter((t) => sameAuthor(t.handle, identityHandle)));
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [identityHandle]);
 
   useEffect(() => {
     if (isLive()) return;
@@ -220,6 +259,8 @@ export default function Home() {
                 onCreate={() => handleShareInRoom(room)}
                 onBack={backFromRoom}
                 onReact={onReact}
+                onDelete={onDelete}
+                currentHandle={user?.handle ?? null}
               />
             ) : (
               <>
@@ -261,6 +302,8 @@ export default function Home() {
                     thoughts={filtered}
                     onReact={onReact}
                     onReport={onReport}
+                    onDelete={onDelete}
+                    currentHandle={user?.handle ?? null}
                     onOpenRoom={handleOpenRoom}
                     othersMap={othersMap}
                   />
@@ -281,7 +324,11 @@ export default function Home() {
 
         {tab === "you" && (
           <div className="app-pad pt-4">
-            <ProfileView myThoughts={mine} onCreate={() => openShare("video")} />
+            <ProfileView
+              myThoughts={mine}
+              onCreate={() => openShare("video")}
+              onDelete={user ? onDelete : undefined}
+            />
             <StreakCard
               count={streak.count}
               todayFeeling={streak.todayFeeling}
@@ -293,6 +340,29 @@ export default function Home() {
       </main>
 
       <MobileNav active={tab} onTab={setTab} onCreate={() => openShare("video")} />
+
+      {undoId && (
+        <div className="app-rail pointer-events-none fixed inset-x-0 bottom-20 z-40 flex justify-center px-4 sm:bottom-6">
+          <div className="pointer-events-auto flex max-w-md items-center gap-3 rounded-full border border-[var(--border-base)] bg-[var(--foreground)] px-4 py-2.5 text-sm text-[var(--surface)] shadow-lg">
+            <span>Take shared</span>
+            <button
+              type="button"
+              onClick={() => void undoPublish()}
+              className="rounded-full bg-[var(--surface)]/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide hover:bg-[var(--surface)]/25"
+            >
+              Undo
+            </button>
+            <button
+              type="button"
+              aria-label="Dismiss"
+              onClick={() => setUndoId(null)}
+              className="text-[var(--surface)]/70 hover:text-[var(--surface)]"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
 
       <SubmitModal
         key={modalSession}
@@ -307,6 +377,11 @@ export default function Home() {
       />
     </div>
   );
+}
+
+function sameAuthor(a?: string | null, b?: string | null) {
+  if (!a || !b) return false;
+  return a.trim().toLowerCase().replace(/^@/, "") === b.trim().toLowerCase().replace(/^@/, "");
 }
 
 function computeTally(thoughts: Thought[]): FeelingTally[] {

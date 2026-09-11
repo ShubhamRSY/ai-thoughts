@@ -11,6 +11,8 @@ interface FeelingRoomProps {
   onCreate: () => void;
   onBack: () => void;
   onReact?: (thoughtId: string, reaction: Reaction) => void;
+  onDelete?: (thoughtId: string) => void;
+  currentHandle?: string | null;
 }
 
 export default function FeelingRoom({
@@ -19,6 +21,8 @@ export default function FeelingRoom({
   onCreate,
   onBack,
   onReact,
+  onDelete,
+  currentHandle,
 }: FeelingRoomProps) {
   const meta = feelingOf(feelingId)!;
   const roomThoughts = thoughts.filter((t) => (t.feeling ?? "") === feelingId);
@@ -60,7 +64,15 @@ export default function FeelingRoom({
             </p>
           </div>
         ) : (
-          roomThoughts.map((t) => <FeedCard key={t.id} thought={t} onReact={onReact} />)
+          roomThoughts.map((t) => (
+            <FeedCard
+              key={t.id}
+              thought={t}
+              onReact={onReact}
+              onDelete={onDelete}
+              currentHandle={currentHandle}
+            />
+          ))
         )}
       </div>
     </div>
