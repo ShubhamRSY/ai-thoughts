@@ -88,7 +88,7 @@ function toThought(r: RawPost): Thought {
 
 export async function fetchPulsePosts(): Promise<Thought[] | null> {
   try {
-    const rows = await jsonFetch<RawPost[]>(`${API}/posts`);
+    const rows = await jsonFetch<RawPost[]>(`${API}/posts?t=${Date.now()}`);
     return rows.map(toThought);
   } catch (e) {
     console.error("fetchPulsePosts:", e);

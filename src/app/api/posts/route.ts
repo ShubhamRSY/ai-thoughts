@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHash } from "crypto";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { getSession } from "@/lib/auth";
 import { FEELINGS } from "@/lib/feelings";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { checkDignity, normalizeTag } from "@/lib/dignity";
+import { GLOBAL_SEED_POSTS } from "@/lib/seed-posts";
 
 const MEDIA_TYPES = new Set(["audio", "video", "text"]);
 const FEELING_IDS = new Set(FEELINGS.map((f) => f.id));
@@ -34,11 +36,64 @@ interface PostDoc {
   transcript?: unknown;
   boosts?: number;
   created_at: Date;
+  seed_id?: string;
+}
+
+function hash(s: string) {
+  return createHash("sha256").update(s).digest("hex").slice(0, 16);
+}
+
+/** Idempotent: fill any missing global sample takes so the feed never looks empty. */
+async function ensureSamplePosts(
+  db: Awaited<ReturnType<typeof connectToDatabase>>["db"]
+) {
+  try {
+    await db.collection("posts").createIndex({ seed_id: 1 }, { unique: true, sparse: true });
+  } catch {
+    /* index may already exist */
+  }
+
+  const ids = GLOBAL_SEED_POSTS.map((p) => p.seed_id);
+  const existing = await db
+    .collection("posts")
+    .find({ seed_id: { $in: ids } }, { projection: { seed_id: 1 } })
+    .toArray();
+  const have = new Set(existing.map((p) => p.seed_id as string));
+  const missing = GLOBAL_SEED_POSTS.filter((p) => !have.has(p.seed_id));
+  if (missing.length === 0) return;
+
+  await db.collection("posts").insertMany(
+    missing.map((p) => ({
+      seed_id: p.seed_id,
+      handle: p.handle,
+      author: p.author,
+      content: p.content,
+      media_type: "text" as const,
+      feeling: p.feeling,
+      tags: p.tags,
+      language: p.language,
+      language_label: p.language_label,
+      integrity_hash: hash(`${p.seed_id}:${p.handle}:${p.content}`),
+      integrity_verified: true,
+      integrity_label: "Verified · Unmodified",
+      created_at: new Date(Date.now() - p.hours * 3600e3),
+      user_id: new ObjectId().toString(),
+      boosts: 0,
+    }))
+  );
+
+  // Drop the original untagged 3 demos if they still sit beside seeded copies
+  await db.collection("posts").deleteMany({
+    seed_id: { $exists: false },
+    handle: { $in: ["@maravoss", "@dexbuilds", "@priyathinks"] },
+  });
 }
 
 export async function GET() {
   try {
     const { db } = await connectToDatabase();
+    await ensureSamplePosts(db);
+
     const posts = await db
       .collection<PostDoc>("posts")
       .find({})
@@ -79,12 +134,15 @@ export async function GET() {
         integrity_verified: Boolean(p.integrity_verified),
         integrity_label: p.integrity_label ?? null,
         transcript: p.transcript ?? null,
-        created_at: p.created_at instanceof Date ? p.created_at.toISOString() : String(p.created_at),
+        created_at:
+          p.created_at instanceof Date ? p.created_at.toISOString() : String(p.created_at),
         reactions: Object.entries(reacts).map(([type, count]) => ({ type, count })),
       };
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json(result, {
+      headers: { "Cache-Control": "no-store, max-age=0" },
+    });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
