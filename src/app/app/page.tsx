@@ -29,6 +29,14 @@ import {
   markPublished,
 } from "@/lib/db";
 import type { ReportReason } from "@/components/Feed/FeedCard";
+import {
+  detectContinent,
+  preferredLanguages,
+  rankByRegion,
+  continentLabel,
+  type ContinentId,
+} from "@/lib/region";
+import type { RegionScope } from "@/components/Feed/FilterBar";
 
 type MediaFilter = "all" | MediaType;
 
@@ -48,12 +56,29 @@ export default function Home() {
   const [modalSession, setModalSession] = useState(0);
   const [room, setRoom] = useState<FeelingId | null>(null);
   const [shareFeeling, setShareFeeling] = useState<FeelingId | undefined>(undefined);
+  const [continent, setContinent] = useState<ContinentId>("americas");
+  const [regionScope, setRegionScope] = useState<RegionScope>("near");
 
-  const filtered = thoughts.filter((t) => {
-    const mOk = media === "all" || t.mediaType === media;
-    const fOk = feeling === "all" || t.feeling === feeling;
-    return mOk && fOk;
-  });
+  useEffect(() => {
+    setContinent(detectContinent());
+  }, []);
+
+  const preferred = useMemo(() => preferredLanguages(continent), [continent]);
+
+  const filtered = useMemo(() => {
+    const base = thoughts.filter((t) => {
+      const mOk = media === "all" || t.mediaType === media;
+      const fOk = feeling === "all" || t.feeling === feeling;
+      return mOk && fOk;
+    });
+
+    // Near you: lift languages common to this continent (and the browser) first.
+    // Never hide other languages — translate stays available on every take.
+    if (regionScope === "near") {
+      return rankByRegion(base, preferred);
+    }
+    return base;
+  }, [thoughts, media, feeling, regionScope, preferred]);
 
   const openShare = (tabPref: MediaType = "video", presetFeeling?: FeelingId) => {
     setInitialTab(tabPref);
@@ -210,13 +235,24 @@ export default function Home() {
                   onMediaChange={setMedia}
                   feeling={feeling}
                   onFeelingChange={setFeeling}
+                  regionScope={regionScope}
+                  onRegionScopeChange={setRegionScope}
+                  continent={continent}
+                  onContinentChange={setContinent}
                 />
 
                 <div className="app-pad mt-2">
                   <div className="mb-1 flex items-end justify-between border-b border-[var(--border-base)] pb-3 pt-4">
-                    <h2 className="font-display text-lg font-medium text-[var(--foreground)]">
-                      Latest takes
-                    </h2>
+                    <div>
+                      <h2 className="font-display text-lg font-medium text-[var(--foreground)]">
+                        Latest takes
+                      </h2>
+                      <p className="mt-0.5 text-[11px] text-[var(--muted)]">
+                        {regionScope === "near"
+                          ? `${continentLabel(continent)} first · other languages still here · tap Translate`
+                          : "Voices from everywhere · tap Translate on any language"}
+                      </p>
+                    </div>
                     <span className="text-[11px] tabular-nums text-[var(--muted)]">
                       {filtered.length}
                     </span>
