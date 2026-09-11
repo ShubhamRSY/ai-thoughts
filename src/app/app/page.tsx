@@ -13,6 +13,9 @@ import type { CapturedClip } from "@/components/Submit/MediaRecorderView";
 import PulseOverview, { type FeelingTally } from "@/components/Pulse/PulseOverview";
 import FeelingRoom from "@/components/Pulse/FeelingRoom";
 import StreakCard from "@/components/StreakCard";
+import DailyCheckIn from "@/components/DailyCheckIn";
+import DailyHabits from "@/components/DailyHabits";
+import ActivityPanel, { useActivity } from "@/components/ActivityPanel";
 import { INITIAL_THOUGHTS } from "@/lib/mock-data";
 import { digestBytes } from "@/lib/integrity";
 import { useLocalProfile } from "@/hooks/useLocalProfile";
@@ -60,6 +63,9 @@ export default function Home() {
   const [continent, setContinent] = useState<ContinentId>("americas");
   const [regionScope, setRegionScope] = useState<RegionScope>("near");
   const [undoId, setUndoId] = useState<string | null>(null);
+  const [activityOpen, setActivityOpen] = useState(false);
+  const { items: activityItems, unread: activityUnread, markAllRead, refresh: refreshActivity } =
+    useActivity(!!user);
 
   useEffect(() => {
     setContinent(detectContinent());
@@ -80,12 +86,11 @@ export default function Home() {
       return mOk && fOk;
     });
 
-    // Near you: lift languages common to this continent (and the browser) first.
-    // Never hide other languages — translate stays available on every take.
+    // Always lift today's takes; Near you also ranks by regional languages.
     if (regionScope === "near") {
       return rankByRegion(base, preferred);
     }
-    return base;
+    return rankByRegion(base, []);
   }, [thoughts, media, feeling, regionScope, preferred]);
 
   const openShare = (tabPref: MediaType = "video", presetFeeling?: FeelingId) => {
@@ -264,6 +269,12 @@ export default function Home() {
               />
             ) : (
               <>
+                <DailyCheckIn
+                  streakCount={streak.count}
+                  checkedInToday={streak.last === todayKey()}
+                  onShare={(feelingId) => openShare("text", feelingId)}
+                />
+
                 <PulseOverview
                   thoughts={thoughts}
                   tally={feelingTally}
@@ -335,11 +346,36 @@ export default function Home() {
               checkedInToday={streak.last === todayKey()}
               onCreate={() => openShare("video")}
             />
+            <DailyHabits
+              checkedInToday={streak.last === todayKey()}
+              displayHandle={identityHandle}
+            />
           </div>
         )}
       </main>
 
-      <MobileNav active={tab} onTab={setTab} onCreate={() => openShare("video")} />
+      <MobileNav
+        active={tab}
+        onTab={setTab}
+        onCreate={() => openShare("video")}
+        onActivity={() => {
+          if (!user) {
+            setTab("you");
+            return;
+          }
+          setActivityOpen(true);
+          void refreshActivity();
+        }}
+        activityCount={activityUnread}
+      />
+
+      <ActivityPanel
+        open={activityOpen}
+        onClose={() => setActivityOpen(false)}
+        items={activityItems}
+        unread={activityUnread}
+        onMarkAllRead={() => void markAllRead()}
+      />
 
       {undoId && (
         <div className="app-rail pointer-events-none fixed inset-x-0 bottom-20 z-40 flex justify-center px-4 sm:bottom-6">

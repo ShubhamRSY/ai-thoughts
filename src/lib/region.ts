@@ -144,16 +144,37 @@ export function preferredLanguages(continent: ContinentId): string[] {
   return out;
 }
 
-export function rankByRegion<T extends { language?: string | null }>(
-  items: T[],
-  preferred: string[]
-): T[] {
+export function rankByRegion<
+  T extends { language?: string | null; timeLabel?: string; timestamp?: string },
+>(items: T[], preferred: string[]): T[] {
   const rank = new Map(preferred.map((l, i) => [l, i]));
+  const dayAgo = Date.now() - 864e5;
   return [...items].sort((a, b) => {
+    const aFresh = isFreshTake(a, dayAgo) ? 0 : 1;
+    const bFresh = isFreshTake(b, dayAgo) ? 0 : 1;
+    if (aFresh !== bFresh) return aFresh - bFresh;
     const aBase = (a.language || "").toLowerCase().split(/[-_]/)[0];
     const bBase = (b.language || "").toLowerCase().split(/[-_]/)[0];
     const ar = rank.has(aBase) ? rank.get(aBase)! : 1000;
     const br = rank.has(bBase) ? rank.get(bBase)! : 1000;
     return ar - br;
   });
+}
+
+/** Prefer posts from the last day so the feed feels alive. */
+function isFreshTake(
+  item: { timeLabel?: string | null; timestamp?: string },
+  dayAgo: number
+): boolean {
+  if (item.timestamp) {
+    const t = new Date(item.timestamp).getTime();
+    if (!Number.isNaN(t) && t >= dayAgo) return true;
+  }
+  const label = (item.timeLabel || "").toLowerCase();
+  return (
+    label === "now" ||
+    label.includes("today") ||
+    /^\d+m$/.test(label) ||
+    /^\d+h$/.test(label)
+  );
 }

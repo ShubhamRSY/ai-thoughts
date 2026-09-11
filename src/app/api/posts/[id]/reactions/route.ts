@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
+import { notifyPostOwner } from "@/lib/activity";
 
 export async function POST(
   request: NextRequest,
@@ -33,6 +34,14 @@ export async function POST(
       handle: session.handle,
       reaction,
       created_at: new Date(),
+    });
+
+    await notifyPostOwner(db, {
+      postId: id,
+      actorHandle: session.handle,
+      actorAuthor: session.displayName || session.handle,
+      kind: "reaction",
+      preview: reaction,
     });
 
     return NextResponse.json({ ok: true, action: "added" });

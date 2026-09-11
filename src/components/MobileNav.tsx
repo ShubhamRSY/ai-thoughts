@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, Plus, User } from "lucide-react";
+import { Home, Plus, User, Bell } from "lucide-react";
 import { BRAND } from "@/lib/brand";
 
 export type TabId = "home" | "you";
@@ -9,13 +9,21 @@ interface MobileNavProps {
   active: TabId;
   onTab: (t: TabId) => void;
   onCreate: () => void;
+  onActivity?: () => void;
+  activityCount?: number;
 }
 
-export default function MobileNav({ active, onTab, onCreate }: MobileNavProps) {
+export default function MobileNav({
+  active,
+  onTab,
+  onCreate,
+  onActivity,
+  activityCount = 0,
+}: MobileNavProps) {
   return (
     <nav className="safe-bottom fixed inset-x-0 bottom-0 z-40">
       <div className="app-rail border-t border-[var(--border-base)] bg-[var(--surface)]">
-        <div className="grid h-16 grid-cols-3 items-center">
+        <div className="grid h-16 grid-cols-4 items-center">
           <button
             type="button"
             onClick={() => onTab("home")}
@@ -34,6 +42,20 @@ export default function MobileNav({ active, onTab, onCreate }: MobileNavProps) {
             className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--surface)] transition hover:bg-[var(--accent-2)]"
           >
             <Plus className="h-5 w-5" strokeWidth={2.4} />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onActivity?.()}
+            className="relative flex flex-col items-center gap-0.5 text-[10px] font-medium text-[var(--muted)] hover:text-[var(--foreground)]"
+          >
+            <Bell className="h-5 w-5" strokeWidth={1.8} />
+            Activity
+            {activityCount > 0 && (
+              <span className="absolute right-[18%] top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[9px] font-bold text-[var(--surface)]">
+                {activityCount > 9 ? "9+" : activityCount}
+              </span>
+            )}
           </button>
 
           <button

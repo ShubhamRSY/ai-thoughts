@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
 import { checkDignity } from "@/lib/dignity";
+import { notifyPostOwner } from "@/lib/activity";
 
 export async function GET(
   _request: NextRequest,
@@ -52,12 +53,21 @@ export async function POST(
     }
 
     const { db } = await connectToDatabase();
+    const preview = trimmed.slice(0, 600);
     const result = await db.collection("messages").insertOne({
       post_id: id,
       handle: session.handle,
       author: session.displayName || session.handle,
-      body: trimmed.slice(0, 600),
+      body: preview,
       created_at: new Date(),
+    });
+
+    await notifyPostOwner(db, {
+      postId: id,
+      actorHandle: session.handle,
+      actorAuthor: session.displayName || session.handle,
+      kind: "reply",
+      preview,
     });
 
     return NextResponse.json({ ok: true, id: result.insertedId.toString() });
