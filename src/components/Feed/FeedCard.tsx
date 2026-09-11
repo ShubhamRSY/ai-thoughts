@@ -17,6 +17,8 @@ import IntegrityBadge from "@/components/IntegrityBadge";
 import TranscriptPanel from "@/components/Feed/TranscriptPanel";
 import FeelingBadge from "@/components/FeelingBadge";
 import ChatPanel from "@/components/Chat/ChatPanel";
+import TranslateToEnglish from "@/components/TranslateToEnglish";
+import { shouldOfferTranslate } from "@/lib/lang";
 
 function initials(name: string) {
   return name
@@ -191,6 +193,9 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
         >
           {thought.content}
         </p>
+        {shouldOfferTranslate(thought.language) && (
+          <TranslateToEnglish text={thought.content} sourceLang={thought.language} />
+        )}
         {thought.tags.length > 0 && (
           <p className="text-xs text-[var(--muted)]">
             {thought.tags.map((t) => t.replace(/^#/, "")).join(" · ")}

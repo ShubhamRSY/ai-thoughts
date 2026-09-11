@@ -10,6 +10,7 @@ import {
 } from "@/lib/db";
 import type { Integrity } from "@/lib/types";
 import { useLocalProfile } from "@/hooks/useLocalProfile";
+import TranslateToEnglish from "@/components/TranslateToEnglish";
 
 interface ChatPanelProps {
   postId: string;
@@ -205,6 +206,7 @@ export default function ChatPanel({ postId, postAuthor, integrity, open, onClose
                   <p dir="auto" className="mt-0.5 break-words text-sm leading-snug text-[var(--foreground)]">
                     {m.body}
                   </p>
+                  <TranslateToEnglish text={m.body} compact />
                 </div>
               </div>
             ))
