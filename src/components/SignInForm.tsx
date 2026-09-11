@@ -106,7 +106,7 @@ function SignInFormInner({ total }: { total: number }) {
     const result = await verifyCode(email.trim(), code.trim());
     setSubmitting(false);
     if (result.ok) {
-      router.replace(from.startsWith("/") && !from.startsWith("//") ? from : "/app");
+      router.replace(dest);
       router.refresh();
     } else {
       setError(result.error ?? "Verification failed");
