@@ -1,5 +1,5 @@
 // AI·Thoughts service worker — app-shell caching so the pulse works offline-ish.
-const CACHE = "aithoughts-v2";
+const CACHE = "aithoughts-v3";
 const CORE = ["/", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -26,8 +26,10 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== location.origin) return;
 
-  // Navigations: network-first, fall back to the same page's cache entry,
-  // then to the root shell as a last resort.
+  // Never cache API — pulse data must stay fresh.
+  if (url.pathname.startsWith("/api/")) return;
+
+  // Navigations: network-first, fall back to cache.
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)
