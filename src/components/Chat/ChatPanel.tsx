@@ -206,7 +206,7 @@ export default function ChatPanel({ postId, postAuthor, integrity, open, onClose
                   <p dir="auto" className="mt-0.5 break-words text-sm leading-snug text-[var(--foreground)]">
                     {m.body}
                   </p>
-                  <TranslateToEnglish text={m.body} compact />
+                  <TranslateToEnglish text={m.body} variant="dropdown" />
                 </div>
               </div>
             ))
