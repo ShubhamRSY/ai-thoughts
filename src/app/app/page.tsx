@@ -212,13 +212,13 @@ export default function Home() {
                   onFeelingChange={setFeeling}
                 />
 
-                <div className="mt-5 px-[var(--shell-pad)]">
-                  <div className="mb-3 flex items-center justify-between">
-                    <h2 className="font-display text-sm font-semibold text-[var(--foreground)]">
+                <div className="mt-2 px-[var(--shell-pad)]">
+                  <div className="mb-1 flex items-end justify-between border-b border-[var(--border-base)] pb-3 pt-4">
+                    <h2 className="font-display text-lg font-medium text-[var(--foreground)]">
                       Latest takes
                     </h2>
                     <span className="text-[11px] tabular-nums text-[var(--muted)]">
-                      {filtered.length} shown
+                      {filtered.length}
                     </span>
                   </div>
                   <FeedGrid

@@ -9,19 +9,19 @@ const config: CapacitorConfig = {
     url: 'https://ai-thoughts-mu.vercel.app',
     cleartext: false,
   },
-  backgroundColor: '#e8eef2',
+  backgroundColor: '#f2f0eb',
   ios: {
     contentInset: 'automatic',
-    backgroundColor: '#e8eef2',
+    backgroundColor: '#f2f0eb',
     preferredContentMode: 'mobile',
   },
   android: {
-    backgroundColor: '#e8eef2',
+    backgroundColor: '#f2f0eb',
     allowMixedContent: false,
   },
   plugins: {
     SplashScreen: {
-      backgroundColor: '#e8eef2',
+      backgroundColor: '#f2f0eb',
       launchAutoHide: true,
     },
   },

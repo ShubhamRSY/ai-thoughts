@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Mic, Sprout } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import type { Thought, FeelingId, Reaction } from "@/lib/types";
 import { feelingOf } from "@/lib/feelings";
 import FeedCard from "@/components/Feed/FeedCard";
@@ -25,67 +25,43 @@ export default function FeelingRoom({
 
   return (
     <div className="flex-1">
-      {/* Room header */}
-      <div className="sticky top-0 z-20 border-b border-[var(--border-base)]/80 bg-[var(--surface)]/90 px-4 py-3 backdrop-blur-md">
+      <div className="sticky top-0 z-20 border-b border-[var(--border-base)] bg-[var(--surface)]/95 px-[var(--shell-pad)] py-4 backdrop-blur-sm">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
-            aria-label="Back to pulse"
-            className="rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+            aria-label="Back"
+            className="rounded-full p-1.5 text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <span
-            aria-hidden
-            className={`flex h-10 w-10 items-center justify-center rounded-xl border ${meta.chip} text-xl`}
-          >
-            {meta.emoji}
-          </span>
           <div className="min-w-0 flex-1">
-            <h2 className="font-display truncate text-base font-bold text-[var(--foreground)]">{meta.label}</h2>
-            <p className="text-[11px] text-[var(--muted)]">
-              {roomThoughts.length} voice{roomThoughts.length === 1 ? "" : "s"} feel this today
+            <h2 className="font-display text-xl font-medium text-[var(--foreground)]">
+              {meta.short}
+            </h2>
+            <p className="text-xs text-[var(--muted)]">
+              {roomThoughts.length} voice{roomThoughts.length === 1 ? "" : "s"} · {meta.label}
             </p>
           </div>
         </div>
         <button
           onClick={onCreate}
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--accent-2)]"
+          className="mt-4 w-full rounded-full bg-[var(--accent)] py-3 text-sm font-semibold text-[var(--surface)] hover:bg-[var(--accent-2)]"
         >
-          <Mic className="h-4 w-4" />
-          Share your take in this room
+          Share in this room
         </button>
       </div>
 
-      {/* Room feed */}
-      <div className="px-4 pb-6 pt-3">
+      <div className="px-[var(--shell-pad)] pb-6">
         {roomThoughts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[var(--border-base)] bg-[var(--surface)] px-6 py-16 text-center">
-            <span aria-hidden className="text-4xl">
-              {meta.emoji}
-            </span>
-            <p className="text-sm font-medium text-[var(--foreground)]">This room is just starting.</p>
-            <p className="max-w-xs text-xs text-[var(--muted)]">
-              Be the first to say you feel {meta.short.toLowerCase()} — someone out there needs
-              to hear it.
+          <div className="py-16 text-center">
+            <p className="font-display text-lg text-[var(--foreground)]">This room is new.</p>
+            <p className="mt-2 text-sm text-[var(--muted)]">
+              Be the first to say you feel {meta.short.toLowerCase()}.
             </p>
           </div>
         ) : (
-          <div className="flex flex-col gap-4">
-            {roomThoughts.map((t) => (
-              <FeedCard key={t.id} thought={t} onReact={onReact} />
-            ))}
-          </div>
+          roomThoughts.map((t) => <FeedCard key={t.id} thought={t} onReact={onReact} />)
         )}
-      </div>
-
-      {/* Room footer note */}
-      <div className="px-4 pb-2">
-        <p className="flex items-center gap-1.5 rounded-xl border border-[var(--border-base)] bg-[var(--surface)] px-3 py-2 text-[11px] text-[var(--muted)]">
-          <Sprout className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
-          Rooms grow as more people feel this way. Your voice makes it easier for others to say
-          it first.
-        </p>
       </div>
     </div>
   );

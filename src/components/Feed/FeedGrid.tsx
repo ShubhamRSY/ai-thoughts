@@ -8,7 +8,6 @@ interface FeedGridProps {
   onReact?: (thoughtId: string, reaction: Reaction) => void;
   onReport?: (thoughtId: string, reason: ReportReason) => void;
   onOpenRoom?: (id: FeelingId) => void;
-  /** feeling id -> number of takes sharing it (for the "you're not alone" chip). */
   othersMap?: Record<string, number>;
 }
 
@@ -21,13 +20,10 @@ export default function FeedGrid({
 }: FeedGridProps) {
   if (thoughts.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[var(--border-base)] bg-[var(--surface)] px-6 py-16 text-center">
-        <div className="animate-floaty text-4xl text-[var(--accent)]" aria-hidden>
-          ◌
-        </div>
-        <p className="text-sm font-medium text-[var(--foreground)]">The pulse is quiet right now.</p>
-        <p className="max-w-xs text-xs text-[var(--muted)]">
-          Be the first to share how you really feel about AI — no matter your age or language.
+      <div className="px-1 py-16 text-center">
+        <p className="font-display text-lg text-[var(--foreground)]">Quiet for now.</p>
+        <p className="mt-2 text-sm text-[var(--muted)]">
+          Be the first to say how AI makes you feel.
         </p>
       </div>
     );

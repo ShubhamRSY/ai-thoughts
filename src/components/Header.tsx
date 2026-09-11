@@ -3,7 +3,6 @@
 import { Plus, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import BrandMark from "@/components/BrandMark";
 
 interface HeaderProps {
   onShare: () => void;
@@ -20,47 +19,36 @@ export default function Header({ onShare }: HeaderProps) {
   };
 
   return (
-    <header className="safe-top sticky top-0 z-40 border-b border-[var(--border-base)]/80 bg-[var(--surface)]/90 backdrop-blur-md">
-      <div className="shell flex h-14 items-center justify-between !px-[var(--shell-pad)] sm:px-0">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--accent)]">
-            <BrandMark className="h-6 w-6" />
-          </div>
-          <div className="min-w-0 leading-tight">
-            <div className="font-display flex items-center gap-1.5 truncate text-base font-semibold tracking-tight text-[var(--foreground)]">
-              AI·Thoughts
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-teal-600" aria-hidden />
-            </div>
-            <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--muted)]">
-              The Pulse
-            </div>
-          </div>
+    <header className="safe-top sticky top-0 z-40 border-b border-[var(--border-base)] bg-[var(--surface)]/95 backdrop-blur-sm">
+      <div className="shell flex h-[var(--header-h)] items-center justify-between !px-[var(--shell-pad)]">
+        <div className="min-w-0">
+          <p className="font-display truncate text-[15px] font-semibold tracking-tight text-[var(--foreground)]">
+            AI·Thoughts
+          </p>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1">
           <button
             onClick={onShare}
-            className="flex h-9 items-center gap-1.5 rounded-xl bg-[var(--accent)] px-3.5 text-xs font-semibold text-white transition hover:bg-[var(--accent-2)] active:scale-[0.98]"
+            className="flex h-9 items-center gap-1.5 rounded-full bg-[var(--accent)] px-4 text-xs font-semibold text-[var(--surface)] transition hover:bg-[var(--accent-2)]"
           >
-            <Plus className="h-4 w-4" strokeWidth={2.4} />
-            <span className="hidden xs:inline sm:inline">Share</span>
+            <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
+            Share
           </button>
           {user && (
-            <div
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-xs font-bold text-teal-900"
-              title={`Signed in as ${user.displayName} (${user.handle})`}
-              aria-hidden
+            <span
+              className="ml-1 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--surface-2)] text-xs font-semibold text-[var(--foreground)]"
+              title={user.displayName}
             >
               {user.displayName.slice(0, 1).toUpperCase()}
-            </div>
+            </span>
           )}
           <button
             onClick={handleSignOut}
             aria-label="Sign out"
-            title="Sign out"
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border-base)] bg-[var(--surface-2)] text-[var(--muted)] transition hover:text-[var(--foreground)] active:scale-[0.98]"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--muted)] transition hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
           >
-            <LogOut className="h-4 w-4" strokeWidth={2.2} />
+            <LogOut className="h-4 w-4" strokeWidth={2} />
           </button>
         </div>
       </div>

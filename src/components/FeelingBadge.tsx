@@ -15,20 +15,13 @@ export default function FeelingBadge({
   if (!f) return null;
 
   const pad =
-    size === "sm"
-      ? "px-1.5 py-0.5 text-[10px]"
-      : size === "lg"
-        ? "px-3 py-1.5 text-sm"
-        : "px-2 py-1 text-xs";
+    size === "sm" ? "text-[11px]" : size === "lg" ? "text-sm" : "text-xs";
 
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-lg border font-semibold ${f.chip} ${pad}`}
-      title={`Feeling: ${f.label}`}
+      className={`inline font-medium text-[var(--accent)] ${pad}`}
+      title={f.label}
     >
-      <span className="leading-none opacity-70" aria-hidden>
-        {f.emoji}
-      </span>
       {f.short}
     </span>
   );

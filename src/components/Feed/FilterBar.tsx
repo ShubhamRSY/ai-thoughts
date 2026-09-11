@@ -20,35 +20,28 @@ const MEDIA_FILTERS: { id: MediaFilter; label: string; icon: typeof LayoutGrid }
   { id: "text", label: "Text", icon: Type },
 ];
 
-/** Media-only filter — feelings are chosen from the Live mood card above. */
-export default function FilterBar({
-  media,
-  onMediaChange,
-}: FilterBarProps) {
+export default function FilterBar({ media, onMediaChange }: FilterBarProps) {
   return (
-    <div className="mt-4 px-[var(--shell-pad)]">
-      <div
-        role="tablist"
-        aria-label="Filter by format"
-        className="inline-flex w-full max-w-full overflow-x-auto rounded-xl border border-[var(--border-base)] bg-[var(--surface-2)] p-1"
-      >
+    <div className="mt-4 border-y border-[var(--border-base)] px-[var(--shell-pad)]">
+      <div className="flex gap-5 overflow-x-auto" role="tablist" aria-label="Format">
         {MEDIA_FILTERS.map((f) => {
           const active = media === f.id;
-          const Icon = f.icon;
           return (
             <button
               key={f.id}
               role="tab"
               aria-selected={active}
               onClick={() => onMediaChange(f.id)}
-              className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition ${
+              className={`relative shrink-0 py-3 text-sm transition ${
                 active
-                  ? "bg-white text-[var(--foreground)] shadow-sm shadow-slate-900/5"
+                  ? "font-semibold text-[var(--foreground)]"
                   : "text-[var(--muted)] hover:text-[var(--foreground)]"
               }`}
             >
-              <Icon className="h-3.5 w-3.5 shrink-0 opacity-70" strokeWidth={2.2} />
               {f.label}
+              {active && (
+                <span className="absolute inset-x-0 bottom-0 h-[2px] bg-[var(--foreground)]" />
+              )}
             </button>
           );
         })}
