@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { findOrCreateUser, createSession, setSessionCookie } from "@/lib/auth";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { generateOtpCode, storeOtp } from "@/lib/otp";
+import { sendOtpEmail } from "@/lib/email";
 
-const SIGN_IN_LIMIT = 8;
+const SIGN_IN_LIMIT = 5;
 const SIGN_IN_WINDOW_MS = 10 * 60_000;
 
 export async function POST(request: Request) {
@@ -28,25 +29,52 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
     }
 
-    const name = (displayName && typeof displayName === "string" && displayName.trim())
-      ? displayName.trim().slice(0, 80)
-      : email.split("@")[0].slice(0, 80);
+    const normalized = email.toLowerCase().trim();
+    const { ok: emailOk, retryInSec: emailRetry } = rateLimit(
+      `sign-in-email:${normalized}`,
+      3,
+      SIGN_IN_WINDOW_MS
+    );
+    if (!emailOk) {
+      return NextResponse.json(
+        { error: "Too many codes for this email — try again shortly", retry_in_sec: emailRetry },
+        { status: 429 }
+      );
+    }
 
-    const user = await findOrCreateUser(email, name);
-    const token = await createSession(user);
-    await setSessionCookie(token);
+    const name =
+      displayName && typeof displayName === "string" && displayName.trim()
+        ? displayName.trim().slice(0, 80)
+        : normalized.split("@")[0].slice(0, 80);
 
-    return NextResponse.json({
+    const code = generateOtpCode();
+    await storeOtp(normalized, code, name);
+    await sendOtpEmail(normalized, code);
+
+    const payload: {
+      ok: true;
+      sent: true;
+      message: string;
+      devCode?: string;
+    } = {
       ok: true,
-      user: {
-        id: user._id?.toString(),
-        email: user.email,
-        handle: user.handle,
-        displayName: user.displayName,
-      },
-    });
+      sent: true,
+      message: "Check your email for a 6-digit code",
+    };
+
+    // Only expose the code in local/dev when Resend isn't configured —
+    // never in production.
+    if (process.env.NODE_ENV !== "production" && !process.env.RESEND_API_KEY) {
+      payload.devCode = code;
+    }
+
+    return NextResponse.json(payload);
   } catch (e) {
     console.error("sign-in error:", e);
-    return NextResponse.json({ error: "Sign in failed" }, { status: 500 });
+    const message =
+      e instanceof Error && e.message.includes("RESEND_API_KEY")
+        ? "Email delivery is not configured"
+        : "Could not send sign-in code";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -122,9 +122,8 @@ export async function findOrCreateUser(
   if (user) {
     await users.updateOne(
       { _id: user._id },
-      { $set: { lastLoginAt: new Date().toISOString(), displayName } }
+      { $set: { lastLoginAt: new Date().toISOString() } }
     );
-    user.displayName = displayName;
     user.lastLoginAt = new Date().toISOString();
   } else {
     const handle = `@${normalizedEmail.split("@")[0]}${Math.floor(Math.random() * 9000 + 1000)}`;

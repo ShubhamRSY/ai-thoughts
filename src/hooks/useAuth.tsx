@@ -12,7 +12,14 @@ export interface AuthUser {
 interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
-  signIn: (email: string, displayName: string) => Promise<{ ok: boolean; error?: string }>;
+  requestCode: (
+    email: string,
+    displayName: string
+  ) => Promise<{ ok: boolean; error?: string; devCode?: string }>;
+  verifyCode: (
+    email: string,
+    code: string
+  ) => Promise<{ ok: boolean; error?: string }>;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -20,7 +27,8 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue>({
   user: null,
   loading: true,
-  signIn: async () => ({ ok: false }),
+  requestCode: async () => ({ ok: false }),
+  verifyCode: async () => ({ ok: false }),
   signOut: async () => {},
   refresh: async () => {},
 });
@@ -58,26 +66,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const signIn = useCallback(
-    async (email: string, displayName: string) => {
-      try {
-        const res = await fetch("/api/auth/sign-in", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, displayName }),
-        });
-        const data = await res.json();
-        if (data.ok) {
-          setUser(data.user);
-          return { ok: true };
-        }
-        return { ok: false, error: data.error ?? "Sign in failed" };
-      } catch {
-        return { ok: false, error: "Network error" };
+  const requestCode = useCallback(async (email: string, displayName: string) => {
+    try {
+      const res = await fetch("/api/auth/sign-in", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, displayName }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        return { ok: true, devCode: data.devCode as string | undefined };
       }
-    },
-    []
-  );
+      return { ok: false, error: data.error ?? "Could not send code" };
+    } catch {
+      return { ok: false, error: "Network error" };
+    }
+  }, []);
+
+  const verifyCode = useCallback(async (email: string, code: string) => {
+    try {
+      const res = await fetch("/api/auth/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setUser(data.user);
+        return { ok: true };
+      }
+      return { ok: false, error: data.error ?? "Verification failed" };
+    } catch {
+      return { ok: false, error: "Network error" };
+    }
+  }, []);
 
   const signOut = useCallback(async () => {
     try {
@@ -88,7 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signOut, refresh }}>
+    <AuthContext.Provider value={{ user, loading, requestCode, verifyCode, signOut, refresh }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,12 +1,15 @@
+import Link from "next/link";
+import { LEGAL_UPDATED } from "@/lib/site";
+
 export default function GuidelinesPage() {
   return (
     <div className="mx-auto min-h-dvh w-full max-w-[430px] px-5 py-8">
       <h1 className="text-2xl font-bold text-zinc-100">Community Guidelines</h1>
-      <p className="mt-1 text-xs text-zinc-500">Last updated: {date()}</p>
+      <p className="mt-1 text-xs text-zinc-500">Last updated: {LEGAL_UPDATED}</p>
 
       <div className="mt-6 space-y-6 text-sm leading-relaxed text-zinc-300">
         <section>
-          <h2 className="mb-1 text-base font-semibold text-zinc-100">🌪️ The one rule</h2>
+          <h2 className="mb-1 text-base font-semibold text-zinc-100">The one rule</h2>
           <p>
             Every feeling about AI belongs here — that&apos;s the whole idea. Be honest, be kind,
             and remember a person is on the other end of every take.
@@ -27,7 +30,7 @@ export default function GuidelinesPage() {
         <section>
           <h2 className="mb-1 text-base font-semibold text-zinc-100">How to report</h2>
           <p>
-            Use the ⋯ menu on any take → <em>Report this take</em>, pick a reason, and our
+            Use the menu on any take → <em>Report this take</em>, pick a reason, and our
             community keepers review it. Reports are confidential.
           </p>
         </section>
@@ -40,14 +43,12 @@ export default function GuidelinesPage() {
           </p>
         </section>
       </div>
+
+      <div className="mt-8">
+        <Link href="/" className="text-xs text-zinc-500 hover:text-zinc-300">
+          ← Back home
+        </Link>
+      </div>
     </div>
   );
-}
-
-function date(): string {
-  return new Date().toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
 }

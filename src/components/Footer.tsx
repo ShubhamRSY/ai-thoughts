@@ -36,6 +36,12 @@ export default function Footer() {
             Community Guidelines
           </Link>
           <Link
+            href="/contact"
+            className="transition hover:text-zinc-200"
+          >
+            Contact
+          </Link>
+          <Link
             href="/keeper"
             className="transition hover:text-zinc-500"
           >

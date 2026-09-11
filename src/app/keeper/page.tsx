@@ -23,12 +23,32 @@ function timeAgo(iso: string): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
+type ContactRow = {
+  id: string;
+  email: string;
+  message: string;
+  kind: string;
+  createdAt: string;
+};
+
 export default function KeeperPage() {
   const { user, loading: authLoading } = useAuth();
   const [authorized, setAuthorized] = useState<boolean | null>(null);
   const [reports, setReports] = useState<ReportRow[]>([]);
+  const [contacts, setContacts] = useState<ContactRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState<string | null>(null);
+
+  const loadContacts = async () => {
+    try {
+      const res = await fetch("/api/contact");
+      if (!res.ok) return;
+      const data = await res.json();
+      setContacts(data.requests ?? []);
+    } catch {
+      /* ignore */
+    }
+  };
 
   useEffect(() => {
     if (authLoading) return;
@@ -47,6 +67,7 @@ export default function KeeperPage() {
       if (keeper) {
         const rows = await fetchReports();
         if (!cancelled) setReports(rows ?? []);
+        await loadContacts();
       }
       setLoading(false);
     })();
@@ -62,8 +83,23 @@ export default function KeeperPage() {
     if (keeper) {
       const rows = await fetchReports();
       setReports(rows ?? []);
+      await loadContacts();
     }
     setLoading(false);
+  };
+
+  const resolveContact = async (id: string) => {
+    setWorking(id);
+    try {
+      await fetch("/api/contact", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      setContacts((prev) => prev.filter((c) => c.id !== id));
+    } finally {
+      setWorking(null);
+    }
   };
 
   const handleDelete = async (r: ReportRow) => {
@@ -131,7 +167,10 @@ export default function KeeperPage() {
               <ShieldCheck className="h-5 w-5 text-violet-400" /> Keepers Desk
             </h1>
             <p className="text-[11px] text-zinc-500">
-              {reports.length} open {reports.length === 1 ? "report" : "reports"} to review
+              {reports.length} open {reports.length === 1 ? "report" : "reports"}
+              {contacts.length > 0
+                ? ` · ${contacts.length} contact ${contacts.length === 1 ? "request" : "requests"}`
+                : ""}
             </p>
           </div>
         </div>
@@ -146,7 +185,6 @@ export default function KeeperPage() {
 
       {reports.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-900/40 px-6 py-12 text-center">
-          <span className="text-3xl">🌿</span>
           <p className="text-sm font-semibold text-zinc-200">All clear</p>
           <p className="max-w-xs text-xs text-zinc-500">
             No open reports right now. The pulse is feeling peaceful.
@@ -192,6 +230,32 @@ export default function KeeperPage() {
             </li>
           ))}
         </ul>
+      )}
+
+      {contacts.length > 0 && (
+        <section className="mt-8">
+          <h2 className="mb-3 text-sm font-semibold text-zinc-200">Contact requests</h2>
+          <ul className="flex flex-col gap-3">
+            {contacts.map((c) => (
+              <li key={c.id} className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
+                <div className="flex items-center gap-2 text-xs text-zinc-500">
+                  <span className="font-semibold capitalize text-violet-300">{c.kind}</span>
+                  <span>·</span>
+                  <span>{timeAgo(c.createdAt)}</span>
+                </div>
+                <p className="mt-2 text-sm text-zinc-200">{c.email}</p>
+                <p className="mt-1 whitespace-pre-wrap text-xs text-zinc-400">{c.message}</p>
+                <button
+                  onClick={() => void resolveContact(c.id)}
+                  disabled={working === c.id}
+                  className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:bg-zinc-700 disabled:opacity-50"
+                >
+                  <Check className="h-3.5 w-3.5" /> Mark resolved
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </div>
   );

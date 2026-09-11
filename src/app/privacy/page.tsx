@@ -1,8 +1,11 @@
+import Link from "next/link";
+import { CONTACT_EMAIL, LEGAL_UPDATED } from "@/lib/site";
+
 export default function PrivacyPage() {
   return (
     <div className="mx-auto min-h-dvh w-full max-w-[430px] px-5 py-8">
       <h1 className="text-2xl font-bold text-zinc-100">Privacy</h1>
-      <p className="mt-1 text-xs text-zinc-500">Last updated: {date()}</p>
+      <p className="mt-1 text-xs text-zinc-500">Last updated: {LEGAL_UPDATED}</p>
 
       <div className="mt-6 space-y-5 text-sm leading-relaxed text-zinc-300">
         <section>
@@ -10,7 +13,7 @@ export default function PrivacyPage() {
           <p>
             When you share a take, we store the media, text, your chosen handle/display name, the
             feeling, language, tags, and a content fingerprint for integrity. If you sign in, we
-            store your email linked to a profile.
+            store your email linked to a profile and send one-time sign-in codes to that address.
           </p>
         </section>
 
@@ -41,19 +44,27 @@ export default function PrivacyPage() {
         <section>
           <h2 className="mb-1 text-base font-semibold text-zinc-100">Your rights</h2>
           <p>
-            You can delete your own takes and request removal of your data by contacting the
-            community keepers. We retain minimal data needed to keep the pulse safe.
+            You can delete your own takes and request removal of your data. Use the{" "}
+            <Link href="/contact" className="text-violet-400 underline-offset-2 hover:underline">
+              contact form
+            </Link>{" "}
+            or email{" "}
+            <a
+              href={`mailto:${CONTACT_EMAIL}`}
+              className="text-violet-400 underline-offset-2 hover:underline"
+            >
+              {CONTACT_EMAIL}
+            </a>
+            . We retain minimal data needed to keep the pulse safe.
           </p>
         </section>
       </div>
+
+      <div className="mt-8">
+        <Link href="/" className="text-xs text-zinc-500 hover:text-zinc-300">
+          ← Back home
+        </Link>
+      </div>
     </div>
   );
-}
-
-function date(): string {
-  return new Date().toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
 }

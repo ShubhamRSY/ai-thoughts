@@ -4,6 +4,7 @@ import "./globals.css";
 import PwaRegister from "@/components/PwaRegister";
 import PWAInstall from "@/components/PWAInstall";
 import { AuthProvider } from "@/hooks/useAuth";
+import { getSiteUrl } from "@/lib/site";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,10 +16,16 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = getSiteUrl();
+const title = "AI·Thoughts — The Public Pulse";
+const description =
+  "Share how you really feel about AI — voice, video, or words. All ages, all languages, one pulse.";
+
 export const metadata: Metadata = {
-  title: "AI·Thoughts — The Public Pulse",
-  description:
-    "Share how you really feel about AI — voice, video, or words. All ages, all languages, one pulse.",
+  metadataBase: new URL(siteUrl),
+  title,
+  description,
+  applicationName: "AI·Thoughts",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
@@ -28,6 +35,27 @@ export const metadata: Metadata = {
   icons: {
     icon: "/icons/icon-192.png",
     apple: "/icons/apple-touch-icon.png",
+  },
+  openGraph: {
+    type: "website",
+    url: siteUrl,
+    siteName: "AI·Thoughts",
+    title,
+    description,
+    images: [
+      {
+        url: "/icons/icon-512.png",
+        width: 512,
+        height: 512,
+        alt: "AI·Thoughts",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title,
+    description,
+    images: ["/icons/icon-512.png"],
   },
 };
 
