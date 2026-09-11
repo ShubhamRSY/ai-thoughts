@@ -14,7 +14,6 @@
 }
 
 :root {
-  /* Editorial Pulse — ink on soft stone, one deep accent */
   --background: #f2f0eb;
   --foreground: #1a1a1a;
   --surface: #faf9f7;
@@ -28,42 +27,87 @@
   --app-vh: 1vh;
   --app-height: 100dvh;
   --shell-max: 32rem;
-  --shell-pad: 1.25rem;
+  /* Same inset both sides so the column stays screen-centered */
+  --pad: max(
+    1.25rem,
+    env(safe-area-inset-left, 0px),
+    env(safe-area-inset-right, 0px)
+  );
+  --pad-x: var(--pad);
+  --pad-r: var(--pad);
   --nav-h: 4rem;
   --header-h: 3.25rem;
+
+  /* Back-compat aliases used by older classNames */
+  --shell-pad: var(--pad);
 }
 
 @media (min-width: 640px) {
   :root {
     --shell-max: 36rem;
-    --shell-pad: 1.5rem;
+    --pad: 1.5rem;
   }
 }
 
 @media (min-width: 1024px) {
   :root {
     --shell-max: 40rem;
-    --shell-pad: 1.75rem;
+    --pad: 1.75rem;
   }
 }
 
-.shell {
-  width: 100%;
-  max-width: var(--shell-max);
+/* One centered column for the whole app (web + Capacitor) */
+.app-frame {
+  display: flex;
+  align-self: center; /* body is flex; without this the column stretches full-bleed */
+  width: min(100%, var(--shell-max));
+  max-width: 100%;
+  min-height: 100dvh;
+  min-height: var(--app-height, 100dvh);
   margin-inline: auto;
-  padding-inline: var(--shell-pad);
+  flex-direction: column;
+  background: var(--surface);
+}
+
+@media (min-width: 640px) {
+  .app-frame {
+    border-inline: 1px solid var(--border-base);
+  }
+}
+
+/* Horizontal padding matching safe areas on both sides */
+.app-pad {
+  padding-inline: var(--pad);
+}
+
+/* Fixed header/nav rail: same width + padding as app-frame content */
+.app-rail {
+  align-self: center;
+  width: min(100%, var(--shell-max));
+  max-width: 100%;
+  margin-inline: auto;
+  padding-inline: var(--pad);
+}
+
+/* Legacy helpers → same alignment rules */
+.shell,
+.shell-raw {
+  align-self: center;
+  width: min(100%, var(--shell-max));
+  max-width: 100%;
+  margin-inline: auto;
+  padding-inline: var(--pad);
 }
 
 .shell-raw {
-  width: 100%;
-  max-width: var(--shell-max);
-  margin-inline: auto;
+  padding-inline: 0;
 }
 
 .shell-frame {
   display: flex;
-  width: 100%;
-  max-width: var(--shell-max);
+  align-self: center;
+  width: min(100%, var(--shell-max));
+  max-width: 100%;
   min-height: 100dvh;
   min-height: var(--app-height, 100dvh);
   margin-inline: auto;
@@ -79,22 +123,31 @@
   }
 }
 
+html.is-app-shell .app-frame,
 html.is-app-shell .shell-frame {
+  align-self: stretch;
+  width: 100%;
   max-width: none;
   border-inline: 0;
-  background: var(--surface);
-  min-height: 100dvh;
-  min-height: var(--app-height, 100dvh);
 }
 
 html.is-app-shell {
   --shell-max: 100%;
-  --shell-pad: max(1.25rem, env(safe-area-inset-left));
+  --pad: max(
+    1.25rem,
+    env(safe-area-inset-left, 0px),
+    env(safe-area-inset-right, 0px)
+  );
 }
 
 @media (min-width: 768px) {
   html.is-app-shell {
     --shell-max: min(40rem, 100%);
+  }
+
+  html.is-app-shell .app-frame,
+  html.is-app-shell .shell-frame {
+    width: min(100%, var(--shell-max));
   }
 }
 

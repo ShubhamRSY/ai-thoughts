@@ -3,7 +3,7 @@ import { LEGAL_UPDATED } from "@/lib/site";
 
 export default function GuidelinesPage() {
   return (
-    <div className="mx-auto min-h-dvh w-full shell-raw px-5 py-8">
+    <div className="app-rail min-h-dvh py-8">
       <h1 className="font-display text-2xl font-bold text-[var(--foreground)]">Community Guidelines</h1>
       <p className="mt-1 text-xs text-[var(--muted)]">Last updated: {LEGAL_UPDATED}</p>
 

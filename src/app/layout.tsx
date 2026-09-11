@@ -73,7 +73,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${fraunces.variable} ${manrope.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-background text-foreground">
+      <body className="min-h-full bg-background text-foreground">
         <AuthProvider>
           <ViewportSync />
           {children}

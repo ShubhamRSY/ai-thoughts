@@ -1,6 +1,5 @@
 "use client";
 
-import { AudioLines, Video, Type, LayoutGrid } from "lucide-react";
 import type { FeelingId, MediaType } from "@/lib/types";
 
 type MediaFilter = "all" | MediaType;
@@ -13,22 +12,23 @@ interface FilterBarProps {
   onFeelingChange: (f: FeelingFilter) => void;
 }
 
-const MEDIA_FILTERS: { id: MediaFilter; label: string; icon: typeof LayoutGrid }[] = [
-  { id: "all", label: "All", icon: LayoutGrid },
-  { id: "audio", label: "Audio", icon: AudioLines },
-  { id: "video", label: "Video", icon: Video },
-  { id: "text", label: "Text", icon: Type },
+const MEDIA_FILTERS: { id: MediaFilter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "audio", label: "Audio" },
+  { id: "video", label: "Video" },
+  { id: "text", label: "Text" },
 ];
 
 export default function FilterBar({ media, onMediaChange }: FilterBarProps) {
   return (
-    <div className="mt-4 border-y border-[var(--border-base)] px-[var(--shell-pad)]">
+    <div className="app-pad mt-4 border-y border-[var(--border-base)]">
       <div className="flex gap-5 overflow-x-auto" role="tablist" aria-label="Format">
         {MEDIA_FILTERS.map((f) => {
           const active = media === f.id;
           return (
             <button
               key={f.id}
+              type="button"
               role="tab"
               aria-selected={active}
               onClick={() => onMediaChange(f.id)}

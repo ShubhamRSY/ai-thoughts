@@ -62,6 +62,7 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
   const [reporting, setReporting] = useState(false);
   const [reported, setReported] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [commentCount, setCommentCount] = useState<number | null>(null);
   const [showReact, setShowReact] = useState(false);
 
   const mediaElRef = useRef<HTMLMediaElement | null>(null);
@@ -224,11 +225,14 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
           {likes}
         </button>
         <button
-          onClick={() => setChatOpen(true)}
-          className="flex items-center gap-1.5 text-xs font-medium hover:text-[var(--foreground)]"
+          type="button"
+          onClick={() => setChatOpen((v) => !v)}
+          className={`flex items-center gap-1.5 text-xs font-medium transition ${
+            chatOpen ? "text-[var(--foreground)]" : "hover:text-[var(--foreground)]"
+          }`}
         >
           <MessageCircle className="h-4 w-4" strokeWidth={2} />
-          Reply
+          {commentCount != null && commentCount > 0 ? commentCount : "Reply"}
         </button>
         <button
           onClick={() => setShowReact((v) => !v)}
@@ -328,9 +332,9 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
       <ChatPanel
         postId={thought.id}
         postAuthor={thought.author}
-        integrity={thought.integrity}
         open={chatOpen}
         onClose={() => setChatOpen(false)}
+        onCountChange={setCommentCount}
       />
     </article>
   );

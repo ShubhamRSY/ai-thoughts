@@ -25,7 +25,7 @@ export default function FeelingRoom({
 
   return (
     <div className="flex-1">
-      <div className="sticky top-0 z-20 border-b border-[var(--border-base)] bg-[var(--surface)] px-[var(--shell-pad)] py-4">
+      <div className="sticky top-0 z-20 border-b border-[var(--border-base)] bg-[var(--surface)] app-pad py-4">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
@@ -51,7 +51,7 @@ export default function FeelingRoom({
         </button>
       </div>
 
-      <div className="px-[var(--shell-pad)] pb-6">
+      <div className="app-pad pb-6">
         {roomThoughts.length === 0 ? (
           <div className="py-16 text-center">
             <p className="font-display text-lg text-[var(--foreground)]">This room is new.</p>

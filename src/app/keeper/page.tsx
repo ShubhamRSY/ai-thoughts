@@ -119,7 +119,7 @@ export default function KeeperPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto flex min-h-dvh w-full shell-raw items-center justify-center">
+      <div className="app-rail flex min-h-dvh items-center justify-center">
         <RefreshCw className="h-5 w-5 animate-spin text-[var(--muted)]" />
       </div>
     );
@@ -127,7 +127,7 @@ export default function KeeperPage() {
 
   if (authorized !== true) {
     return (
-      <div className="mx-auto flex min-h-dvh w-full shell-raw flex-col px-4 pt-6">
+      <div className="app-rail flex min-h-dvh flex-col pt-6">
         <Link
           href="/"
           className="mb-4 flex w-fit items-center gap-1.5 text-sm text-[var(--muted)] transition hover:text-[var(--foreground)]"
@@ -152,7 +152,7 @@ export default function KeeperPage() {
   }
 
   return (
-    <div className="mx-auto min-h-dvh w-full shell-raw px-4 pb-24 pt-6">
+    <div className="app-rail min-h-dvh pb-24 pt-6">
       <header className="mb-5 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <Link

@@ -3,15 +3,22 @@ import Footer from "@/components/Footer";
 import BrandMark from "@/components/BrandMark";
 import { FEELINGS, feelingOf } from "@/lib/feelings";
 import { getPulseStats } from "@/lib/pulse-stats";
+import { getSession } from "@/lib/auth";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export default async function LandingPage() {
-  const { total, samples } = await getPulseStats();
+  const [{ total, samples }, session] = await Promise.all([
+    getPulseStats(),
+    getSession(),
+  ]);
+
+  const ctaHref = session ? "/app" : "/sign-in";
+  const ctaLabel = session ? "Open the pulse" : "Join the pulse";
 
   return (
-    <div className="relative flex min-h-dvh w-full flex-col">
-      <main className="shell-raw flex flex-1 flex-col px-[var(--shell-pad)] pb-12 pt-14">
+    <div className="app-frame">
+      <main className="app-pad flex flex-1 flex-col pb-12 pt-14">
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--accent)]">
           <BrandMark className="h-8 w-8" />
         </div>
@@ -23,9 +30,11 @@ export default async function LandingPage() {
           How people really feel about AI — in their own voice.
         </p>
         <p className="mt-4 text-sm text-[var(--muted)]">
-          {total < 25
-            ? "Be one of the first voices."
-            : `${total.toLocaleString()} voices on the pulse.`}
+          {session
+            ? `Welcome back${session.displayName ? `, ${session.displayName}` : ""}.`
+            : total < 25
+              ? "Be one of the first voices."
+              : `${total.toLocaleString()} voices on the pulse.`}
         </p>
 
         <div className="mt-8 flex flex-wrap gap-2">
@@ -62,12 +71,14 @@ export default async function LandingPage() {
 
         <div className="mt-10">
           <Link
-            href="/sign-in"
+            href={ctaHref}
             className="inline-flex items-center justify-center rounded-full bg-[var(--accent)] px-6 py-3.5 text-sm font-semibold text-[var(--surface)] transition hover:bg-[var(--accent-2)]"
           >
-            Join the pulse
+            {ctaLabel}
           </Link>
-          <p className="mt-3 text-xs text-[var(--muted)]">Email code · no password</p>
+          {!session && (
+            <p className="mt-3 text-xs text-[var(--muted)]">Email code · no password</p>
+          )}
         </div>
       </main>
       <Footer />

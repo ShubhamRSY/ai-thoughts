@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { findOrCreateUser, createSession, setSessionCookie } from "@/lib/auth";
+import {
+  findOrCreateUser,
+  createSession,
+  SESSION_COOKIE,
+  sessionCookieOptions,
+} from "@/lib/auth";
 import { verifyAndConsumeOtp } from "@/lib/otp";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 
@@ -34,9 +39,10 @@ export async function POST(request: Request) {
 
     const user = await findOrCreateUser(email, result.displayName);
     const token = await createSession(user);
-    await setSessionCookie(token);
 
-    return NextResponse.json({
+    // Set cookie on the response itself — cookies() alone can drop Set-Cookie
+    // when returning NextResponse.json() from a route handler.
+    const res = NextResponse.json({
       ok: true,
       user: {
         id: user._id?.toString(),
@@ -45,6 +51,8 @@ export async function POST(request: Request) {
         displayName: user.displayName,
       },
     });
+    res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
+    return res;
   } catch (e) {
     console.error("verify error:", e);
     return NextResponse.json({ error: "Verification failed" }, { status: 500 });

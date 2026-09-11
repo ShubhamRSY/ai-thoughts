@@ -18,7 +18,7 @@ export default function FeelWith({ tally, onOpenRoom }: FeelWithProps) {
   });
 
   return (
-    <section className="mt-5 px-[var(--shell-pad)]">
+    <section className="app-pad mt-5">
       <div className="mb-2.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
         <Users className="h-3.5 w-3.5" />
         Feel with

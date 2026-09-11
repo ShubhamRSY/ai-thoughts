@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const SESSION_COOKIE = "aithoughts.session";
-
 const PROTECTED_PATHS = ["/app", "/keeper"];
+const AUTH_PAGES = ["/sign-in"];
 
 function getSecret(): string {
   const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
@@ -26,6 +26,23 @@ async function hmacSign(data: string, secret: string): Promise<string> {
     .join("");
 }
 
+function decodeSessionPayload(encoded: string): { exp?: number } | null {
+  try {
+    // Prefer base64url (new tokens); fall back to legacy btoa(JSON) tokens.
+    try {
+      const padded = encoded.replace(/-/g, "+").replace(/_/g, "/");
+      const withPad = padded + "=".repeat((4 - (padded.length % 4)) % 4);
+      const binary = atob(withPad);
+      const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+      return JSON.parse(new TextDecoder().decode(bytes));
+    } catch {
+      return JSON.parse(atob(encoded));
+    }
+  } catch {
+    return null;
+  }
+}
+
 async function validateToken(token: string): Promise<boolean> {
   try {
     const [encoded, signature] = token.split(".");
@@ -34,56 +51,49 @@ async function validateToken(token: string): Promise<boolean> {
     const expectedSig = await hmacSign(encoded, getSecret());
     if (signature !== expectedSig) return false;
 
-    const payload = JSON.parse(atob(encoded));
-    return payload.exp >= Date.now();
+    const payload = decodeSessionPayload(encoded);
+    return Boolean(payload?.exp && payload.exp >= Date.now());
   } catch {
     return false;
   }
 }
 
-// Security headers (X-Frame-Options, CSP, etc.) live in next.config.ts's
-// headers() — that's the single source of truth so it can't drift out of
-// sync with a second copy here.
+async function hasValidSession(request: NextRequest): Promise<boolean> {
+  const token = request.cookies.get(SESSION_COOKIE)?.value;
+  if (!token) return false;
+  return validateToken(token);
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const response = NextResponse.next();
-
-  // Check protected routes
   const isProtected = PROTECTED_PATHS.some(
     (p) => pathname === p || pathname.startsWith(p + "/")
   );
 
   if (isProtected) {
-    const token = request.cookies.get(SESSION_COOKIE)?.value;
-    if (!token) {
-      const signInUrl = new URL("/sign-in", request.url);
-      signInUrl.searchParams.set("from", pathname);
-      return NextResponse.redirect(signInUrl);
-    }
-
-    const valid = await validateToken(token);
+    const valid = await hasValidSession(request);
     if (!valid) {
       const signInUrl = new URL("/sign-in", request.url);
       signInUrl.searchParams.set("from", pathname);
       const res = NextResponse.redirect(signInUrl);
-      res.cookies.delete(SESSION_COOKIE);
+      res.cookies.set(SESSION_COOKIE, "", { path: "/", maxAge: 0 });
       return res;
     }
+    return NextResponse.next();
   }
 
-  // Redirect / to /app if logged in
-  if (pathname === "/") {
-    const token = request.cookies.get(SESSION_COOKIE)?.value;
-    if (token) {
-      const valid = await validateToken(token);
-      if (valid) {
-        return NextResponse.redirect(new URL("/app", request.url));
-      }
+  // Already joined → never show join / landing again
+  if (pathname === "/" || AUTH_PAGES.includes(pathname)) {
+    if (await hasValidSession(request)) {
+      const from = request.nextUrl.searchParams.get("from");
+      const dest =
+        from && from.startsWith("/") && !from.startsWith("//") ? from : "/app";
+      return NextResponse.redirect(new URL(dest, request.url));
     }
   }
 
-  return response;
+  return NextResponse.next();
 }
 
 export const config = {

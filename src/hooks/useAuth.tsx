@@ -35,10 +35,13 @@ const AuthContext = createContext<AuthContextValue>({
 
 async function fetchSessionUser(): Promise<AuthUser | null> {
   try {
-    const res = await fetch("/api/auth/me");
+    const res = await fetch("/api/auth/me", {
+      credentials: "include",
+      cache: "no-store",
+    });
     if (!res.ok) return null;
     const data = await res.json();
-    return data.user;
+    return data.user ?? null;
   } catch {
     return null;
   }
@@ -71,6 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch("/api/auth/sign-in", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email, displayName }),
       });
       const data = await res.json();
@@ -88,6 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch("/api/auth/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email, code }),
       });
       const data = await res.json();
@@ -103,7 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     try {
-      await fetch("/api/auth/sign-out", { method: "POST" });
+      await fetch("/api/auth/sign-out", { method: "POST", credentials: "include" });
     } finally {
       setUser(null);
     }

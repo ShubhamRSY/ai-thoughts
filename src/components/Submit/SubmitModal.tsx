@@ -147,7 +147,8 @@ export default function SubmitModal({
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[var(--background)]/95 backdrop-blur-md">
       {/* Top bar */}
-      <div className="safe-top flex items-center justify-between border-b border-[var(--border-base)] bg-[var(--surface)] px-4 py-3">
+      <div className="safe-top border-b border-[var(--border-base)] bg-[var(--surface)]">
+        <div className="app-rail flex items-center justify-between py-3">
         <button
           onClick={onClose}
           className="flex items-center gap-1 rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
@@ -161,6 +162,7 @@ export default function SubmitModal({
           <h2 className="font-display text-sm font-semibold text-[var(--foreground)]">How do you feel?</h2>
         </div>
         <span className="w-16" />
+        </div>
       </div>
 
       {published ? (
@@ -176,9 +178,9 @@ export default function SubmitModal({
         </div>
       ) : (
         <>
-          <div className="mx-auto flex w-full shell-raw flex-1 flex-col overflow-y-auto px-[var(--shell-pad)]">
+          <div className="app-rail flex flex-1 flex-col overflow-y-auto">
             {/* Feeling picker — the heart of the app */}
-            <section className="border-b border-[var(--border-base)] bg-[var(--surface)] px-4 pb-3 pt-3">
+            <section className="border-b border-[var(--border-base)] bg-[var(--surface)] pb-3 pt-3">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
                 Right now, AI makes me feel…
               </p>
@@ -344,8 +346,8 @@ export default function SubmitModal({
           </div>
 
           {/* Footer */}
-          <div className="safe-bottom border-t border-[var(--border-base)] bg-[var(--surface)] px-4 py-3">
-            <div className="mx-auto flex w-full shell-raw flex-col gap-1.5">
+          <div className="safe-bottom border-t border-[var(--border-base)] bg-[var(--surface)] py-3">
+            <div className="app-rail flex flex-col gap-1.5">
               {publishError && (
                 <p className="text-center text-[11px] font-medium text-rose-600">
                   {publishError}

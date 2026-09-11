@@ -182,7 +182,7 @@ export default function Home() {
   }, [thoughts]);
 
   return (
-    <div className="shell-frame @container">
+    <div className="app-frame">
       <Header onShare={() => openShare("video")} />
 
       <main className="flex-1 pb-nav">
@@ -212,7 +212,7 @@ export default function Home() {
                   onFeelingChange={setFeeling}
                 />
 
-                <div className="mt-2 px-[var(--shell-pad)]">
+                <div className="app-pad mt-2">
                   <div className="mb-1 flex items-end justify-between border-b border-[var(--border-base)] pb-3 pt-4">
                     <h2 className="font-display text-lg font-medium text-[var(--foreground)]">
                       Latest takes
@@ -234,8 +234,8 @@ export default function Home() {
                   <Footer />
                 </div>
 
-                <p className="mx-[var(--shell-pad)] mt-4 flex items-center justify-center gap-1.5 pb-2 text-[11px] font-medium text-[var(--muted)]">
-                  <HeartHandshake className="h-3.5 w-3.5 text-emerald-600" />
+                <p className="app-pad mt-4 flex items-center justify-center gap-1.5 pb-2 text-[11px] font-medium text-[var(--muted)]">
+                  <HeartHandshake className="h-3.5 w-3.5 text-[var(--accent)]" />
                   All ages. All feelings. It&apos;s okay to feel bad about AI too.
                 </p>
               </>
@@ -244,7 +244,7 @@ export default function Home() {
         )}
 
         {tab === "you" && (
-          <div className="px-[var(--shell-pad)] pt-4">
+          <div className="app-pad pt-4">
             <ProfileView myThoughts={mine} onCreate={() => openShare("video")} />
             <StreakCard
               count={streak.count}

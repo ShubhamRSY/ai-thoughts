@@ -20,15 +20,14 @@ export default function Header({ onShare }: HeaderProps) {
 
   return (
     <header className="safe-top sticky top-0 z-40 border-b border-[var(--border-base)] bg-[var(--surface)]">
-      <div className="shell flex h-[var(--header-h)] items-center justify-between !px-[var(--shell-pad)]">
-        <div className="min-w-0">
-          <p className="font-display truncate text-[15px] font-semibold tracking-tight text-[var(--foreground)]">
-            AI·Thoughts
-          </p>
-        </div>
+      <div className="app-pad flex h-[var(--header-h)] items-center justify-between">
+        <p className="font-display truncate text-[15px] font-semibold tracking-tight text-[var(--foreground)]">
+          AI·Thoughts
+        </p>
 
         <div className="flex shrink-0 items-center gap-1">
           <button
+            type="button"
             onClick={onShare}
             className="flex h-9 items-center gap-1.5 rounded-full bg-[var(--accent)] px-4 text-xs font-semibold text-[var(--surface)] transition hover:bg-[var(--accent-2)]"
           >
@@ -44,6 +43,7 @@ export default function Header({ onShare }: HeaderProps) {
             </span>
           )}
           <button
+            type="button"
             onClick={handleSignOut}
             aria-label="Sign out"
             className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--muted)] transition hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"

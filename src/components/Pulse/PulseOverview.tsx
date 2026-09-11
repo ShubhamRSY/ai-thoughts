@@ -32,7 +32,7 @@ export default function PulseOverview({
   const list = withCounts.length > 0 ? withCounts : FEELINGS.map((f) => ({ feeling: f, count: 0 }));
 
   return (
-    <section className="px-[var(--shell-pad)] pt-6 pb-2">
+    <section className="app-pad pt-6 pb-2">
       <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-[var(--muted)]">
         The pulse
       </p>
@@ -52,7 +52,7 @@ export default function PulseOverview({
           : `${total} voice${total === 1 ? "" : "s"} · tap a feeling to listen`}
       </p>
 
-      <div className="no-scrollbar mt-5 -mx-[var(--shell-pad)] flex gap-2 overflow-x-auto px-[var(--shell-pad)] pb-1">
+      <div className="no-scrollbar -mx-[var(--pad-x)] mt-5 flex gap-2 overflow-x-auto px-[var(--pad-x)] pb-1 pr-[var(--pad-r)]">
         {list.map(({ feeling: f, count }) => (
           <button
             key={f.id}

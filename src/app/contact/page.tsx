@@ -38,7 +38,7 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="mx-auto min-h-dvh w-full shell-raw px-5 py-8">
+    <div className="app-rail min-h-dvh py-8">
       <h1 className="font-display text-2xl font-bold text-[var(--foreground)]">Contact</h1>
       <p className="mt-1 text-sm text-[var(--muted)]">
         Privacy requests, data removal, or questions for community keepers.
