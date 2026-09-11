@@ -3,6 +3,7 @@ import { Fraunces, Manrope } from "next/font/google";
 import "./globals.css";
 import PwaRegister from "@/components/PwaRegister";
 import PWAInstall from "@/components/PWAInstall";
+import ViewportSync from "@/components/ViewportSync";
 import { AuthProvider } from "@/hooks/useAuth";
 import { getSiteUrl } from "@/lib/site";
 
@@ -73,7 +74,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${fraunces.variable} ${manrope.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-background text-foreground">
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <ViewportSync />
+          {children}
+        </AuthProvider>
         <PwaRegister />
         <PWAInstall />
       </body>

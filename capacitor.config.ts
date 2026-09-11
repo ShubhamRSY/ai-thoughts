@@ -4,12 +4,26 @@ const config: CapacitorConfig = {
   appId: 'com.aithoughts.app',
   appName: 'AI Thoughts',
   webDir: 'public',
-  // The app is fully dynamic (Next.js API routes, MongoDB, auth cookies) —
-  // it can't be bundled as static files, so the native shell just loads
-  // the live production site instead.
+  // Same live site as web / PWA — one responsive UI for every screen.
   server: {
     url: 'https://ai-thoughts-mu.vercel.app',
     cleartext: false,
+  },
+  backgroundColor: '#e8eef2',
+  ios: {
+    contentInset: 'automatic',
+    backgroundColor: '#e8eef2',
+    preferredContentMode: 'mobile',
+  },
+  android: {
+    backgroundColor: '#e8eef2',
+    allowMixedContent: false,
+  },
+  plugins: {
+    SplashScreen: {
+      backgroundColor: '#e8eef2',
+      launchAutoHide: true,
+    },
   },
 };
 

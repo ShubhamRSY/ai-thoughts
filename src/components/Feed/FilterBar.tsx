@@ -29,7 +29,7 @@ export default function FilterBar({
 }: FilterBarProps) {
   return (
     <div className="mt-3 space-y-2 border-b border-[var(--border-base)] pb-1">
-      <div className="no-scrollbar -mx-4 flex items-center gap-1 overflow-x-auto px-4">
+      <div className="no-scrollbar flex items-center gap-1 overflow-x-auto px-[var(--shell-pad)]">
         {MEDIA_FILTERS.map((f) => {
           const active = media === f.id;
           const Icon = f.icon;
@@ -55,7 +55,7 @@ export default function FilterBar({
         })}
       </div>
 
-      <div className="no-scrollbar -mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-2">
+      <div className="no-scrollbar flex items-center gap-2 overflow-x-auto px-[var(--shell-pad)] pb-2">
         <button
           onClick={() => onFeelingChange("all")}
           className={`shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-medium transition ${

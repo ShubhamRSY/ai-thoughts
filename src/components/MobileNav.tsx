@@ -43,7 +43,7 @@ function TabButton({
 export default function MobileNav({ active, onTab, onCreate }: MobileNavProps) {
   return (
     <nav className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-[var(--border-base)] bg-[var(--surface)]/95 backdrop-blur-md">
-      <div className="mx-auto flex h-16 w-full max-w-[430px] items-stretch">
+      <div className="shell-raw mx-auto flex h-16 w-full items-stretch px-[var(--shell-pad)]">
         <TabButton
           id="home"
           label="Pulse"

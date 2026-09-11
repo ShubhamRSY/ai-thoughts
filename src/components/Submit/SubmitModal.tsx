@@ -176,7 +176,7 @@ export default function SubmitModal({
         </div>
       ) : (
         <>
-          <div className="mx-auto flex w-full max-w-[430px] flex-1 flex-col overflow-y-auto">
+          <div className="mx-auto flex w-full shell-raw flex-1 flex-col overflow-y-auto px-[var(--shell-pad)]">
             {/* Feeling picker — the heart of the app */}
             <section className="border-b border-[var(--border-base)] bg-[var(--surface)] px-4 pb-3 pt-3">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
@@ -345,7 +345,7 @@ export default function SubmitModal({
 
           {/* Footer */}
           <div className="safe-bottom border-t border-[var(--border-base)] bg-[var(--surface)] px-4 py-3">
-            <div className="mx-auto flex w-full max-w-[430px] flex-col gap-1.5">
+            <div className="mx-auto flex w-full shell-raw flex-col gap-1.5">
               {publishError && (
                 <p className="text-center text-[11px] font-medium text-rose-600">
                   {publishError}

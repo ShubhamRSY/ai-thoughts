@@ -34,7 +34,7 @@ export default function FeedGrid({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="feed-grid">
       {thoughts.map((t) => (
         <FeedCard
           key={t.id}

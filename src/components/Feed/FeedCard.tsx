@@ -364,7 +364,7 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
               setReported(false);
             }}
           />
-          <div className="relative w-full max-w-[430px] rounded-t-2xl border border-[var(--border-base)] bg-white p-5 shadow-xl shadow-slate-900/10 sm:rounded-2xl">
+          <div className="relative w-full max-w-md rounded-t-2xl border border-[var(--border-base)] bg-white p-5 shadow-xl shadow-slate-900/10 sm:rounded-2xl">
             {reported ? (
               <div className="flex flex-col items-center gap-3 py-4 text-center">
                 <ShieldCheck className="h-9 w-9 text-emerald-600" />

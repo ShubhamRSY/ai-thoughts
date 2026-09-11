@@ -62,7 +62,7 @@ export default function PWAInstall() {
 
   return (
     <div className="fixed inset-x-0 bottom-20 z-50 flex justify-center px-4">
-      <div className="w-full max-w-[390px] rounded-2xl border border-[var(--border-base)] bg-[var(--surface)] p-3 shadow-lg shadow-slate-900/5">
+      <div className="w-full max-w-md rounded-2xl border border-[var(--border-base)] bg-[var(--surface)] p-3 shadow-lg shadow-slate-900/5">
         <div className="flex items-start gap-3">
           <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--accent)]">
             <Download className="h-4 w-4 text-white" />

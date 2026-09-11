@@ -28,7 +28,7 @@ export default function InstallPage() {
   const [installed] = useState(() => isInstalled());
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-[430px] flex-col px-4 pb-16 pt-10">
+    <div className="mx-auto flex min-h-dvh w-full shell-raw flex-col px-4 pb-16 pt-10">
       <Link
         href="/"
         className="mb-6 flex w-fit items-center gap-1.5 text-sm text-[var(--muted)] transition hover:text-[var(--foreground)]"

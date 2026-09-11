@@ -182,10 +182,10 @@ export default function Home() {
   }, [thoughts]);
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-[430px] flex-col sm:border-x sm:border-[var(--border-base)]">
+    <div className="shell-frame @container">
       <Header onShare={() => openShare("video")} />
 
-      <main className="flex-1 pb-28">
+      <main className="flex-1 pb-nav">
         {tab === "home" && (
           <>
             {room ? (
@@ -212,7 +212,7 @@ export default function Home() {
                   onFeelingChange={setFeeling}
                 />
 
-                <div className="mt-5 px-4">
+                <div className="mt-5 px-[var(--shell-pad)]">
                   <div className="mb-3 flex items-center justify-between">
                     <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
                       Latest takes
@@ -244,7 +244,7 @@ export default function Home() {
         )}
 
         {tab === "you" && (
-          <div className="px-4 pt-4">
+          <div className="px-[var(--shell-pad)] pt-4">
             <ProfileView myThoughts={mine} onCreate={() => openShare("video")} />
             <StreakCard
               count={streak.count}

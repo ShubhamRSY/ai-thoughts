@@ -3,7 +3,7 @@ import { LEGAL_UPDATED } from "@/lib/site";
 
 export default function TermsPage() {
   return (
-    <div className="mx-auto min-h-dvh w-full max-w-[430px] px-5 py-8">
+    <div className="mx-auto min-h-dvh w-full shell-raw px-5 py-8">
       <h1 className="font-display text-2xl font-bold text-[var(--foreground)]">Terms of Use</h1>
       <p className="mt-1 text-xs text-[var(--muted)]">Last updated: {LEGAL_UPDATED}</p>
 

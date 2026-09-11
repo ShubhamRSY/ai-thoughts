@@ -37,7 +37,7 @@ export default function PulseOverview({
   const dominantMeta = dominant ? feelingOf(dominant.id) : undefined;
 
   return (
-    <div className="mt-4 flex items-center gap-3 px-4">
+    <div className="mt-4 flex items-center gap-3 px-[var(--shell-pad)]">
       {/* Dominant feeling chip */}
       {dominantMeta ? (
         <button

@@ -2,8 +2,8 @@ import Link from "next/link";
 
 export default function Footer() {
   return (
-    <footer className="border-t border-[var(--border-base)] bg-[var(--surface)]/70 px-4 py-6">
-      <div className="mx-auto flex w-full max-w-[430px] flex-col gap-3">
+    <footer className="border-t border-[var(--border-base)] bg-[var(--surface)]/70 px-[var(--shell-pad)] py-6">
+      <div className="shell-raw flex w-full flex-col gap-3">
         <div className="flex items-center gap-2 text-[11px] text-[var(--muted)]">
           <span className="inline-block rounded-md bg-[var(--accent)] px-1.5 py-0.5 text-[9px] font-bold text-white">
             AI

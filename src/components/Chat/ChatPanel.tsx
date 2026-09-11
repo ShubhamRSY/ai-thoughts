@@ -132,7 +132,7 @@ export default function ChatPanel({ postId, postAuthor, integrity, open, onClose
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/30 backdrop-blur-sm sm:items-center">
       <div className="absolute inset-0" onClick={onClose} />
-      <div className="relative flex max-h-[75vh] w-full max-w-[430px] flex-col overflow-hidden rounded-t-2xl border border-[var(--border-base)] bg-white shadow-xl shadow-slate-900/10 sm:rounded-2xl">
+      <div className="relative flex max-h-[min(75vh,var(--app-height))] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border border-[var(--border-base)] bg-white shadow-xl shadow-slate-900/10 sm:rounded-2xl">
         {/* Header */}
         <div className="border-b border-[var(--border-base)] px-4 py-3">
           <div className="flex items-center gap-3">
