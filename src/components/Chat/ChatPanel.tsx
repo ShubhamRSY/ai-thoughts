@@ -20,11 +20,11 @@ interface ChatPanelProps {
 }
 
 const GRADIENTS = [
-  "from-violet-500 to-indigo-500",
-  "from-fuchsia-500 to-pink-500",
-  "from-sky-500 to-cyan-500",
-  "from-emerald-500 to-teal-500",
+  "from-teal-500 to-cyan-600",
+  "from-sky-500 to-blue-600",
   "from-amber-500 to-orange-500",
+  "from-rose-400 to-rose-600",
+  "from-slate-500 to-slate-700",
 ];
 
 function avatarGradient(seed: string) {
@@ -130,22 +130,22 @@ export default function ChatPanel({ postId, postAuthor, integrity, open, onClose
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/30 backdrop-blur-sm sm:items-center">
       <div className="absolute inset-0" onClick={onClose} />
-      <div className="relative flex max-h-[75vh] w-full max-w-[430px] flex-col overflow-hidden rounded-t-2xl border border-zinc-800 bg-zinc-900 shadow-2xl sm:rounded-2xl">
+      <div className="relative flex max-h-[75vh] w-full max-w-[430px] flex-col overflow-hidden rounded-t-2xl border border-[var(--border-base)] bg-white shadow-xl shadow-slate-900/10 sm:rounded-2xl">
         {/* Header */}
-        <div className="border-b border-zinc-800 px-4 py-3">
+        <div className="border-b border-[var(--border-base)] px-4 py-3">
           <div className="flex items-center gap-3">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-indigo-500 text-white">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent)] text-white">
               <MessageCircle className="h-4 w-4" />
             </span>
             <div className="min-w-0 flex-1">
-              <h3 className="text-sm font-bold text-zinc-100">Talk</h3>
-              <p className="truncate text-[11px] text-zinc-500">
+              <h3 className="font-display text-sm font-bold text-[var(--foreground)]">Talk</h3>
+              <p className="truncate text-[11px] text-[var(--muted)]">
                 On {postAuthor}&apos;s take
                 {live && (
-                  <span className="ml-1.5 inline-flex items-center gap-1 text-emerald-400">
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+                  <span className="ml-1.5 inline-flex items-center gap-1 text-emerald-700">
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
                     live
                   </span>
                 )}
@@ -154,7 +154,7 @@ export default function ChatPanel({ postId, postAuthor, integrity, open, onClose
             <button
               onClick={onClose}
               aria-label="Close chat"
-              className="rounded-lg p-1.5 text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-200"
+              className="rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
             >
               <X className="h-5 w-5" />
             </button>
@@ -164,7 +164,7 @@ export default function ChatPanel({ postId, postAuthor, integrity, open, onClose
             <div
               title={integrity.verified ? "Authentication verified" : "Authentication incomplete"}
               className={`mt-2 flex h-6 w-6 items-center justify-center rounded-full ${
-                integrity.verified ? "bg-emerald-500/15 text-emerald-400" : "bg-amber-500/15 text-amber-400"
+                integrity.verified ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
               }`}
             >
               <ShieldCheck className="h-3.5 w-3.5" />
@@ -175,13 +175,13 @@ export default function ChatPanel({ postId, postAuthor, integrity, open, onClose
         {/* Messages */}
         <div
           ref={boxRef}
-          className="flex-1 space-y-3 overflow-y-auto px-4 py-4"
+          className="flex-1 space-y-3 overflow-y-auto bg-[var(--surface-2)] px-4 py-4"
         >
           {messages.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-10 text-center">
-              <span className="text-2xl">💬</span>
-              <p className="text-sm font-medium text-zinc-300">No one&apos;s talking yet</p>
-              <p className="max-w-[240px] text-xs text-zinc-500">
+              <MessageCircle className="h-6 w-6 text-[var(--muted)]" />
+              <p className="text-sm font-medium text-[var(--foreground)]">No one&apos;s talking yet</p>
+              <p className="max-w-[240px] text-xs text-[var(--muted)]">
                 Be the first to say something about this take.
               </p>
             </div>
@@ -195,14 +195,14 @@ export default function ChatPanel({ postId, postAuthor, integrity, open, onClose
                 >
                   {initials(m.author || m.handle)}
                 </div>
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 rounded-xl border border-[var(--border-base)] bg-white px-2.5 py-1.5">
                   <div className="flex items-baseline gap-1.5">
-                    <span className="text-xs font-semibold text-zinc-200">
+                    <span className="text-xs font-semibold text-[var(--foreground)]">
                       {m.handle}
                     </span>
-                    <span className="text-[10px] text-zinc-500">{timeLabel(m.created_at)}</span>
+                    <span className="text-[10px] text-[var(--muted)]">{timeLabel(m.created_at)}</span>
                   </div>
-                  <p dir="auto" className="mt-0.5 break-words text-sm leading-snug text-zinc-300">
+                  <p dir="auto" className="mt-0.5 break-words text-sm leading-snug text-[var(--foreground)]">
                     {m.body}
                   </p>
                 </div>
@@ -212,8 +212,8 @@ export default function ChatPanel({ postId, postAuthor, integrity, open, onClose
         </div>
 
         {/* Composer */}
-        <div className="border-t border-zinc-800 px-4 py-3">
-          {error && <p className="mb-2 text-[11px] text-rose-400">{error}</p>}
+        <div className="border-t border-[var(--border-base)] bg-white px-4 py-3">
+          {error && <p className="mb-2 text-[11px] text-rose-600">{error}</p>}
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -233,13 +233,13 @@ export default function ChatPanel({ postId, postAuthor, integrity, open, onClose
               rows={1}
               dir="auto"
               placeholder={`Say something on ${postAuthor}'s take…`}
-              className="max-h-24 min-h-[40px] flex-1 resize-none rounded-xl border border-zinc-800 bg-zinc-950/60 px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none transition focus:border-violet-600"
+              className="max-h-24 min-h-[40px] flex-1 resize-none rounded-xl border border-[var(--border-base)] bg-[var(--surface-2)] px-3 py-2.5 text-sm text-[var(--foreground)] placeholder:text-[var(--muted)]/60 outline-none transition focus:border-[var(--accent)]"
             />
             <button
               type="submit"
               aria-label="Send"
               disabled={sending || !draft.trim()}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-indigo-500 text-white transition hover:brightness-110 disabled:opacity-40"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--accent)] text-white transition hover:bg-[var(--accent-2)] disabled:opacity-40"
             >
               <Send className="h-4 w-4" />
             </button>

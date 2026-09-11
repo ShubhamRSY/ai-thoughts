@@ -120,7 +120,7 @@ export default function KeeperPage() {
   if (loading) {
     return (
       <div className="mx-auto flex min-h-dvh w-full max-w-[430px] items-center justify-center">
-        <RefreshCw className="h-5 w-5 animate-spin text-zinc-500" />
+        <RefreshCw className="h-5 w-5 animate-spin text-[var(--muted)]" />
       </div>
     );
   }
@@ -130,19 +130,19 @@ export default function KeeperPage() {
       <div className="mx-auto flex min-h-dvh w-full max-w-[430px] flex-col px-4 pt-6">
         <Link
           href="/"
-          className="mb-4 flex w-fit items-center gap-1.5 text-sm text-zinc-400 transition hover:text-zinc-200"
+          className="mb-4 flex w-fit items-center gap-1.5 text-sm text-[var(--muted)] transition hover:text-[var(--foreground)]"
         >
           <ArrowLeft className="h-4 w-4" /> Back to the pulse
         </Link>
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/50 px-6 py-10 text-center">
-          <ShieldCheck className="h-10 w-10 text-zinc-600" />
-          <h1 className="text-lg font-bold text-zinc-100">Keepers only</h1>
-          <p className="max-w-xs text-sm text-zinc-400">
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-[var(--border-base)] bg-white px-6 py-10 text-center shadow-sm shadow-slate-900/5">
+          <ShieldCheck className="h-10 w-10 text-[var(--muted)]" />
+          <h1 className="font-display text-lg font-bold text-[var(--foreground)]">Keepers only</h1>
+          <p className="max-w-xs text-sm text-[var(--muted)]">
             This is the moderation desk for community keepers. It&apos;s invite-only — if you
             think you should have access, ask a current keeper.
           </p>
           {!isLive() && (
-            <p className="text-xs text-amber-400/90">
+            <p className="text-xs text-amber-700">
               The database isn&apos;t connected in this environment, so the desk is offline.
             </p>
           )}
@@ -157,16 +157,16 @@ export default function KeeperPage() {
         <div className="flex items-center gap-2.5">
           <Link
             href="/"
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900/60 text-zinc-400 transition hover:text-zinc-200"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border-base)] bg-white text-[var(--muted)] transition hover:text-[var(--foreground)]"
             aria-label="Back to the pulse"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <div>
-            <h1 className="flex items-center gap-1.5 text-base font-bold text-zinc-100">
-              <ShieldCheck className="h-5 w-5 text-violet-400" /> Keepers Desk
+            <h1 className="font-display flex items-center gap-1.5 text-base font-bold text-[var(--foreground)]">
+              <ShieldCheck className="h-5 w-5 text-[var(--accent)]" /> Keepers Desk
             </h1>
-            <p className="text-[11px] text-zinc-500">
+            <p className="text-[11px] text-[var(--muted)]">
               {reports.length} open {reports.length === 1 ? "report" : "reports"}
               {contacts.length > 0
                 ? ` · ${contacts.length} contact ${contacts.length === 1 ? "request" : "requests"}`
@@ -177,16 +177,16 @@ export default function KeeperPage() {
         <button
           onClick={() => void refresh()}
           aria-label="Refresh"
-          className="flex h-9 items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 text-xs font-medium text-zinc-300 transition hover:text-zinc-100"
+          className="flex h-9 items-center gap-1 rounded-lg border border-[var(--border-base)] bg-white px-3 text-xs font-medium text-[var(--foreground)] transition hover:bg-[var(--surface-2)]"
         >
           <RefreshCw className="h-3.5 w-3.5" /> Refresh
         </button>
       </header>
 
       {reports.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-900/40 px-6 py-12 text-center">
-          <p className="text-sm font-semibold text-zinc-200">All clear</p>
-          <p className="max-w-xs text-xs text-zinc-500">
+        <div className="flex flex-col items-center gap-2 rounded-2xl border border-[var(--border-base)] bg-white px-6 py-12 text-center shadow-sm shadow-slate-900/5">
+          <p className="text-sm font-semibold text-[var(--foreground)]">All clear</p>
+          <p className="max-w-xs text-xs text-[var(--muted)]">
             No open reports right now. The pulse is feeling peaceful.
           </p>
         </div>
@@ -195,19 +195,19 @@ export default function KeeperPage() {
           {reports.map((r) => (
             <li
               key={r.id}
-              className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4"
+              className="rounded-2xl border border-[var(--border-base)] bg-white p-4 shadow-sm shadow-slate-900/5"
             >
-              <div className="flex items-center gap-2 text-xs text-zinc-500">
-                <Flag className="h-3.5 w-3.5 text-rose-400" />
-                <span className="font-semibold text-rose-300">{r.reason}</span>
+              <div className="flex items-center gap-2 text-xs text-[var(--muted)]">
+                <Flag className="h-3.5 w-3.5 text-rose-500" />
+                <span className="font-semibold text-rose-700">{r.reason}</span>
                 <span>·</span>
                 <span>{timeAgo(r.created_at)}</span>
               </div>
-              <p className="mt-2 text-sm text-zinc-200">
+              <p className="mt-2 text-sm text-[var(--foreground)]">
                 {r.reported_handle ?? "unknown"}
               </p>
               {r.content_snippet && (
-                <p className="mt-1 line-clamp-2 text-xs text-zinc-400">
+                <p className="mt-1 line-clamp-2 text-xs text-[var(--muted)]">
                   “{r.content_snippet}”
                 </p>
               )}
@@ -222,7 +222,7 @@ export default function KeeperPage() {
                 <button
                   onClick={() => handleResolve(r)}
                   disabled={working === r.id}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:bg-zinc-700 disabled:opacity-50"
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-[var(--border-base)] bg-[var(--surface-2)] px-3 py-2 text-xs font-semibold text-[var(--foreground)] transition hover:bg-white disabled:opacity-50"
                 >
                   <Check className="h-3.5 w-3.5" /> Keep &amp; resolve
                 </button>
@@ -234,21 +234,21 @@ export default function KeeperPage() {
 
       {contacts.length > 0 && (
         <section className="mt-8">
-          <h2 className="mb-3 text-sm font-semibold text-zinc-200">Contact requests</h2>
+          <h2 className="mb-3 text-sm font-semibold text-[var(--foreground)]">Contact requests</h2>
           <ul className="flex flex-col gap-3">
             {contacts.map((c) => (
-              <li key={c.id} className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
-                <div className="flex items-center gap-2 text-xs text-zinc-500">
-                  <span className="font-semibold capitalize text-violet-300">{c.kind}</span>
+              <li key={c.id} className="rounded-2xl border border-[var(--border-base)] bg-white p-4 shadow-sm shadow-slate-900/5">
+                <div className="flex items-center gap-2 text-xs text-[var(--muted)]">
+                  <span className="font-semibold capitalize text-[var(--accent)]">{c.kind}</span>
                   <span>·</span>
                   <span>{timeAgo(c.createdAt)}</span>
                 </div>
-                <p className="mt-2 text-sm text-zinc-200">{c.email}</p>
-                <p className="mt-1 whitespace-pre-wrap text-xs text-zinc-400">{c.message}</p>
+                <p className="mt-2 text-sm text-[var(--foreground)]">{c.email}</p>
+                <p className="mt-1 whitespace-pre-wrap text-xs text-[var(--muted)]">{c.message}</p>
                 <button
                   onClick={() => void resolveContact(c.id)}
                   disabled={working === c.id}
-                  className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:bg-zinc-700 disabled:opacity-50"
+                  className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-[var(--border-base)] bg-[var(--surface-2)] px-3 py-2 text-xs font-semibold text-[var(--foreground)] transition hover:bg-white disabled:opacity-50"
                 >
                   <Check className="h-3.5 w-3.5" /> Mark resolved
                 </button>

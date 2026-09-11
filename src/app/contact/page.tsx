@@ -39,24 +39,24 @@ export default function ContactPage() {
 
   return (
     <div className="mx-auto min-h-dvh w-full max-w-[430px] px-5 py-8">
-      <h1 className="text-2xl font-bold text-zinc-100">Contact</h1>
-      <p className="mt-1 text-sm text-zinc-500">
+      <h1 className="font-display text-2xl font-bold text-[var(--foreground)]">Contact</h1>
+      <p className="mt-1 text-sm text-[var(--muted)]">
         Privacy requests, data removal, or questions for community keepers.
       </p>
 
       <form
         onSubmit={handleSubmit}
-        className="mt-6 space-y-4 rounded-2xl border border-zinc-800/60 bg-zinc-900/40 p-5"
+        className="mt-6 space-y-4 rounded-2xl border border-[var(--border-base)] bg-white p-5 shadow-sm shadow-slate-900/5"
       >
         <div>
-          <label htmlFor="kind" className="mb-1.5 block text-xs font-medium text-zinc-400">
+          <label htmlFor="kind" className="mb-1.5 block text-xs font-medium text-[var(--muted)]">
             Topic
           </label>
           <select
             id="kind"
             value={kind}
             onChange={(e) => setKind(e.target.value)}
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-950/60 px-4 py-2.5 text-sm text-zinc-100 outline-none focus:border-violet-500"
+            className="w-full rounded-xl border border-[var(--border-base)] bg-[var(--surface-2)] px-4 py-2.5 text-sm text-[var(--foreground)] outline-none focus:border-[var(--accent)]"
           >
             <option value="privacy">Privacy / data</option>
             <option value="removal">Remove my takes or account</option>
@@ -65,7 +65,7 @@ export default function ContactPage() {
         </div>
 
         <div>
-          <label htmlFor="email" className="mb-1.5 block text-xs font-medium text-zinc-400">
+          <label htmlFor="email" className="mb-1.5 block text-xs font-medium text-[var(--muted)]">
             Your email
           </label>
           <input
@@ -74,13 +74,13 @@ export default function ContactPage() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-950/60 px-4 py-2.5 text-sm text-zinc-100 outline-none focus:border-violet-500"
+            className="w-full rounded-xl border border-[var(--border-base)] bg-[var(--surface-2)] px-4 py-2.5 text-sm text-[var(--foreground)] outline-none focus:border-[var(--accent)]"
             placeholder="you@example.com"
           />
         </div>
 
         <div>
-          <label htmlFor="message" className="mb-1.5 block text-xs font-medium text-zinc-400">
+          <label htmlFor="message" className="mb-1.5 block text-xs font-medium text-[var(--muted)]">
             Message
           </label>
           <textarea
@@ -90,18 +90,18 @@ export default function ContactPage() {
             maxLength={4000}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            className="w-full resize-none rounded-xl border border-zinc-700 bg-zinc-950/60 px-4 py-2.5 text-sm text-zinc-100 outline-none focus:border-violet-500"
+            className="w-full resize-none rounded-xl border border-[var(--border-base)] bg-[var(--surface-2)] px-4 py-2.5 text-sm text-[var(--foreground)] outline-none focus:border-[var(--accent)]"
             placeholder="Tell us what you need…"
           />
         </div>
 
         {error && (
-          <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-xs text-red-400">
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs text-red-700">
             {error}
           </div>
         )}
         {done && (
-          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-xs text-emerald-400">
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs text-emerald-700">
             {done}
           </div>
         )}
@@ -109,17 +109,17 @@ export default function ContactPage() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
+          className="w-full rounded-xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-2)] disabled:opacity-50"
         >
           {submitting ? "Sending…" : "Send message"}
         </button>
       </form>
 
-      <p className="mt-4 text-xs leading-relaxed text-zinc-500">
+      <p className="mt-4 text-xs leading-relaxed text-[var(--muted)]">
         Prefer email? Write{" "}
         <a
           href={`mailto:${CONTACT_EMAIL}`}
-          className="text-violet-400 underline-offset-2 hover:underline"
+          className="text-[var(--accent)] underline-offset-2 hover:underline"
         >
           {CONTACT_EMAIL}
         </a>
@@ -127,7 +127,7 @@ export default function ContactPage() {
       </p>
 
       <div className="mt-8">
-        <Link href="/" className="text-xs text-zinc-500 hover:text-zinc-300">
+        <Link href="/" className="text-xs text-[var(--muted)] hover:text-[var(--foreground)]">
           ← Back home
         </Link>
       </div>

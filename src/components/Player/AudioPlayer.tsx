@@ -57,7 +57,7 @@ export default function AudioPlayer({
   };
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-3">
+    <div className="rounded-xl border border-[var(--border-base)] bg-[var(--surface-2)] p-3">
       {hasMedia && (
         <audio
           ref={wrapRef}
@@ -80,7 +80,7 @@ export default function AudioPlayer({
       <div className="flex items-center gap-3">
         <button
           onClick={toggle}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-500 text-white shadow-lg shadow-violet-500/25 transition hover:brightness-110"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-white transition hover:bg-[var(--accent-2)]"
           aria-label={playing ? "Pause" : "Play"}
         >
           {playing ? (
@@ -104,14 +104,14 @@ export default function AudioPlayer({
                     height: `${height * 100}%`,
                     background:
                       hasMedia && progress > ((i + 1) / 36) * 100
-                        ? "linear-gradient(180deg,#8b5cf6,#6366f1)"
-                        : "#3f3f46",
+                        ? "linear-gradient(180deg,#0f766e,#14b8a6)"
+                        : "#d4dde3",
                   }}
                 />
               );
             })}
           </div>
-          <div className="flex items-center justify-between text-[11px] text-zinc-500">
+          <div className="flex items-center justify-between text-[11px] text-[var(--muted)]">
             <span className="tabular-nums">{formatTime(current)}</span>
             <span className="tabular-nums">{durationLabel ?? formatTime(durationSec)}</span>
           </div>
@@ -119,7 +119,7 @@ export default function AudioPlayer({
 
         <button
           onClick={() => setMuted((m) => !m)}
-          className="shrink-0 text-zinc-500 transition hover:text-zinc-200"
+          className="shrink-0 text-[var(--muted)] transition hover:text-[var(--foreground)]"
           aria-label={muted ? "Unmute" : "Mute"}
         >
           {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
@@ -127,11 +127,11 @@ export default function AudioPlayer({
       </div>
 
       {!hasMedia && (
-        <div className="mt-3 flex items-center gap-2 rounded-lg border border-dashed border-zinc-700 bg-zinc-900/40 px-3 py-2 text-[11px] text-zinc-500">
+        <div className="mt-3 flex items-center gap-2 rounded-lg border border-dashed border-[var(--border-base)] bg-white px-3 py-2 text-[11px] text-[var(--muted)]">
           <AudioLines className="h-3.5 w-3.5" />
-          Placeholder audio — drop an <span className="font-mono text-zinc-400">.mp3</span> in{" "}
-          <span className="font-mono text-zinc-400">/public/media</span> and point{" "}
-          <span className="font-mono text-zinc-400">mediaUrl</span> at it.
+          Placeholder audio — drop an <span className="font-mono text-[var(--foreground)]">.mp3</span> in{" "}
+          <span className="font-mono text-[var(--foreground)]">/public/media</span> and point{" "}
+          <span className="font-mono text-[var(--foreground)]">mediaUrl</span> at it.
         </div>
       )}
     </div>

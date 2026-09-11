@@ -21,13 +21,6 @@ const MEDIA_FILTERS: { id: MediaFilter; label: string; icon: typeof LayoutGrid }
   { id: "text", label: "Text", icon: Type },
 ];
 
-const pill = (active: boolean) =>
-  `flex shrink-0 items-center gap-1.5 rounded-full py-1.5 text-xs transition ${
-    active
-      ? "text-zinc-100"
-      : "text-zinc-500 hover:text-zinc-300"
-  }`;
-
 export default function FilterBar({
   media,
   onMediaChange,
@@ -35,8 +28,8 @@ export default function FilterBar({
   onFeelingChange,
 }: FilterBarProps) {
   return (
-    <div className="mt-4 border-b border-zinc-800/60">
-      <div className="no-scrollbar -mx-4 flex items-center gap-4 overflow-x-auto px-4">
+    <div className="mt-3 space-y-2 border-b border-[var(--border-base)] pb-1">
+      <div className="no-scrollbar -mx-4 flex items-center gap-1 overflow-x-auto px-4">
         {MEDIA_FILTERS.map((f) => {
           const active = media === f.id;
           const Icon = f.icon;
@@ -44,26 +37,34 @@ export default function FilterBar({
             <button
               key={f.id}
               onClick={() => onMediaChange(f.id)}
-              className={`relative shrink-0 pb-2.5 ${pill(active)}`}
+              className={`relative shrink-0 px-3 pb-2.5 text-xs transition ${
+                active
+                  ? "font-semibold text-[var(--foreground)]"
+                  : "text-[var(--muted)] hover:text-[var(--foreground)]"
+              }`}
             >
-              <Icon className="hidden h-3.5 w-3.5 sm:block" />
-              {f.label}
+              <span className="inline-flex items-center gap-1.5">
+                <Icon className="h-3.5 w-3.5 opacity-70" />
+                {f.label}
+              </span>
               {active && (
-                <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-gradient-to-r from-violet-500 to-indigo-500" />
+                <span className="absolute inset-x-2 -bottom-px h-0.5 rounded bg-[var(--accent)]" />
               )}
             </button>
           );
         })}
+      </div>
 
-        <span className="my-auto h-4 shrink-0 w-px bg-zinc-800/70" />
-
+      <div className="no-scrollbar -mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-2">
         <button
           onClick={() => onFeelingChange("all")}
-          className={`shrink-0 text-xs transition ${
-            feeling === "all" ? "font-semibold text-zinc-100" : "text-zinc-500 hover:text-zinc-300"
+          className={`shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-medium transition ${
+            feeling === "all"
+              ? "bg-[var(--accent)] text-white"
+              : "bg-[var(--surface)] text-[var(--muted)] ring-1 ring-[var(--border-base)] hover:text-[var(--foreground)]"
           }`}
         >
-          All
+          All feelings
         </button>
         {FEELINGS.map((f) => {
           const active = feeling === f.id;
@@ -71,11 +72,13 @@ export default function FilterBar({
             <button
               key={f.id}
               onClick={() => onFeelingChange(f.id)}
-              className={`shrink-0 whitespace-nowrap transition ${
-                active ? "font-semibold text-zinc-100" : "text-zinc-500 hover:text-zinc-300"
+              className={`shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-medium transition ${
+                active
+                  ? "bg-[var(--accent)] text-white"
+                  : `border ${f.chip}`
               }`}
             >
-              <span className="mr-1">{f.emoji}</span>
+              <span className="mr-1 opacity-70">{f.emoji}</span>
               {f.short}
             </button>
           );

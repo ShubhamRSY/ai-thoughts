@@ -28,8 +28,8 @@ export default function IntegrityBadge({ integrity }: IntegrityBadgeProps) {
       aria-label={integrity.statusLabel}
       className={`group inline-flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-full border transition ${
         verified
-          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
-          : "border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
+          ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+          : "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
       }`}
       onClick={copyHash}
     >

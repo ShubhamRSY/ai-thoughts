@@ -58,10 +58,10 @@ export default function VideoPlayer({
   };
 
   return (
-    <div className="overflow-hidden rounded-xl border border-zinc-800 bg-black">
+    <div className="overflow-hidden rounded-xl border border-[var(--border-base)] bg-black">
       <div className="relative aspect-video w-full">
         {showPlaceholder ? (
-          <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-zinc-900 to-zinc-950 text-zinc-500">
+          <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-[var(--surface-2)] text-[var(--muted)]">
             <Clapperboard className="h-8 w-8" />
             <span className="text-[11px]">
               {failed ? "Video unavailable" : "Placeholder video area"}
@@ -94,7 +94,7 @@ export default function VideoPlayer({
           aria-label={playing ? "Pause" : "Play"}
         >
           <span
-            className={`flex h-14 w-14 items-center justify-center rounded-full bg-white/90 text-zinc-950 shadow-xl transition ${
+            className={`flex h-14 w-14 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-xl transition ${
               playing ? "opacity-0 hover:opacity-100" : "opacity-100"
             }`}
           >

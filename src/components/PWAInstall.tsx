@@ -62,24 +62,24 @@ export default function PWAInstall() {
 
   return (
     <div className="fixed inset-x-0 bottom-20 z-50 flex justify-center px-4">
-      <div className="w-full max-w-[390px] rounded-2xl border border-zinc-700/60 bg-zinc-900/95 p-3 shadow-2xl backdrop-blur-xl">
+      <div className="w-full max-w-[390px] rounded-2xl border border-[var(--border-base)] bg-[var(--surface)] p-3 shadow-lg shadow-slate-900/5">
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-indigo-500">
-            <Download className="h-4.5 w-4.5 text-white" />
+          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--accent)]">
+            <Download className="h-4 w-4 text-white" />
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-white">
+          <div className="min-w-0 flex-1">
+            <p className="font-display text-sm font-semibold text-[var(--foreground)]">
               Install AI·Thoughts
             </p>
-            <p className="mt-0.5 text-xs leading-relaxed text-zinc-400">
+            <p className="mt-0.5 text-xs leading-relaxed text-[var(--muted)]">
               {isIos || (!deferredPrompt && isIOS())
-                ? "Tap the Share button in Safari, then \"Add to Home Screen\""
+                ? "Tap Share in Safari, then “Add to Home Screen”"
                 : "Add to your home screen — one tap back to the pulse"}
             </p>
             {!isIos && deferredPrompt && (
               <button
                 onClick={install}
-                className="mt-2 rounded-lg bg-violet-600 px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-violet-500 active:scale-95"
+                className="mt-2 rounded-lg bg-[var(--accent)] px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-[var(--accent-2)] active:scale-[0.98]"
               >
                 Install now
               </button>
@@ -88,7 +88,7 @@ export default function PWAInstall() {
           <button
             onClick={dismiss}
             aria-label="Dismiss"
-            className="mt-0.5 shrink-0 rounded-lg p-1.5 text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-300"
+            className="mt-0.5 shrink-0 rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
           >
             <X className="h-4 w-4" />
           </button>

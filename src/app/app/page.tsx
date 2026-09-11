@@ -182,7 +182,7 @@ export default function Home() {
   }, [thoughts]);
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-[430px] flex-col sm:border-x sm:border-zinc-800/40">
+    <div className="mx-auto flex min-h-dvh w-full max-w-[430px] flex-col sm:border-x sm:border-[var(--border-base)]">
       <Header onShare={() => openShare("video")} />
 
       <main className="flex-1 pb-28">
@@ -214,10 +214,10 @@ export default function Home() {
 
                 <div className="mt-5 px-4">
                   <div className="mb-3 flex items-center justify-between">
-                    <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                    <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
                       Latest takes
                     </h2>
-                    <span className="text-[11px] tabular-nums text-zinc-600">
+                    <span className="text-[11px] tabular-nums text-[var(--muted)]">
                       {filtered.length} shown
                     </span>
                   </div>
@@ -234,8 +234,8 @@ export default function Home() {
                   <Footer />
                 </div>
 
-                <p className="mx-4 mt-4 flex items-center justify-center gap-1.5 pb-2 text-[11px] font-medium text-zinc-500">
-                  <HeartHandshake className="h-3.5 w-3.5 text-emerald-400" />
+                <p className="mx-4 mt-4 flex items-center justify-center gap-1.5 pb-2 text-[11px] font-medium text-[var(--muted)]">
+                  <HeartHandshake className="h-3.5 w-3.5 text-emerald-600" />
                   All ages. All feelings. It&apos;s okay to feel bad about AI too.
                 </p>
               </>

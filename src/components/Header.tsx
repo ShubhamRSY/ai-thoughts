@@ -20,21 +20,18 @@ export default function Header({ onShare }: HeaderProps) {
   };
 
   return (
-    <header className="safe-top sticky top-0 z-40 border-b border-zinc-800/70 bg-zinc-950/80 backdrop-blur-xl">
+    <header className="safe-top sticky top-0 z-40 border-b border-[var(--border-base)]/80 bg-[var(--surface)]/90 backdrop-blur-md">
       <div className="mx-auto flex h-14 w-full max-w-[430px] items-center justify-between px-4">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-indigo-500 shadow-lg shadow-violet-500/30">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--accent)]">
             <BrandMark className="h-6 w-6" />
           </div>
           <div className="leading-tight">
-            <div className="flex items-center gap-1.5 text-base font-bold tracking-tight text-zinc-100">
+            <div className="font-display flex items-center gap-1.5 text-base font-semibold tracking-tight text-[var(--foreground)]">
               AI·Thoughts
-              <span className="relative flex h-1.5 w-1.5" aria-hidden>
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              </span>
+              <span className="h-1.5 w-1.5 rounded-full bg-teal-600" aria-hidden />
             </div>
-            <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500">
+            <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--muted)]">
               The Pulse
             </div>
           </div>
@@ -43,14 +40,14 @@ export default function Header({ onShare }: HeaderProps) {
         <div className="flex items-center gap-2">
           <button
             onClick={onShare}
-            className="flex h-9 items-center gap-1.5 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 px-3.5 text-xs font-semibold text-white shadow-lg shadow-violet-500/25 transition hover:brightness-110 active:scale-95"
+            className="flex h-9 items-center gap-1.5 rounded-xl bg-[var(--accent)] px-3.5 text-xs font-semibold text-white transition hover:bg-[var(--accent-2)] active:scale-[0.98]"
           >
-            <Plus className="h-4 w-4" strokeWidth={2.6} />
+            <Plus className="h-4 w-4" strokeWidth={2.4} />
             <span>Share</span>
           </button>
           {user && (
             <div
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/70 to-indigo-500/70 text-xs font-bold text-white"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-xs font-bold text-teal-900"
               title={`Signed in as ${user.displayName} (${user.handle})`}
               aria-hidden
             >
@@ -61,7 +58,7 @@ export default function Header({ onShare }: HeaderProps) {
             onClick={handleSignOut}
             aria-label="Sign out"
             title="Sign out"
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900/60 text-zinc-400 transition hover:border-zinc-700 hover:text-zinc-200 active:scale-95"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border-base)] bg-[var(--surface-2)] text-[var(--muted)] transition hover:text-[var(--foreground)] active:scale-[0.98]"
           >
             <LogOut className="h-4 w-4" strokeWidth={2.2} />
           </button>

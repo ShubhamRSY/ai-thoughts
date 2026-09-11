@@ -1,54 +1,55 @@
 import type { Feeling, FeelingId } from "@/lib/types";
 
+/** Soft chips tuned for the light “Quiet Pulse” theme. */
 export const FEELINGS: Feeling[] = [
   {
     id: "using-it",
-    emoji: "🤖",
+    emoji: "◎",
     label: "I use it every day",
-    short: "Use it daily",
-    chip: "bg-sky-500/15 text-sky-300 border-sky-500/30",
+    short: "Daily",
+    chip: "bg-sky-100 text-sky-800 border-sky-200",
   },
   {
     id: "love-it",
-    emoji: "💜",
+    emoji: "♥",
     label: "I genuinely love it",
     short: "Love it",
-    chip: "bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30",
+    chip: "bg-teal-100 text-teal-800 border-teal-200",
   },
   {
     id: "blown-away",
-    emoji: "🤯",
+    emoji: "✦",
     label: "It blows my mind",
-    short: "Blown away",
-    chip: "bg-amber-500/15 text-amber-300 border-amber-500/30",
+    short: "Amazed",
+    chip: "bg-amber-100 text-amber-900 border-amber-200",
   },
   {
     id: "hurts",
-    emoji: "😔",
+    emoji: "◦",
     label: "It makes me feel bad",
-    short: "Feel bad",
-    chip: "bg-rose-500/15 text-rose-300 border-rose-500/30",
+    short: "Hurts",
+    chip: "bg-rose-100 text-rose-800 border-rose-200",
   },
   {
     id: "worried",
-    emoji: "😰",
+    emoji: "∿",
     label: "I worry about people",
     short: "Worried",
-    chip: "bg-orange-500/15 text-orange-300 border-orange-500/30",
+    chip: "bg-orange-100 text-orange-900 border-orange-200",
   },
   {
     id: "confused",
-    emoji: "😶‍🌫️",
+    emoji: "?",
     label: "I don't understand it",
     short: "Confused",
-    chip: "bg-zinc-500/20 text-zinc-300 border-zinc-500/30",
+    chip: "bg-slate-100 text-slate-700 border-slate-200",
   },
   {
     id: "need-support",
-    emoji: "🤝",
+    emoji: "+",
     label: "I need support with it",
     short: "Need help",
-    chip: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+    chip: "bg-emerald-100 text-emerald-800 border-emerald-200",
   },
 ];
 

@@ -23,13 +23,13 @@ import TranscriptPanel from "@/components/Feed/TranscriptPanel";
 import FeelingBadge from "@/components/FeelingBadge";
 import ChatPanel from "@/components/Chat/ChatPanel";
 
-// Initials avatar with deterministic gradient
+// Initials avatar with soft light-friendly tones
 const GRADIENTS = [
-  "from-violet-500 to-indigo-500",
-  "from-fuchsia-500 to-pink-500",
-  "from-sky-500 to-cyan-500",
-  "from-emerald-500 to-teal-500",
+  "from-teal-500 to-cyan-600",
+  "from-sky-500 to-blue-600",
   "from-amber-500 to-orange-500",
+  "from-rose-400 to-rose-600",
+  "from-slate-500 to-slate-700",
 ];
 
 function avatarGradient(seed: string) {
@@ -141,7 +141,7 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
   };
 
   return (
-    <article className="animate-rise-in relative overflow-hidden rounded-2xl border border-zinc-800/70 bg-[#141419]/95 shadow-sm shadow-black/20 ring-1 ring-inset ring-white/[0.03]">
+    <article className="animate-rise-in relative overflow-hidden rounded-2xl border border-[var(--border-base)] bg-white shadow-sm shadow-slate-900/5">
       {/* Header */}
       <div className="flex items-center gap-3 p-3 pb-1">
         <div
@@ -153,17 +153,17 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <span className="truncate text-sm font-semibold text-zinc-100">
+            <span className="truncate text-sm font-semibold text-[var(--foreground)]">
               {thought.author}
             </span>
-            <span className="shrink-0 whitespace-nowrap text-xs text-zinc-600">
+            <span className="shrink-0 whitespace-nowrap text-xs text-[var(--muted)]">
               · {thought.timeLabel}
             </span>
           </div>
           <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
             <FeelingBadge feeling={thought.feeling} size="sm" />
             {thought.languageLabel && (
-              <span className="flex items-center gap-1 rounded-md bg-zinc-800/60 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">
+              <span className="flex items-center gap-1 rounded-md bg-[var(--surface-2)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--muted)]">
                 <Globe className="h-2.5 w-2.5" />
                 {thought.languageLabel}
               </span>
@@ -176,22 +176,22 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
           <button
             onClick={() => setMenuOpen((v) => !v)}
             aria-label="More options"
-            className="rounded-lg p-1.5 text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-200"
+            className="rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
           >
             <MoreHorizontal className="h-5 w-5" />
           </button>
           {menuOpen && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-              <div className="absolute right-0 top-9 z-20 w-44 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 shadow-xl">
+              <div className="absolute right-0 top-9 z-20 w-44 overflow-hidden rounded-xl border border-[var(--border-base)] bg-white shadow-lg shadow-slate-900/10">
                 <button
                   onClick={() => {
                     setMenuOpen(false);
                     setReporting(true);
                   }}
-                  className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-zinc-300 transition hover:bg-zinc-800"
+                  className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-[var(--foreground)] transition hover:bg-[var(--surface-2)]"
                 >
-                  <Flag className="h-4 w-4 text-rose-400" />
+                  <Flag className="h-4 w-4 text-rose-500" />
                   Report this take
                 </button>
               </div>
@@ -225,17 +225,17 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
       </div>
 
       {/* Action bar */}
-      <div className="flex items-center gap-3 px-3 pt-3 text-zinc-400">
+      <div className="flex items-center gap-3 px-3 pt-3 text-[var(--muted)]">
         <button
           onClick={like}
           aria-label={liked ? "Unlike" : "Like"}
-          className={`transition active:scale-90 ${liked ? "text-rose-500" : "hover:text-zinc-200"}`}
+          className={`transition active:scale-90 ${liked ? "text-rose-500" : "hover:text-[var(--foreground)]"}`}
         >
           <Flame className="h-[22px] w-[22px]" fill={liked ? "currentColor" : "none"} strokeWidth={2.2} />
         </button>
         <button
           onClick={() => setChatOpen(true)}
-          className="transition hover:text-zinc-200"
+          className="transition hover:text-[var(--foreground)]"
           aria-label="Comment"
         >
           <MessageCircle className="h-[22px] w-[22px]" strokeWidth={2.2} />
@@ -244,7 +244,7 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
           onClick={() => setSaved((v) => !v)}
           aria-label="Save"
           className={`ml-auto transition active:scale-90 ${
-            saved ? "text-violet-400" : "hover:text-zinc-200"
+            saved ? "text-[var(--accent)]" : "hover:text-[var(--foreground)]"
           }`}
         >
           <Bookmark className="h-[22px] w-[22px]" fill={saved ? "currentColor" : "none"} strokeWidth={2.2} />
@@ -252,17 +252,17 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
       </div>
 
       {/* Liked / reacted strip */}
-      <div className="px-3 pt-2 text-[11px] font-medium text-zinc-400">
+      <div className="px-3 pt-2 text-[11px] font-medium text-[var(--muted)]">
         <span className="tabular-nums">
           {likes + reactions.reduce((s, e) => s + e.count, 0)} feel{likes ? "" : "s"}
         </span>
-        <span className="text-zinc-600"> · {thought.handle}</span>
+        <span className="text-[var(--muted)]/70"> · {thought.handle}</span>
       </div>
 
       {/* Feeling + reaction burst */}
       {burst && (
         <div className="px-3 pt-2">
-          <span className="animate-spring inline-flex items-center gap-1 rounded-full bg-zinc-800 px-3 py-1 text-sm shadow-lg">
+          <span className="animate-spring inline-flex items-center gap-1 rounded-full bg-[var(--accent-soft)] px-3 py-1 text-sm text-[var(--accent-2)]">
             {burst} You feel this too
           </span>
         </div>
@@ -297,14 +297,14 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
             onSeek={seekTo}
           />
         )}
-        <p lang={thought.language} dir="auto" className="text-sm leading-relaxed text-zinc-300">
+        <p lang={thought.language} dir="auto" className="text-sm leading-relaxed text-[var(--foreground)]">
           {thought.content}
         </p>
         <div className="flex flex-wrap gap-1.5 pt-0.5">
           {thought.tags.map((t) => (
             <span
               key={t}
-              className="rounded-full bg-zinc-800/60 px-2 py-0.5 text-[11px] font-medium text-zinc-400"
+              className="rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[11px] font-medium text-[var(--muted)]"
             >
               {t}
             </span>
@@ -312,8 +312,8 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
         </div>
 
         {/* Reactions — always visible so you know how to express */}
-        <div className="flex flex-wrap items-center gap-1.5 border-t border-zinc-800/70 pt-2.5">
-          <span className="mr-0.5 text-[10px] font-medium uppercase tracking-wider text-zinc-600">
+        <div className="flex flex-wrap items-center gap-1.5 border-t border-[var(--border-base)] pt-2.5">
+          <span className="mr-0.5 text-[10px] font-medium uppercase tracking-wider text-[var(--muted)]">
             React
           </span>
           {REACTION_TYPES.map((r) => {
@@ -326,10 +326,10 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
                 aria-label={`React ${r}`}
                 className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium transition active:scale-90 ${
                   isMine
-                    ? "border-violet-500/70 bg-violet-500/20 text-violet-100"
+                    ? "border-teal-300 bg-teal-50 text-teal-800"
                     : count > 0
-                      ? "border-zinc-800 bg-zinc-900/60 text-zinc-300 hover:border-zinc-700"
-                      : "border-transparent bg-transparent text-zinc-600 hover:text-zinc-300"
+                      ? "border-[var(--border-base)] bg-[var(--surface-2)] text-[var(--foreground)] hover:border-teal-200"
+                      : "border-transparent bg-transparent text-[var(--muted)] hover:text-[var(--foreground)]"
                 }`}
               >
                 <span className="text-sm leading-none">{r}</span>
@@ -343,20 +343,20 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
         {thought.feeling && others && others > 1 && onOpenRoom && (
           <button
             onClick={() => onOpenRoom(thought.feeling!)}
-            className="mt-2 flex w-full items-center gap-1.5 rounded-lg border border-zinc-800/70 bg-zinc-900/40 px-2.5 py-1.5 text-[11px] font-medium text-zinc-400 transition hover:border-zinc-700 hover:text-zinc-200"
+            className="mt-2 flex w-full items-center gap-1.5 rounded-lg border border-[var(--border-base)] bg-[var(--surface-2)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--muted)] transition hover:border-teal-200 hover:text-[var(--foreground)]"
           >
             <span aria-hidden className="text-sm leading-none">
               🤝
             </span>
             You&apos;re not alone — {others} other{others === 1 ? "" : "s"} feel this too
-            <span className="ml-auto text-zinc-600">open room →</span>
+            <span className="ml-auto text-[var(--muted)]/70">open room →</span>
           </button>
         )}
       </div>
 
       {/* Report sheet */}
       {(reporting || reported) && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/30 backdrop-blur-sm sm:items-center">
           <div
             className="absolute inset-0"
             onClick={() => {
@@ -364,12 +364,12 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
               setReported(false);
             }}
           />
-          <div className="relative w-full max-w-[430px] rounded-t-2xl border border-zinc-800 bg-zinc-900 p-5 shadow-2xl sm:rounded-2xl">
+          <div className="relative w-full max-w-[430px] rounded-t-2xl border border-[var(--border-base)] bg-white p-5 shadow-xl shadow-slate-900/10 sm:rounded-2xl">
             {reported ? (
               <div className="flex flex-col items-center gap-3 py-4 text-center">
-                <ShieldCheck className="h-9 w-9 text-emerald-400" />
-                <p className="text-sm font-semibold text-zinc-100">Thanks — reported</p>
-                <p className="text-xs text-zinc-400">
+                <ShieldCheck className="h-9 w-9 text-emerald-600" />
+                <p className="text-sm font-semibold text-[var(--foreground)]">Thanks — reported</p>
+                <p className="text-xs text-[var(--muted)]">
                   Our community keepers review every report. This take stays up until it&apos;s
                   reviewed.
                 </p>
@@ -378,7 +378,7 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
                     setReported(false);
                     setReporting(false);
                   }}
-                  className="mt-1 w-full rounded-xl border border-zinc-700 px-4 py-2.5 text-sm font-semibold text-zinc-200 transition hover:bg-zinc-800"
+                  className="mt-1 w-full rounded-xl border border-[var(--border-base)] px-4 py-2.5 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-2)]"
                 >
                   Done
                 </button>
@@ -386,8 +386,8 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
             ) : (
               <>
                 <div className="mb-4 flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-zinc-100">Report this take</h3>
-                  <span className="text-[11px] text-zinc-500">All ages. Stay kind.</span>
+                  <h3 className="font-display text-sm font-bold text-[var(--foreground)]">Report this take</h3>
+                  <span className="text-[11px] text-[var(--muted)]">All ages. Stay kind.</span>
                 </div>
                 <div className="flex flex-col gap-2">
                   {REPORT_REASONS.map((reason) => (
@@ -397,9 +397,9 @@ export default function FeedCard({ thought, onReact, onReport, onOpenRoom, other
                         setReported(true);
                         onReport?.(thought.id, reason);
                       }}
-                      className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/60 px-3 py-2.5 text-left text-sm text-zinc-300 transition hover:border-zinc-700 hover:text-zinc-100"
+                      className="flex items-center gap-2 rounded-xl border border-[var(--border-base)] bg-[var(--surface-2)] px-3 py-2.5 text-left text-sm text-[var(--foreground)] transition hover:border-teal-200"
                     >
-                      <Flag className="h-4 w-4 shrink-0 text-rose-400" />
+                      <Flag className="h-4 w-4 shrink-0 text-rose-500" />
                       {reason}
                     </button>
                   ))}

@@ -3,21 +3,29 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border-base: var(--border-base);
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+  --color-muted: var(--muted);
+  --font-sans: var(--font-manrope);
+  --font-display: var(--font-fraunces);
 }
 
 :root {
-  --background: #09090b;
-  --foreground: #fafafa;
-  --surface: #121216;
-  --surface-2: #1a1a20;
-  --border-base: #27272a;
-  --accent: #8b5cf6;
-  --accent-2: #6366f1;
+  /* Quiet Pulse — cool mist light, teal ink accent (no purple neon) */
+  --background: #e8eef2;
+  --foreground: #142029;
+  --surface: #ffffff;
+  --surface-2: #f3f7f9;
+  --border-base: #d4dde3;
+  --muted: #5b6b76;
+  --accent: #0f766e;
+  --accent-2: #115e59;
+  --accent-soft: #d5f5f0;
 }
 
-/* Hide scrollbar but keep scrollability for pill rows */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -26,31 +34,28 @@
   scrollbar-width: none;
 }
 
-/* Thin custom scrollbar for the feed area */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #3f3f46;
-  border-radius: 9999px;
-  border: 2px solid #09090b;
+  background: #c5d0d7;
+  border-radius: 8px;
+  border: 2px solid var(--background);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #52525b;
+  background: #9aadb8;
 }
 
-/* Keyboard accessibility: visible focus ring everywhere */
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: 6px;
 }
 
-/* Safe-area helpers for notched phones in standalone PWA mode */
 .safe-top {
   padding-top: env(safe-area-inset-top);
 }
@@ -58,16 +63,26 @@
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* Hide the app content that scrolls under the browser chrome in standalone mode */
 html,
 body {
   height: 100%;
 }
 body {
   overflow-x: hidden;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-manrope), system-ui, sans-serif;
+  background-image:
+    radial-gradient(900px 420px at 100% -20%, rgba(15, 118, 110, 0.09), transparent 55%),
+    radial-gradient(700px 360px at -10% 10%, rgba(20, 32, 41, 0.04), transparent 50%),
+    linear-gradient(180deg, #f4f7f9 0%, #e8eef2 40%, #e4eaee 100%);
+  background-attachment: fixed;
 }
 
-/* Respect users who prefer reduced motion */
+.font-display {
+  font-family: var(--font-fraunces), Georgia, serif;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -79,37 +94,24 @@ body {
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-  background-image:
-    radial-gradient(1200px 400px at 80% -10%, rgba(139, 92, 246, 0.14), transparent 60%),
-    radial-gradient(900px 380px at 10% -10%, rgba(99, 102, 241, 0.1), transparent 55%);
-  background-attachment: fixed;
-}
-
 @keyframes riseIn {
   from {
     opacity: 0;
-    transform: translateY(10px) scale(0.98);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
 }
 .animate-rise-in {
-  animation: riseIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: riseIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes popIn {
   0% {
-    transform: scale(0.6);
+    transform: scale(0.92);
     opacity: 0;
-  }
-  60% {
-    transform: scale(1.15);
   }
   100% {
     transform: scale(1);
@@ -117,67 +119,42 @@ body {
   }
 }
 .animate-pop-in {
-  animation: popIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes reactionDrip {
   0% {
-    transform: translateY(-8px) scale(0.5);
+    transform: translateY(-6px);
     opacity: 0;
   }
   100% {
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
     opacity: 1;
   }
 }
 .animate-reaction-drip {
-  animation: reactionDrip 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: reactionDrip 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes glowPulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.4), 0 0 24px rgba(139, 92, 246, 0.15);
-  }
-  50% {
-    box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.7), 0 0 40px rgba(139, 92, 246, 0.3);
-  }
-}
-.animate-glow {
-  animation: glowPulse 2.4s ease-in-out infinite;
-}
-
-/* Reaction emoji hops upward then settles — delight on tap */
 @keyframes reactionJump {
   0% {
-    transform: translateY(0) scale(0.5);
+    transform: translateY(0) scale(0.8);
   }
-  40% {
-    transform: translateY(-18px) scale(1.2);
-  }
-  60% {
-    transform: translateY(-22px) scale(1.05);
+  50% {
+    transform: translateY(-12px) scale(1.05);
   }
   100% {
-    transform: translateY(-18px) scale(1) rotate(var(--r, 0deg));
+    transform: translateY(-12px) scale(1) rotate(var(--r, 0deg));
   }
 }
 .animate-reaction-jump {
-  animation: reactionJump 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: reactionJump 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Springy bounce for "You feel this too" burst */
 @keyframes springBounce {
   0% {
-    transform: scale(0.4) translateY(8px);
+    transform: scale(0.9) translateY(4px);
     opacity: 0;
-  }
-  55% {
-    transform: scale(1.12) translateY(-3px);
-    opacity: 1;
-  }
-  75% {
-    transform: scale(0.96) translateY(1px);
   }
   100% {
     transform: scale(1) translateY(0);
@@ -185,80 +162,29 @@ body {
   }
 }
 .animate-spring {
-  animation: springBounce 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: springBounce 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Gentle floating for ambient elements (empty states, misc) */
 @keyframes floaty {
   0%,
   100% {
     transform: translateY(0);
   }
   50% {
-    transform: translateY(-6px);
+    transform: translateY(-4px);
   }
 }
 .animate-floaty {
-  animation: floaty 3.2s ease-in-out infinite;
+  animation: floaty 4s ease-in-out infinite;
 }
 
-/* Slow aurora drift for the hero glow */
-@keyframes auroraDrift {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) scale(1);
-    opacity: 0.55;
-  }
-  50% {
-    transform: translate3d(16px, -10px, 0) scale(1.15);
-    opacity: 0.9;
-  }
-}
-.animate-aurora {
-  animation: auroraDrift 7s ease-in-out infinite;
-}
-
-/* Heartbeat pulse for the center "Feel" button */
-@keyframes heartbeat {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  25% {
-    transform: scale(1.08);
-  }
-  40% {
-    transform: scale(1);
-  }
-  60% {
-    transform: scale(1.06);
-  }
-}
-.animate-heartbeat {
-  animation: heartbeat 2.2s ease-in-out infinite;
-}
-
-/* Soft shimmer sweep for primary CTA buttons */
-@keyframes shimmer {
-  0% {
-    transform: translateX(-120%);
-  }
-  100% {
-    transform: translateX(220%);
-  }
+/* Kept as no-ops so older classNames don't break mid-migration */
+.animate-glow,
+.animate-aurora,
+.animate-heartbeat,
+.animate-shimmer::after {
+  animation: none !important;
 }
 .animate-shimmer::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  /* Covers the whole button (inset: 0) purely for visual effect — must
-     not eat clicks meant for the button underneath. */
-  pointer-events: none;
-  background: linear-gradient(
-    100deg,
-    transparent 20%,
-    rgba(255, 255, 255, 0.35) 50%,
-    transparent 80%
-  );
-  animation: shimmer 2.8s ease-in-out infinite;
+  content: none;
 }

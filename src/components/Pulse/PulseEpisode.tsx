@@ -42,38 +42,38 @@ export default function PulseEpisode({ thoughts, onOpenRoom }: PulseEpisodeProps
 
   return (
     <section className="px-4 pt-4">
-      <div className="overflow-hidden rounded-2xl border border-violet-500/25 bg-gradient-to-br from-violet-950/60 via-zinc-900/70 to-zinc-950/70">
+      <div className="overflow-hidden rounded-2xl border border-[var(--border-base)] bg-white shadow-sm shadow-slate-900/5">
         {/* Episode header */}
         <div className="flex items-center justify-between px-4 pt-4">
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-300">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
             <CalendarDays className="h-3.5 w-3.5" />
             Pulse Episode
           </div>
-          <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-[10px] font-bold tabular-nums text-violet-200">
+          <span className="rounded-full border border-teal-200 bg-teal-50 px-2 py-0.5 text-[10px] font-bold tabular-nums text-teal-800">
             EP {ep}
           </span>
         </div>
 
         {/* Headline */}
         <div className="px-4 pt-3">
-          <h2 className="text-lg font-bold leading-snug text-zinc-50">
+          <h2 className="font-display text-lg font-bold leading-snug text-[var(--foreground)]">
             The pulse felt {top ? top.short.toLowerCase() : "alive"} today
           </h2>
-          <p className="mt-1 text-xs text-zinc-400">
+          <p className="mt-1 text-xs text-[var(--muted)]">
             {thoughts.length} voice{thoughts.length === 1 ? "" : "s"} · {langs.size} language
             {langs.size === 1 ? "" : "s"} · most echoed: {topTake ? topSecondaryReaction(topTake.reactions) : "🔥 1"}
           </p>
 
           {/* Live mini-meter */}
           <div className="mt-3 flex items-center gap-2">
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-zinc-800">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--surface-2)]">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-400 transition-all duration-700"
+                className="h-full rounded-full bg-[var(--accent)] transition-all duration-700"
                 style={{ width: `${pct}%` }}
               />
             </div>
-            <span className="flex items-center gap-1 text-[10px] font-medium text-zinc-400">
-              <TrendingUp className="h-3 w-3 text-emerald-400" />
+            <span className="flex items-center gap-1 text-[10px] font-medium text-[var(--muted)]">
+              <TrendingUp className="h-3 w-3 text-emerald-600" />
               {pct}% alive
             </span>
           </div>
@@ -87,7 +87,7 @@ export default function PulseEpisode({ thoughts, onOpenRoom }: PulseEpisodeProps
               <button
                 key={t.id}
                 onClick={() => t.feeling && onOpenRoom(t.feeling)}
-                className="mb-1.5 flex w-full items-center gap-2.5 rounded-xl border border-zinc-800/70 bg-zinc-900/50 px-3 py-2 text-left transition hover:border-zinc-700"
+                className="mb-1.5 flex w-full items-center gap-2.5 rounded-xl border border-[var(--border-base)] bg-[var(--surface-2)] px-3 py-2 text-left transition hover:border-teal-200"
               >
                 <span
                   aria-hidden
@@ -96,18 +96,18 @@ export default function PulseEpisode({ thoughts, onOpenRoom }: PulseEpisodeProps
                   {f?.emoji ?? "🗣️"}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-semibold text-zinc-200">
+                  <p className="truncate text-xs font-semibold text-[var(--foreground)]">
                     {t.handle}
                     {t.languageLabel ? (
-                      <span className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] font-normal text-zinc-500">
+                      <span className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] font-normal text-[var(--muted)]">
                         <Globe2 className="h-2.5 w-2.5" />
                         {t.languageLabel}
                       </span>
                     ) : null}
                   </p>
-                  <p dir="auto" className="truncate text-[11px] text-zinc-400">{t.content}</p>
+                  <p dir="auto" className="truncate text-[11px] text-[var(--muted)]">{t.content}</p>
                 </div>
-                <Play className="h-4 w-4 shrink-0 text-zinc-500" />
+                <Play className="h-4 w-4 shrink-0 text-[var(--muted)]" />
               </button>
             );
           })}
@@ -117,7 +117,7 @@ export default function PulseEpisode({ thoughts, onOpenRoom }: PulseEpisodeProps
         <div className="px-4 pb-4 pt-2">
           <button
             onClick={() => onOpenRoom(topId)}
-            className="flex w-full items-center justify-center gap-1 text-[11px] font-semibold text-violet-300 transition hover:text-violet-200"
+            className="flex w-full items-center justify-center gap-1 text-[11px] font-semibold text-[var(--accent)] transition hover:text-[var(--accent-2)]"
           >
             Hear everyone who felt {top ? top.short.toLowerCase() : "this"} today
             <ChevronRight className="h-3.5 w-3.5" />

@@ -74,29 +74,16 @@ function SignInFormInner({ total }: { total: number }) {
   };
 
   return (
-    <div className="relative mx-auto flex min-h-dvh w-full max-w-[430px] flex-col items-center justify-center overflow-hidden bg-zinc-950 px-6 py-10">
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.07]"
-        style={{
-          backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)",
-          backgroundSize: "22px 22px",
-        }}
-        aria-hidden
-      />
-      <div className="animate-aurora pointer-events-none absolute inset-x-0 top-0 h-80 opacity-40">
-        <div className="absolute inset-0 rounded-full bg-gradient-to-b from-violet-600/40 to-transparent blur-3xl" />
-      </div>
-      <div className="pointer-events-none absolute -bottom-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-indigo-600/20 blur-[100px]" aria-hidden />
-
+    <div className="relative mx-auto flex min-h-dvh w-full max-w-[430px] flex-col items-center justify-center overflow-hidden px-6 py-10">
       <div className="relative z-10 w-full">
         <div className="mb-6 flex flex-col items-center text-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 shadow-xl shadow-violet-500/30">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--accent)]">
             <BrandMark className="h-10 w-10" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-100">
+          <h1 className="font-display text-2xl font-bold tracking-tight text-[var(--foreground)]">
             {step === "email" ? "Join the pulse" : "Check your email"}
           </h1>
-          <p className="mt-1 text-sm text-zinc-500">
+          <p className="mt-1 text-sm text-[var(--muted)]">
             {step === "email"
               ? total < 25
                 ? "Be one of the first to share how AI makes you feel"
@@ -108,10 +95,10 @@ function SignInFormInner({ total }: { total: number }) {
         {step === "email" ? (
           <form
             onSubmit={handleRequestCode}
-            className="space-y-4 rounded-3xl border border-zinc-800/60 bg-zinc-900/60 p-6 backdrop-blur-xl"
+            className="space-y-4 rounded-3xl border border-[var(--border-base)] bg-white p-6 shadow-sm shadow-slate-900/5"
           >
             <div>
-              <label htmlFor="email" className="mb-1.5 block text-xs font-medium text-zinc-400">
+              <label htmlFor="email" className="mb-1.5 block text-xs font-medium text-[var(--muted)]">
                 Email
               </label>
               <input
@@ -121,14 +108,14 @@ function SignInFormInner({ total }: { total: number }) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-950/60 px-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none transition focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
+                className="w-full rounded-xl border border-[var(--border-base)] bg-[var(--surface-2)] px-4 py-2.5 text-sm text-[var(--foreground)] placeholder:text-[var(--muted)]/60 outline-none transition focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
                 required
               />
             </div>
 
             <div>
-              <label htmlFor="name" className="mb-1.5 block text-xs font-medium text-zinc-400">
-                Display name <span className="text-zinc-600">(optional)</span>
+              <label htmlFor="name" className="mb-1.5 block text-xs font-medium text-[var(--muted)]">
+                Display name <span className="text-[var(--muted)]/70">(optional)</span>
               </label>
               <input
                 id="name"
@@ -137,12 +124,12 @@ function SignInFormInner({ total }: { total: number }) {
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="Alex"
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-950/60 px-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none transition focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
+                className="w-full rounded-xl border border-[var(--border-base)] bg-[var(--surface-2)] px-4 py-2.5 text-sm text-[var(--foreground)] placeholder:text-[var(--muted)]/60 outline-none transition focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
               />
             </div>
 
             {error && (
-              <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-xs text-red-400">
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs text-red-700">
                 {error}
               </div>
             )}
@@ -150,7 +137,7 @@ function SignInFormInner({ total }: { total: number }) {
             <button
               type="submit"
               disabled={submitting}
-              className="animate-shimmer relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 transition hover:brightness-110 active:scale-[0.98] disabled:opacity-50 disabled:hover:brightness-100"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-2)] active:scale-[0.98] disabled:opacity-50"
             >
               {submitting ? "Sending code…" : (
                 <>
@@ -160,17 +147,17 @@ function SignInFormInner({ total }: { total: number }) {
               )}
             </button>
 
-            <p className="text-center text-[11px] text-zinc-600">
+            <p className="text-center text-[11px] text-[var(--muted)]">
               We email a one-time code — no password to remember.
             </p>
           </form>
         ) : (
           <form
             onSubmit={handleVerify}
-            className="space-y-4 rounded-3xl border border-zinc-800/60 bg-zinc-900/60 p-6 backdrop-blur-xl"
+            className="space-y-4 rounded-3xl border border-[var(--border-base)] bg-white p-6 shadow-sm shadow-slate-900/5"
           >
             <div>
-              <label htmlFor="code" className="mb-1.5 block text-xs font-medium text-zinc-400">
+              <label htmlFor="code" className="mb-1.5 block text-xs font-medium text-[var(--muted)]">
                 6-digit code
               </label>
               <input
@@ -183,20 +170,20 @@ function SignInFormInner({ total }: { total: number }) {
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                 placeholder="000000"
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-950/60 px-4 py-2.5 text-center text-lg tracking-[0.35em] text-zinc-100 placeholder-zinc-600 outline-none transition focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
+                className="w-full rounded-xl border border-[var(--border-base)] bg-[var(--surface-2)] px-4 py-2.5 text-center text-lg tracking-[0.35em] text-[var(--foreground)] placeholder:text-[var(--muted)]/60 outline-none transition focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
                 required
                 autoFocus
               />
             </div>
 
             {devCode && (
-              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-300">
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-800">
                 Dev mode (no Resend key): use code <span className="font-mono font-semibold">{devCode}</span>
               </div>
             )}
 
             {error && (
-              <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-xs text-red-400">
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs text-red-700">
                 {error}
               </div>
             )}
@@ -204,7 +191,7 @@ function SignInFormInner({ total }: { total: number }) {
             <button
               type="submit"
               disabled={submitting || code.length !== 6}
-              className="animate-shimmer relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 transition hover:brightness-110 active:scale-[0.98] disabled:opacity-50 disabled:hover:brightness-100"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-2)] active:scale-[0.98] disabled:opacity-50"
             >
               {submitting ? "Verifying…" : (
                 <>
@@ -221,7 +208,7 @@ function SignInFormInner({ total }: { total: number }) {
                 setError(null);
                 setDevCode(null);
               }}
-              className="flex w-full items-center justify-center gap-1.5 text-xs text-zinc-500 transition hover:text-zinc-300"
+              className="flex w-full items-center justify-center gap-1.5 text-xs text-[var(--muted)] transition hover:text-[var(--foreground)]"
             >
               <ArrowLeft className="h-3 w-3" />
               Use a different email
@@ -229,7 +216,7 @@ function SignInFormInner({ total }: { total: number }) {
           </form>
         )}
 
-        <div className="mt-5 flex items-center justify-center gap-4 text-[11px] text-zinc-600">
+        <div className="mt-5 flex items-center justify-center gap-4 text-[11px] text-[var(--muted)]">
           <span className="flex items-center gap-1.5">
             <Lock className="h-3 w-3" strokeWidth={2} />
             Email never shared
@@ -241,7 +228,7 @@ function SignInFormInner({ total }: { total: number }) {
         </div>
 
         <div className="mt-6 text-center">
-          <Link href="/" className="text-xs text-zinc-500 transition hover:text-zinc-300">
+          <Link href="/" className="text-xs text-[var(--muted)] transition hover:text-[var(--foreground)]">
             ← Back to intro
           </Link>
         </div>
