@@ -36,7 +36,7 @@
   --pad-x: var(--pad);
   --pad-r: var(--pad);
   --nav-h: 4rem;
-  --header-h: 3.25rem;
+  --header-h: 3.75rem;
 
   /* Back-compat aliases used by older classNames */
   --shell-pad: var(--pad);

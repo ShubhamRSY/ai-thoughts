@@ -212,7 +212,8 @@ export async function sendMessage(
     return null;
   } catch (e) {
     console.error("sendMessage:", e);
-    return "Couldn't send that — try again";
+    const msg = e instanceof Error ? e.message : "";
+    return msg && msg !== "Failed to fetch" ? msg : "Couldn't send that — try again";
   }
 }
 
@@ -319,12 +320,22 @@ export async function getProfile(): Promise<LocalProfile | null> {
   }
 }
 
-export async function saveProfile(_userId: string, handle: string, author: string): Promise<string | null> {
+export async function saveProfile(
+  _userId: string,
+  handle: string,
+  author: string,
+  extra?: { bio?: string; avatarUrl?: string }
+): Promise<string | null> {
   try {
     await jsonFetch(`${API}/profile`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ handle, author }),
+      body: JSON.stringify({
+        handle,
+        author,
+        bio: extra?.bio ?? "",
+        avatarUrl: extra?.avatarUrl ?? "",
+      }),
     });
     return null;
   } catch (e) {

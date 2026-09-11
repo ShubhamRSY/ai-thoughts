@@ -1,7 +1,16 @@
 import type { Thought, Reaction, LanguageOption } from "./types";
 import { fakeHash } from "./integrity";
 
-export const TAG_OPTIONS = ["#Sleek", "#Slop", "#Jobs", "#Ethics", "#Future", "#Bias", "#Tools", "#OpenSource"] as const;
+export const TAG_OPTIONS = [
+  "#Sleek",
+  "#Slop",
+  "#Jobs",
+  "#Ethics",
+  "#Future",
+  "#Bias",
+  "#Tools",
+  "#OpenSource",
+] as const;
 
 export const REACTION_TYPES: Reaction[] = ["🔥", "😂", "🤔", "💯", "🚀", "😴", "👏", "🙌"];
 

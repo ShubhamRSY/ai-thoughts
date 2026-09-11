@@ -9,6 +9,7 @@ import {
 } from "@/lib/db";
 import { useLocalProfile } from "@/hooks/useLocalProfile";
 import TranslateToEnglish from "@/components/TranslateToEnglish";
+import { checkDignity } from "@/lib/dignity";
 
 interface ChatPanelProps {
   postId: string;
@@ -87,6 +88,11 @@ export default function ChatPanel({
   const handleSend = async () => {
     const body = draft.trim();
     if (!body || sending) return;
+    const dignity = checkDignity(body);
+    if (!dignity.ok) {
+      setError(dignity.reason);
+      return;
+    }
     setSending(true);
     setError(null);
     const err = await sendMessage(

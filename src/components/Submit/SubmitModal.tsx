@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, AudioLines, Video, Type, Send, Check, Globe, ChevronDown, Heart } from "lucide-react";
-import { TAG_OPTIONS, LANGS } from "@/lib/mock-data";
-import { FEELINGS } from "@/lib/feelings";
+import { X, AudioLines, Video, Type, Send, Check, Globe, ChevronDown } from "lucide-react";
+import { LANGS } from "@/lib/mock-data";
+import { BRAND, SUGGESTED_TAGS } from "@/lib/brand";
+import { checkDignity, normalizeTag } from "@/lib/dignity";
 import { fakeHash } from "@/lib/integrity";
 import type { FeelingId, MediaType, Thought, PublishResult } from "@/lib/types";
 import MediaRecorderView, { type CapturedClip } from "@/components/Submit/MediaRecorderView";
@@ -53,15 +54,14 @@ export default function SubmitModal({
   onPublish,
   presetHandle = "",
   presetAuthor = "",
-  presetFeeling,
   lockedIdentity = false,
 }: SubmitModalProps) {
   const [tab, setTab] = useState<Tab>(initialTab);
-  const [feeling, setFeeling] = useState<FeelingId | null>(presetFeeling ?? null);
   const [handle, setHandle] = useState(presetHandle);
   const [author, setAuthor] = useState(presetAuthor);
   const [content, setContent] = useState("");
   const [tags, setTags] = useState<string[]>([]);
+  const [customTag, setCustomTag] = useState("");
   const [language, setLanguage] = useState(detectDefaultLanguage);
   const [published, setPublished] = useState(false);
   const [captured, setCaptured] = useState<CapturedClip | null>(null);
@@ -77,10 +77,16 @@ export default function SubmitModal({
   if (!open) return null;
 
   const toggleTag = (t: string) =>
-    setTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
+    setTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t].slice(0, 8)));
+
+  const addCustomTag = () => {
+    const t = normalizeTag(customTag);
+    if (!t) return;
+    setTags((prev) => (prev.includes(t) ? prev : [...prev, t].slice(0, 8)));
+    setCustomTag("");
+  };
 
   const canSubmit =
-    feeling !== null &&
     handle.trim().length > 0 &&
     (tab === "text" ? content.trim().length >= 3 : !!captured?.blob);
 
@@ -91,27 +97,35 @@ export default function SubmitModal({
   };
 
   const submit = async () => {
-    if (!feeling) return;
     if (tab === "text" && content.trim().length < 3) return;
     if (tab !== "text" && !captured?.blob) return;
     if (!handle.trim()) return;
     setPublishError(null);
-    const handleValue = handle.startsWith("@") ? handle.trim() : `@${handle.trim().toLowerCase().replace(/\s+/g, "")}`;
+
+    const handleValue = handle.startsWith("@")
+      ? handle.trim()
+      : `@${handle.trim().toLowerCase().replace(/\s+/g, "")}`;
     const contentValue =
       tab === "text"
         ? content.trim()
         : content.trim() ||
           (tab === "audio"
-            ? "A fresh audio take shared on the pulse."
-            : "A quick video take shared on the pulse.");
-    const seed = `${tab}:${feeling}:${handleValue}:${contentValue.slice(0, 40)}:${Date.now()}`;
+            ? "An audio take shared in Voices."
+            : "A video take shared in Voices.");
+
+    const dignity = checkDignity(contentValue);
+    if (!dignity.ok) {
+      setPublishError(dignity.reason);
+      return;
+    }
+
+    const seed = `${tab}:${handleValue}:${contentValue.slice(0, 40)}:${Date.now()}`;
     const langInfo = LANGS.find((l) => l.code === language);
     const payload: SharePayload = {
       author: author.trim() || handle.trim(),
       handle: handleValue,
       content: contentValue,
       mediaType: tab,
-      feeling,
       mediaDuration: captured && captured.duration > 0 ? fmtDur(captured.duration) : undefined,
       mediaUrl: undefined,
       tags: tags.length ? tags : ["#Future"],
@@ -129,14 +143,12 @@ export default function SubmitModal({
     if (!result.ok) {
       if (result.reason === "cooldown") {
         setPublishError(
-          `You just shared — give it ${result.retryInSec}s. Take a breath, the pulse isn't going anywhere.`
+          `You just shared — wait ${result.retryInSec}s, then try again.`
         );
       } else if (result.reason === "too_long") {
-        setPublishError(`That's a little long — keep it under ${result.max} characters.`);
+        setPublishError(`A little long — keep it under ${result.max} characters.`);
       } else {
-        setPublishError(
-          "Couldn't share right now. If you're recording, check your clip and try again."
-        );
+        setPublishError("Couldn’t share right now. Check your clip and try again.");
       }
       return;
     }
@@ -146,70 +158,39 @@ export default function SubmitModal({
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[var(--background)]/95 backdrop-blur-md">
-      {/* Top bar */}
       <div className="safe-top border-b border-[var(--border-base)] bg-[var(--surface)]">
         <div className="app-rail flex items-center justify-between py-3">
-        <button
-          onClick={onClose}
-          className="flex items-center gap-1 rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
-          aria-label="Back"
-        >
-          <X className="h-5 w-5" />
-          <span className="text-sm font-medium">Cancel</span>
-        </button>
-        <div className="flex items-center gap-1.5">
-          <Heart className="h-4 w-4 text-[var(--accent)]" fill="currentColor" />
-          <h2 className="font-display text-sm font-semibold text-[var(--foreground)]">How do you feel?</h2>
-        </div>
-        <span className="w-16" />
+          <button
+            onClick={onClose}
+            className="flex items-center gap-1 rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+            aria-label="Back"
+          >
+            <X className="h-5 w-5" />
+            <span className="text-sm font-medium">Cancel</span>
+          </button>
+          <h2 className="font-display text-sm font-semibold text-[var(--foreground)]">
+            {BRAND.shareTitle}
+          </h2>
+          <span className="w-16" />
         </div>
       </div>
 
       {published ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
-          <span className="animate-pop-in text-4xl text-[var(--accent)]" aria-hidden>
+          <span className="text-4xl text-[var(--accent)]" aria-hidden>
             ◌
           </span>
-          <h3 className="font-display text-lg font-bold text-[var(--foreground)]">It&apos;s on the pulse.</h3>
-          <p className="text-sm text-[var(--muted)]">Your feeling is out there — people are feeling with you right now.</p>
-          <span className="animate-reaction-drip mt-1 flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1 text-xs font-medium text-teal-800">
-            <Check className="h-3.5 w-3.5" /> Live
+          <h3 className="font-display text-lg font-bold text-[var(--foreground)]">
+            {BRAND.shareSuccess}
+          </h3>
+          <p className="text-sm text-[var(--muted)]">{BRAND.shareSuccessSub}</p>
+          <span className="mt-1 flex items-center gap-1.5 rounded-full bg-[var(--accent-soft)] px-3 py-1 text-xs font-medium text-[var(--accent-2)]">
+            <Check className="h-3.5 w-3.5" /> Shared
           </span>
         </div>
       ) : (
         <>
           <div className="app-rail flex flex-1 flex-col overflow-y-auto">
-            {/* Feeling picker — the heart of the app */}
-            <section className="border-b border-[var(--border-base)] bg-[var(--surface)] pb-3 pt-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-                Right now, AI makes me feel…
-              </p>
-              <div className="mt-2.5 grid grid-cols-2 gap-2">
-                {FEELINGS.map((f) => {
-                  const active = feeling === f.id;
-                  return (
-                    <button
-                      key={f.id}
-                      onClick={() => setFeeling(f.id)}
-                      className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-left text-sm transition active:scale-95 ${
-                        active
-                          ? "border-teal-300 bg-teal-50 text-teal-900"
-                          : "border-[var(--border-base)] bg-white text-[var(--foreground)] hover:border-teal-200"
-                      }`}
-                    >
-                      <span className="text-xl leading-none" aria-hidden>
-                        {f.emoji}
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block truncate text-xs font-semibold">{f.label}</span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
-
-            {/* Mode tabs */}
             <div className="grid grid-cols-3 border-b border-[var(--border-base)] bg-[var(--surface)]">
               {TABS.map(({ id, label, icon: Icon }) => {
                 const active = tab === id;
@@ -236,7 +217,6 @@ export default function SubmitModal({
               {tab === "video" && <MediaRecorderView kind="video" onCaptured={setCaptured} />}
               {tab === "text" && <TextForm value={content} onChange={setContent} />}
 
-              {/* Handle + name */}
               {lockedIdentity ? (
                 <div className="flex items-center gap-3 rounded-lg border border-[var(--border-base)] bg-white px-3 py-2.5">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-xs font-bold text-white">
@@ -259,19 +239,18 @@ export default function SubmitModal({
                       value={handle}
                       onChange={(e) => setHandle(e.target.value)}
                       placeholder="@yourname"
-                      inputMode="text"
-                      className="w-full rounded-lg border border-[var(--border-base)] bg-white px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted)]/60 focus:border-[var(--accent)] focus:outline-none"
+                      className="w-full rounded-lg border border-[var(--border-base)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
                     />
                   </div>
                   <div>
                     <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-                      Display name <span className="normal-case text-[var(--muted)]/70">(optional)</span>
+                      Display name <span className="normal-case opacity-70">(optional)</span>
                     </label>
                     <input
                       value={author}
                       onChange={(e) => setAuthor(e.target.value)}
                       placeholder="Your name"
-                      className="w-full rounded-lg border border-[var(--border-base)] bg-white px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted)]/60 focus:border-[var(--accent)] focus:outline-none"
+                      className="w-full rounded-lg border border-[var(--border-base)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
                     />
                   </div>
                 </div>
@@ -280,29 +259,28 @@ export default function SubmitModal({
               {tab !== "text" && (
                 <div>
                   <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-                    One line on it <span className="normal-case text-[var(--muted)]/70">(optional)</span>
+                    Caption <span className="normal-case opacity-70">(optional)</span>
                   </label>
                   <input
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
-                    placeholder="What's on your mind?"
+                    placeholder="A short line about this take…"
                     dir="auto"
-                    className="w-full rounded-lg border border-[var(--border-base)] bg-white px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted)]/60 focus:border-[var(--accent)] focus:outline-none"
+                    className="w-full rounded-lg border border-[var(--border-base)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
                   />
                 </div>
               )}
 
               <div>
                 <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-                  Language <span className="normal-case text-[var(--muted)]/70">(speak any language)</span>
+                  Language
                 </label>
                 <div className="relative">
                   <Globe className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
                   <select
                     value={language}
                     onChange={(e) => setLanguage(e.target.value)}
-                    aria-label="Take language"
-                    className="w-full cursor-pointer appearance-none rounded-lg border border-[var(--border-base)] bg-white py-2 pl-9 pr-9 text-sm text-[var(--foreground)] focus:border-[var(--accent)] focus:outline-none"
+                    className="w-full cursor-pointer appearance-none rounded-lg border border-[var(--border-base)] bg-white py-2 pl-9 pr-9 text-sm outline-none focus:border-[var(--accent)]"
                   >
                     {LANGS.map((l) => (
                       <option key={l.code} value={l.code}>
@@ -319,39 +297,69 @@ export default function SubmitModal({
                   Tags
                 </label>
                 <div className="flex flex-wrap gap-1.5">
-                  {TAG_OPTIONS.map((t) => {
+                  {SUGGESTED_TAGS.map((t) => {
                     const active = tags.includes(t);
                     return (
                       <button
                         key={t}
+                        type="button"
                         onClick={() => toggleTag(t)}
                         className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${
                           active
-                            ? "border-emerald-300 bg-emerald-50 text-emerald-800"
-                            : "border-[var(--border-base)] bg-white text-[var(--muted)] hover:border-teal-200 hover:text-[var(--foreground)]"
+                            ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-2)]"
+                            : "border-[var(--border-base)] bg-white text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--foreground)]"
                         }`}
                       >
                         {t}
                       </button>
                     );
                   })}
+                  {tags
+                    .filter((t) => !(SUGGESTED_TAGS as readonly string[]).includes(t))
+                    .map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => toggleTag(t)}
+                        className="rounded-full border border-[var(--accent)] bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-medium text-[var(--accent-2)]"
+                      >
+                        {t} ×
+                      </button>
+                    ))}
+                </div>
+                <div className="mt-2 flex gap-2">
+                  <input
+                    value={customTag}
+                    onChange={(e) => setCustomTag(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addCustomTag();
+                      }
+                    }}
+                    placeholder="Add your own tag…"
+                    className="min-w-0 flex-1 rounded-lg border border-[var(--border-base)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
+                  />
+                  <button
+                    type="button"
+                    onClick={addCustomTag}
+                    className="shrink-0 rounded-lg border border-[var(--border-base)] px-3 text-xs font-semibold text-[var(--foreground)] hover:bg-[var(--surface-2)]"
+                  >
+                    Add
+                  </button>
                 </div>
               </div>
 
-              <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-800">
-                All ages, all languages, all feelings — here it&apos;s safe to say how you really
-                feel about AI. Be kind.
+              <p className="rounded-xl border border-[var(--border-base)] bg-[var(--surface)] px-3 py-2 text-[11px] leading-relaxed text-[var(--muted)]">
+                {BRAND.dignityNote}
               </p>
             </div>
           </div>
 
-          {/* Footer */}
           <div className="safe-bottom border-t border-[var(--border-base)] bg-[var(--surface)] py-3">
             <div className="app-rail flex flex-col gap-1.5">
               {publishError && (
-                <p className="text-center text-[11px] font-medium text-rose-600">
-                  {publishError}
-                </p>
+                <p className="text-center text-[11px] font-medium text-rose-700">{publishError}</p>
               )}
               <button
                 onClick={submit}
@@ -359,10 +367,10 @@ export default function SubmitModal({
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-2)] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Send className="h-4 w-4" />
-                Put It On The Pulse
+                {BRAND.shareCta}
               </button>
               <p className="text-center text-[11px] text-[var(--muted)]">
-                {!feeling ? "Pick how you feel" : tab === "text" ? "3+ characters" : "Record a clip"}
+                {tab === "text" ? "Write at least a few words" : "Record a short clip"}
                 {handle.trim() ? "" : " · add a handle"}
               </p>
             </div>

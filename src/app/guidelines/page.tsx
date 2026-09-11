@@ -11,8 +11,8 @@ export default function GuidelinesPage() {
         <section>
           <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">The one rule</h2>
           <p>
-            Every feeling about AI belongs here — that&apos;s the whole idea. Be honest, be kind,
-            and remember a person is on the other end of every take.
+            Honest takes about AI belong here — including hard criticism. Be clear, be human,
+            and leave dignity intact for everyone reading.
           </p>
         </section>
 
@@ -20,11 +20,16 @@ export default function GuidelinesPage() {
           <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">What we remove</h2>
           <ul className="ml-4 list-disc space-y-1">
             <li>Hate, harassment, threats, or bullying of any kind</li>
-            <li>Explicit sexual content or nudity</li>
+            <li>Explicit sexual content, nudity, or vulgar abuse</li>
+            <li>Slurs and dehumanizing language</li>
             <li>Doxxing or posting others&apos; private info</li>
             <li>Spam, impersonation, or coordinated fake content</li>
             <li>Content that endangers a person, especially young people</li>
           </ul>
+          <p className="mt-2">
+            You can still say you hate how AI is used at work, fear deepfakes, or love a tool —
+            strong opinions are welcome when they stay respectful.
+          </p>
         </section>
 
         <section>

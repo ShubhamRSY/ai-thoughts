@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
+import { checkDignity } from "@/lib/dignity";
 
 export async function GET(
   _request: NextRequest,
@@ -44,6 +45,11 @@ export async function POST(
     const body = await request.json();
     const trimmed = (body.body ?? "").trim();
     if (!trimmed) return NextResponse.json({ error: "Empty message" }, { status: 400 });
+
+    const dignity = checkDignity(trimmed);
+    if (!dignity.ok) {
+      return NextResponse.json({ error: dignity.reason }, { status: 400 });
+    }
 
     const { db } = await connectToDatabase();
     const result = await db.collection("messages").insertOne({

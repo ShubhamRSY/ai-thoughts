@@ -16,14 +16,14 @@ export default function TextForm({ value, onChange }: TextFormProps) {
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value.slice(0, MAX_CHARS))}
-        placeholder="Spill it. What's your raw take on AI right now?"
+        placeholder="What’s your honest take on AI right now?"
         rows={5}
         dir="auto"
         className="w-full resize-none rounded-t-xl bg-transparent px-4 py-3 text-sm text-[var(--foreground)] placeholder:text-[var(--muted)]/60 focus:outline-none"
       />
       <div className="flex items-center justify-between border-t border-[var(--border-base)] px-4 py-2">
         <span className="flex items-center gap-1.5 text-[11px] text-[var(--muted)]">
-          <PenLine className="h-3.5 w-3.5" /> Short, raw, punchy
+          <PenLine className="h-3.5 w-3.5" /> Clear, human, and kind
         </span>
         <span
           className={`font-mono text-[11px] tabular-nums ${

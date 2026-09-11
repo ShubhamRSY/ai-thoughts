@@ -4,6 +4,7 @@ import { ObjectId } from "mongodb";
 import { getSession } from "@/lib/auth";
 import { FEELINGS } from "@/lib/feelings";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { checkDignity, normalizeTag } from "@/lib/dignity";
 
 const MEDIA_TYPES = new Set(["audio", "video", "text"]);
 const FEELING_IDS = new Set(FEELINGS.map((f) => f.id));
@@ -114,6 +115,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const dignity = checkDignity(content);
+    if (!dignity.ok) {
+      return NextResponse.json({ error: dignity.reason }, { status: 400 });
+    }
+
     const mediaType = typeof body.media_type === "string" ? body.media_type : "text";
     if (!MEDIA_TYPES.has(mediaType)) {
       return NextResponse.json({ error: "Invalid media_type" }, { status: 400 });
@@ -123,6 +129,14 @@ export async function POST(request: NextRequest) {
       typeof body.feeling === "string" && FEELING_IDS.has(body.feeling as never)
         ? body.feeling
         : null;
+
+    const tags = Array.isArray(body.tags)
+      ? body.tags
+          .filter((t: unknown) => typeof t === "string")
+          .map((t: string) => normalizeTag(t))
+          .filter((t: string | null): t is string => Boolean(t))
+          .slice(0, 8)
+      : [];
 
     const { db } = await connectToDatabase();
 
@@ -153,7 +167,7 @@ export async function POST(request: NextRequest) {
       media_duration: typeof body.media_duration === "string" ? body.media_duration : null,
       stream_url: null,
       stream_ready: false,
-      tags: Array.isArray(body.tags) ? body.tags.filter((t: unknown) => typeof t === "string").slice(0, 10) : [],
+      tags,
       language: typeof body.language === "string" ? body.language : null,
       language_label: typeof body.language_label === "string" ? body.language_label : null,
       integrity_hash: typeof body.integrity_hash === "string" ? body.integrity_hash : null,

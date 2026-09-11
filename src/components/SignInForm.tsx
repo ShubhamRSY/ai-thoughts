@@ -21,8 +21,8 @@ function OpeningPulse({ name }: { name?: string }) {
           <h1 className="font-display mt-6 text-2xl font-medium tracking-tight text-[var(--foreground)]">
             {name ? `Welcome back, ${name}` : "Welcome back"}
           </h1>
-          <p className="mt-2 max-w-[22ch] text-sm text-[var(--muted)]">
-            Taking you into the pulse…
+          <p className="mt-2 max-w-[24ch] text-sm text-[var(--muted)]">
+            Taking you into Voices…
           </p>
           <div className="mt-8 flex items-center gap-1.5" aria-hidden>
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--accent)] [animation-delay:0ms]" />
@@ -120,7 +120,7 @@ function SignInFormInner({ total }: { total: number }) {
           <BrandMark className="h-8 w-8" />
         </div>
         <h1 className="font-display mt-8 text-3xl font-medium tracking-tight text-[var(--foreground)]">
-          {step === "email" ? "Join the pulse" : "Check your email"}
+          {step === "email" ? "Join Voices" : "Check your email"}
         </h1>
         <p className="mt-2 text-sm text-[var(--muted)]">
           {step === "email"

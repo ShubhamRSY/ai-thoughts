@@ -10,7 +10,12 @@ export async function GET(request: NextRequest) {
     const profile = await db.collection("profiles").findOne({ handle });
     return NextResponse.json({
       profile: profile
-        ? { handle: profile.handle, author: profile.author }
+        ? {
+            handle: profile.handle,
+            author: profile.author,
+            bio: profile.bio ?? "",
+            avatarUrl: profile.avatar_url ?? profile.avatarUrl ?? "",
+          }
         : null,
     });
   } catch (error) {
@@ -26,16 +31,29 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json();
     const handle = typeof body.handle === "string" ? body.handle : session.handle;
-    // Only ever allowed to write your own profile record.
     if (handle !== session.handle) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-    const author = typeof body.author === "string" ? body.author.slice(0, 80) : "";
+    const author =
+      typeof body.author === "string" ? body.author.slice(0, 80) : session.displayName;
+    const bio = typeof body.bio === "string" ? body.bio.trim().slice(0, 160) : "";
+    const avatarUrl =
+      typeof body.avatarUrl === "string" && body.avatarUrl.startsWith("https://")
+        ? body.avatarUrl.slice(0, 500)
+        : "";
 
     const { db } = await connectToDatabase();
     await db.collection("profiles").updateOne(
       { handle },
-      { $set: { handle, author, updated_at: new Date() } },
+      {
+        $set: {
+          handle,
+          author,
+          bio,
+          avatar_url: avatarUrl || null,
+          updated_at: new Date(),
+        },
+      },
       { upsert: true }
     );
     return NextResponse.json({ ok: true });

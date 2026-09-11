@@ -236,7 +236,7 @@ export default function Home() {
 
                 <p className="app-pad mt-4 flex items-center justify-center gap-1.5 pb-2 text-[11px] font-medium text-[var(--muted)]">
                   <HeartHandshake className="h-3.5 w-3.5 text-[var(--accent)]" />
-                  All ages. All feelings. It&apos;s okay to feel bad about AI too.
+                  All ages. All languages. Honest takes — with dignity.
                 </p>
               </>
             )}

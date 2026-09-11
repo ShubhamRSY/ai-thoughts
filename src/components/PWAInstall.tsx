@@ -75,7 +75,7 @@ export default function PWAInstall() {
               <p className="mt-0.5 text-xs leading-relaxed text-[var(--muted)]">
                 {isIos || (!deferredPrompt && isIOS())
                   ? "Tap Share in Safari, then “Add to Home Screen”"
-                  : "Add to your home screen — one tap back to the pulse"}
+                  : "Add to your home screen — one tap back to Voices"}
               </p>
               {!isIos && deferredPrompt && (
                 <button

@@ -18,9 +18,9 @@ const manrope = Manrope({
 });
 
 const siteUrl = getSiteUrl();
-const title = "AI·Thoughts — The Public Pulse";
+const title = "AI·Thoughts — Honest takes on AI";
 const description =
-  "Share how you really feel about AI — voice, video, or words. All ages, all languages, one pulse.";
+  "Honest takes on how AI is changing us — voice, video, or words. All ages, all languages, one place for real human voices.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

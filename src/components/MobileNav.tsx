@@ -1,6 +1,7 @@
 "use client";
 
 import { Home, Plus, User } from "lucide-react";
+import { BRAND } from "@/lib/brand";
 
 export type TabId = "home" | "you";
 
@@ -23,13 +24,13 @@ export default function MobileNav({ active, onTab, onCreate }: MobileNavProps) {
             }`}
           >
             <Home className="h-5 w-5" strokeWidth={active === "home" ? 2.4 : 1.8} />
-            Pulse
+            {BRAND.homeNav}
           </button>
 
           <button
             type="button"
             onClick={onCreate}
-            aria-label="Share how you feel"
+            aria-label={BRAND.shareCta}
             className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--surface)] transition hover:bg-[var(--accent-2)]"
           >
             <Plus className="h-5 w-5" strokeWidth={2.4} />

@@ -17,8 +17,11 @@ const ALLOWED_CONTENT_TYPES = [
   "video/webm",
   "video/mp4",
   "video/ogg",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
 ];
-const MAX_FILE_BYTES = 150 * 1024 * 1024; // 150MB — the browser never uploads through our Function (client uploads straight to Blob), so this is just a sane cap, not a workaround for a body-size limit.
+const MAX_FILE_BYTES = 150 * 1024 * 1024;
 
 // The browser uploads the file directly to Vercel Blob (bypassing the
 // Function entirely, so there is no 4.5MB request-body ceiling here) — this
