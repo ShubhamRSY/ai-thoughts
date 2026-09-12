@@ -72,21 +72,31 @@ async function sendEmail(opts: {
   console.error("Resend error:", res.status, body);
 
   const lower = body.toLowerCase();
+  let providerMessage = "";
+  try {
+    providerMessage = String(JSON.parse(body)?.message || "");
+  } catch {
+    providerMessage = body.slice(0, 200);
+  }
+
   if (
     usingResendTestDomain(from) ||
     lower.includes("only send testing emails") ||
     lower.includes("you can only send") ||
     lower.includes("verify a domain") ||
-    lower.includes("domain is not verified")
+    lower.includes("domain is not verified") ||
+    lower.includes("not verified")
   ) {
     throw new EmailDeliveryError(
-      "Couldn’t deliver the sign-in email. The sending domain must be verified on Resend.",
+      providerMessage
+        ? `${providerMessage} Use the Resend account that owns your Vercel RESEND_API_KEY, open Domains, and confirm status is Verified.`
+        : "Couldn’t deliver the sign-in email. The sending domain must be verified on Resend.",
       "test_domain"
     );
   }
 
   throw new EmailDeliveryError(
-    "Could not send email right now. Try again in a minute.",
+    providerMessage || "Could not send email right now. Try again in a minute.",
     "provider"
   );
 }
