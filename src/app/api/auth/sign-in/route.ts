@@ -6,6 +6,12 @@ import { EmailDeliveryError, sendOtpEmail } from "@/lib/email";
 const SIGN_IN_LIMIT = 5;
 const SIGN_IN_WINDOW_MS = 10 * 60_000;
 
+function inviteMatches(provided?: string): boolean {
+  const expected = process.env.BETA_INVITE_CODE?.trim();
+  if (!expected || !provided) return false;
+  return provided.trim() === expected;
+}
+
 export async function POST(request: Request) {
   try {
     const ip = clientIp(request);
@@ -18,7 +24,11 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { email, displayName } = body as { email?: string; displayName?: string };
+    const { email, displayName, invite } = body as {
+      email?: string;
+      displayName?: string;
+      invite?: string;
+    };
 
     if (!email || typeof email !== "string" || email.length > 254) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
@@ -49,23 +59,51 @@ export async function POST(request: Request) {
 
     const code = generateOtpCode();
     await storeOtp(normalized, code, name);
-    await sendOtpEmail(normalized, code);
+
+    const betaInvite = inviteMatches(invite);
+    let emailed = false;
+
+    if (!betaInvite) {
+      await sendOtpEmail(normalized, code);
+      emailed = true;
+    } else {
+      // Invite unlock: skip flaky test-domain email and show the code in-app.
+      try {
+        await sendOtpEmail(normalized, code);
+        emailed = true;
+      } catch (e) {
+        console.warn("beta invite: email skipped/failed, using on-screen code", e);
+      }
+    }
 
     const payload: {
       ok: true;
       sent: true;
       message: string;
       devCode?: string;
+      emailed?: boolean;
     } = {
       ok: true,
       sent: true,
-      message: "Check your email for a 6-digit code",
+      message: emailed
+        ? "Check your email for a 6-digit code"
+        : "Use the on-screen code to continue (email delivery is limited during beta)",
+      emailed,
     };
 
-    // Only expose the code in local/dev when Resend isn't configured —
-    // never in production.
-    if (process.env.NODE_ENV !== "production" && !process.env.RESEND_API_KEY) {
+    // Local/dev without Resend, or beta invite when email couldn't be relied on
+    if (
+      (process.env.NODE_ENV !== "production" && !process.env.RESEND_API_KEY) ||
+      (betaInvite && !emailed)
+    ) {
       payload.devCode = code;
+    }
+    // Always surface code for valid beta invite so friends can join tonight
+    if (betaInvite) {
+      payload.devCode = code;
+      payload.message = emailed
+        ? "Code emailed — also shown below in case it is delayed"
+        : "Email isn’t open to everyone yet — use the code below";
     }
 
     return NextResponse.json(payload);
@@ -73,7 +111,11 @@ export async function POST(request: Request) {
     console.error("sign-in error:", e);
     if (e instanceof EmailDeliveryError) {
       const status = e.code === "not_configured" || e.code === "test_domain" ? 503 : 502;
-      return NextResponse.json({ error: e.message, code: e.code }, { status });
+      const hint =
+        e.code === "test_domain"
+          ? " If you were given a beta invite code, enter it on the join form and try again."
+          : "";
+      return NextResponse.json({ error: `${e.message}${hint}`, code: e.code }, { status });
     }
     return NextResponse.json({ error: "Could not send sign-in code" }, { status: 500 });
   }

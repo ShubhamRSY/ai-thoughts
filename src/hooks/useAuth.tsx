@@ -14,8 +14,9 @@ interface AuthContextValue {
   loading: boolean;
   requestCode: (
     email: string,
-    displayName: string
-  ) => Promise<{ ok: boolean; error?: string; devCode?: string }>;
+    displayName: string,
+    invite?: string
+  ) => Promise<{ ok: boolean; error?: string; devCode?: string; message?: string }>;
   verifyCode: (
     email: string,
     code: string
@@ -69,23 +70,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const requestCode = useCallback(async (email: string, displayName: string) => {
-    try {
-      const res = await fetch("/api/auth/sign-in", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email, displayName }),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        return { ok: true, devCode: data.devCode as string | undefined };
+  const requestCode = useCallback(
+    async (email: string, displayName: string, invite?: string) => {
+      try {
+        const res = await fetch("/api/auth/sign-in", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ email, displayName, invite: invite || undefined }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          return {
+            ok: true,
+            devCode: data.devCode as string | undefined,
+            message: data.message as string | undefined,
+          };
+        }
+        return { ok: false, error: data.error ?? "Could not send code" };
+      } catch {
+        return { ok: false, error: "Network error" };
       }
-      return { ok: false, error: data.error ?? "Could not send code" };
-    } catch {
-      return { ok: false, error: "Network error" };
-    }
-  }, []);
+    },
+    []
+  );
 
   const verifyCode = useCallback(async (email: string, code: string) => {
     try {
