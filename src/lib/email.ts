@@ -1,18 +1,45 @@
 import { getSiteUrl } from "@/lib/site";
 
+export class EmailDeliveryError extends Error {
+  constructor(
+    message: string,
+    public readonly code:
+      | "not_configured"
+      | "test_domain"
+      | "provider"
+      | "failed" = "failed"
+  ) {
+    super(message);
+    this.name = "EmailDeliveryError";
+  }
+}
+
+function fromAddress(): string {
+  return process.env.EMAIL_FROM?.trim() || "AI·Thoughts <onboarding@resend.dev>";
+}
+
+function usingResendTestDomain(from: string): boolean {
+  return /@resend\.dev>/i.test(from) || /@resend\.dev$/i.test(from);
+}
+
 async function sendEmail(opts: {
   to: string;
   subject: string;
   text: string;
   html: string;
-}): Promise<boolean> {
+}): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY?.trim();
-  const from =
-    process.env.EMAIL_FROM?.trim() || "AI·Thoughts <onboarding@resend.dev>";
+  const from = fromAddress();
 
   if (!apiKey) {
+    if (process.env.NODE_ENV === "production") {
+      throw new EmailDeliveryError(
+        "Email delivery is not configured",
+        "not_configured"
+      );
+    }
     console.info(`[dev] email to ${opts.to}: ${opts.subject}\n${opts.text}`);
-    return true;
+    return;
   }
 
   const res = await fetch("https://api.resend.com/emails", {
@@ -30,11 +57,28 @@ async function sendEmail(opts: {
     }),
   });
 
-  if (!res.ok) {
-    console.error("Resend error:", res.status, await res.text().catch(() => ""));
-    return false;
+  if (res.ok) return;
+
+  const body = await res.text().catch(() => "");
+  console.error("Resend error:", res.status, body);
+
+  const lower = body.toLowerCase();
+  if (
+    usingResendTestDomain(from) ||
+    lower.includes("only send testing emails") ||
+    lower.includes("you can only send") ||
+    lower.includes("verify a domain")
+  ) {
+    throw new EmailDeliveryError(
+      "Sign-in email can only reach the account owner until a custom sending domain is verified on Resend. Ask the host to finish email setup.",
+      "test_domain"
+    );
   }
-  return true;
+
+  throw new EmailDeliveryError(
+    "Could not send email right now. Try again in a minute.",
+    "provider"
+  );
 }
 
 export async function sendOtpEmail(to: string, code: string): Promise<void> {
@@ -58,13 +102,7 @@ export async function sendOtpEmail(to: string, code: string): Promise<void> {
     </div>
   `;
 
-  const ok = await sendEmail({ to, subject, text, html });
-  if (!ok && process.env.NODE_ENV === "production" && process.env.RESEND_API_KEY) {
-    throw new Error("Failed to send email");
-  }
-  if (!process.env.RESEND_API_KEY?.trim() && process.env.NODE_ENV === "production") {
-    throw new Error("RESEND_API_KEY is not configured");
-  }
+  await sendEmail({ to, subject, text, html });
 }
 
 export async function sendActivityDigestEmail(
@@ -81,7 +119,7 @@ export async function sendActivityDigestEmail(
   const text = [
     `Hi ${opts.handle},`,
     "",
-    subject.replace(" on AI·Thoughts", ".") ,
+    subject.replace(" on AI·Thoughts", "."),
     "",
     ...lines,
     "",
@@ -107,7 +145,13 @@ export async function sendActivityDigestEmail(
     </div>
   `;
 
-  return sendEmail({ to, subject, text, html });
+  try {
+    await sendEmail({ to, subject, text, html });
+    return true;
+  } catch (e) {
+    console.error("activity digest email failed:", e);
+    return false;
+  }
 }
 
 export async function sendWeeklyVoicesEmail(
@@ -153,7 +197,13 @@ export async function sendWeeklyVoicesEmail(
     </div>
   `;
 
-  return sendEmail({ to, subject, text, html });
+  try {
+    await sendEmail({ to, subject, text, html });
+    return true;
+  } catch (e) {
+    console.error("weekly voices email failed:", e);
+    return false;
+  }
 }
 
 function escapeHtml(s: string) {

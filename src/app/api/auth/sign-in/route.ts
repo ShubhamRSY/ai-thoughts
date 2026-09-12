@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { generateOtpCode, storeOtp } from "@/lib/otp";
-import { sendOtpEmail } from "@/lib/email";
+import { EmailDeliveryError, sendOtpEmail } from "@/lib/email";
 
 const SIGN_IN_LIMIT = 5;
 const SIGN_IN_WINDOW_MS = 10 * 60_000;
@@ -71,10 +71,10 @@ export async function POST(request: Request) {
     return NextResponse.json(payload);
   } catch (e) {
     console.error("sign-in error:", e);
-    const message =
-      e instanceof Error && e.message.includes("RESEND_API_KEY")
-        ? "Email delivery is not configured"
-        : "Could not send sign-in code";
-    return NextResponse.json({ error: message }, { status: 500 });
+    if (e instanceof EmailDeliveryError) {
+      const status = e.code === "not_configured" || e.code === "test_domain" ? 503 : 502;
+      return NextResponse.json({ error: e.message, code: e.code }, { status });
+    }
+    return NextResponse.json({ error: "Could not send sign-in code" }, { status: 500 });
   }
 }
