@@ -43,13 +43,23 @@ function decodeSessionPayload(encoded: string): { exp?: number } | null {
   }
 }
 
+/** Edge-safe constant-time compare (no node:crypto in middleware). */
+function timingSafeEqualStr(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let out = 0;
+  for (let i = 0; i < a.length; i++) {
+    out |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return out === 0;
+}
+
 async function validateToken(token: string): Promise<boolean> {
   try {
     const [encoded, signature] = token.split(".");
     if (!encoded || !signature) return false;
 
     const expectedSig = await hmacSign(encoded, getSecret());
-    if (signature !== expectedSig) return false;
+    if (!timingSafeEqualStr(signature, expectedSig)) return false;
 
     const payload = decodeSessionPayload(encoded);
     return Boolean(payload?.exp && payload.exp >= Date.now());

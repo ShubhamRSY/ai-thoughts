@@ -1,7 +1,9 @@
 import type { Db } from "mongodb";
+import { decryptEmail, encryptEmail, isEncryptedEmail } from "@/lib/secure";
 
 export interface UserPrefs {
   handle: string;
+  /** Decrypted for callers; stored as emailEnc when possible. */
   email?: string;
   email_digest: boolean;
   weekly_digest: boolean;
@@ -13,13 +15,26 @@ function normHandle(h: string) {
   return h.trim().toLowerCase().replace(/^@/, "");
 }
 
+function resolveStoredEmail(row: {
+  email?: unknown;
+  emailEnc?: unknown;
+} | null): string | undefined {
+  if (!row) return undefined;
+  const fromEnc = decryptEmail(
+    typeof row.emailEnc === "string" ? row.emailEnc : null
+  );
+  if (fromEnc) return fromEnc;
+  const fromLegacy = decryptEmail(typeof row.email === "string" ? row.email : null);
+  return fromLegacy || undefined;
+}
+
 export async function getPrefs(db: Db, handle: string): Promise<UserPrefs> {
   const row = await db.collection("user_prefs").findOne({
     handle: { $in: [handle, `@${normHandle(handle)}`, normHandle(handle)] },
   });
   return {
     handle,
-    email: row?.email,
+    email: resolveStoredEmail(row as { email?: unknown; emailEnc?: unknown } | null),
     email_digest: Boolean(row?.email_digest),
     weekly_digest: Boolean(row?.weekly_digest),
     push_enabled: Boolean(row?.push_enabled),
@@ -36,7 +51,16 @@ export async function upsertPrefs(
     handle,
     updated_at: new Date(),
   };
-  if (patch.email !== undefined) $set.email = patch.email;
+  const $unset: Record<string, ""> = {};
+  if (patch.email !== undefined) {
+    if (patch.email) {
+      $set.emailEnc = encryptEmail(patch.email);
+      $unset.email = "";
+    } else {
+      $unset.email = "";
+      $unset.emailEnc = "";
+    }
+  }
   if (patch.email_digest !== undefined) $set.email_digest = patch.email_digest;
   if (patch.weekly_digest !== undefined) $set.weekly_digest = patch.weekly_digest;
   if (patch.push_enabled !== undefined) $set.push_enabled = patch.push_enabled;
@@ -50,6 +74,7 @@ export async function upsertPrefs(
     { handle },
     {
       $set,
+      ...(Object.keys($unset).length ? { $unset } : {}),
       ...(Object.keys($setOnInsert).length ? { $setOnInsert } : {}),
     },
     { upsert: true }
@@ -63,10 +88,32 @@ export async function listDigestRecipients(
 ): Promise<{ handle: string; email: string }[]> {
   const rows = await db
     .collection("user_prefs")
-    .find({ [kind]: true, email: { $exists: true, $ne: "" } })
+    .find({
+      [kind]: true,
+      $or: [
+        { emailEnc: { $exists: true, $ne: "" } },
+        { email: { $exists: true, $ne: "" } },
+      ],
+    })
     .limit(500)
     .toArray();
-  return rows
-    .filter((r) => typeof r.email === "string" && r.email.includes("@"))
-    .map((r) => ({ handle: String(r.handle), email: String(r.email) }));
+
+  const out: { handle: string; email: string }[] = [];
+  for (const r of rows) {
+    const email = resolveStoredEmail(r as { email?: unknown; emailEnc?: unknown });
+    if (!email || !email.includes("@")) continue;
+    out.push({ handle: String(r.handle), email });
+    // Migrate plaintext prefs on read (best-effort).
+    if (
+      typeof r.email === "string" &&
+      r.email.includes("@") &&
+      !isEncryptedEmail(r.emailEnc as string | undefined)
+    ) {
+      void db.collection("user_prefs").updateOne(
+        { _id: r._id },
+        { $set: { emailEnc: encryptEmail(email) }, $unset: { email: "" } }
+      );
+    }
+  }
+  return out;
 }

@@ -1,10 +1,13 @@
 import { connectToDatabase } from "@/lib/mongodb";
+import { hashEmail, timingSafeEqualStr } from "@/lib/secure";
 
 const OTP_TTL_MS = 10 * 60_000;
 const MAX_ATTEMPTS = 5;
 
 export interface AuthCodeRecord {
-  email: string;
+  /** @deprecated plaintext — prefer emailHash */
+  email?: string;
+  emailHash: string;
   codeHash: string;
   displayName: string;
   attempts: number;
@@ -49,6 +52,7 @@ export async function storeOtp(
 ): Promise<void> {
   const { db } = await connectToDatabase();
   const normalized = email.toLowerCase().trim();
+  const emailHash = hashEmail(normalized);
   const codeHash = await hashOtp(normalized, code);
   const now = new Date();
 
@@ -57,9 +61,11 @@ export async function storeOtp(
     { expireAfterSeconds: 0 }
   );
 
-  await db.collection("auth_codes").deleteMany({ email: normalized });
+  await db.collection("auth_codes").deleteMany({
+    $or: [{ emailHash }, { email: normalized }],
+  });
   await db.collection("auth_codes").insertOne({
-    email: normalized,
+    emailHash,
     codeHash,
     displayName,
     attempts: 0,
@@ -78,26 +84,33 @@ export async function verifyAndConsumeOtp(
 ): Promise<VerifyOtpResult> {
   const { db } = await connectToDatabase();
   const normalized = email.toLowerCase().trim();
+  const emailHash = hashEmail(normalized);
   const codes = db.collection<AuthCodeRecord>("auth_codes");
 
-  const record = await codes.findOne({ email: normalized });
+  const record =
+    (await codes.findOne({ emailHash })) ||
+    (await codes.findOne({ email: normalized }));
   if (!record) {
     return { ok: false, error: "No code found — request a new one" };
   }
 
+  const matchFilter = record.emailHash
+    ? { emailHash: record.emailHash }
+    : { email: normalized };
+
   if (record.expiresAt.getTime() < Date.now()) {
-    await codes.deleteMany({ email: normalized });
+    await codes.deleteMany(matchFilter);
     return { ok: false, error: "Code expired — request a new one" };
   }
 
   if (record.attempts >= MAX_ATTEMPTS) {
-    await codes.deleteMany({ email: normalized });
+    await codes.deleteMany(matchFilter);
     return { ok: false, error: "Too many attempts — request a new code" };
   }
 
   const expected = await hashOtp(normalized, code.trim());
-  if (expected !== record.codeHash) {
-    await codes.updateOne({ email: normalized }, { $inc: { attempts: 1 } });
+  if (!timingSafeEqualStr(expected, record.codeHash)) {
+    await codes.updateOne(matchFilter, { $inc: { attempts: 1 } });
     const left = MAX_ATTEMPTS - record.attempts - 1;
     return {
       ok: false,
@@ -105,6 +118,6 @@ export async function verifyAndConsumeOtp(
     };
   }
 
-  await codes.deleteMany({ email: normalized });
+  await codes.deleteMany(matchFilter);
   return { ok: true, displayName: record.displayName };
 }

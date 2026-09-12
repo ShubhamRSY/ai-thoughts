@@ -19,4 +19,4 @@ export const CONTACT_EMAIL =
   process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim() || "keepers@ai-thoughts.app";
 
 /** Fixed legal "last updated" date — do not use `new Date()` at render time. */
-export const LEGAL_UPDATED = "September 11, 2026";
+export const LEGAL_UPDATED = "September 12, 2026";

@@ -1,6 +1,12 @@
 import { cookies } from "next/headers";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import {
+  decryptEmail,
+  encryptEmail,
+  hashEmail,
+  timingSafeEqualStr,
+} from "@/lib/secure";
 
 export const SESSION_COOKIE = "aithoughts.session";
 const SESSION_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
@@ -14,7 +20,10 @@ export interface SessionUser {
 
 export interface UserRecord {
   _id?: ObjectId;
-  email: string;
+  /** @deprecated plaintext — migrated to emailEnc on login */
+  email?: string;
+  emailHash?: string;
+  emailEnc?: string;
   handle: string;
   displayName: string;
   createdAt: string;
@@ -42,7 +51,6 @@ async function hmacSign(data: string, secret: string): Promise<string> {
     .join("");
 }
 
-/** Unicode-safe, cookie-safe base64url. */
 export function encodeSessionPayload(value: unknown): string {
   const bytes = new TextEncoder().encode(JSON.stringify(value));
   let binary = "";
@@ -58,7 +66,6 @@ export function decodeSessionPayload(encoded: string): unknown {
     const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
     return JSON.parse(new TextDecoder().decode(bytes));
   } catch {
-    // Legacy sessions created with btoa(JSON.stringify(...))
     return JSON.parse(atob(encoded));
   }
 }
@@ -74,9 +81,9 @@ export function sessionCookieOptions(maxAge: number = SESSION_MAX_AGE) {
 }
 
 export async function createSession(user: UserRecord): Promise<string> {
+  // Do not put email in the cookie — load from DB when needed.
   const payload = {
     id: user._id?.toString() ?? "",
-    email: user.email,
     handle: user.handle,
     displayName: user.displayName,
     exp: Date.now() + SESSION_MAX_AGE * 1000,
@@ -93,20 +100,36 @@ export async function validateSession(token: string): Promise<SessionUser | null
     if (!encoded || !signature) return null;
 
     const expectedSig = await hmacSign(encoded, getSecret());
-    if (signature !== expectedSig) return null;
+    if (!timingSafeEqualStr(signature, expectedSig)) return null;
 
     const payload = decodeSessionPayload(encoded) as {
       id: string;
-      email: string;
+      email?: string;
       handle: string;
       displayName: string;
       exp: number;
     };
     if (!payload?.exp || payload.exp < Date.now()) return null;
+    if (!payload.id || !payload.handle) return null;
+
+    const { db } = await connectToDatabase();
+    let email = "";
+    try {
+      const user = await db.collection<UserRecord>("users").findOne({
+        _id: new ObjectId(payload.id),
+      });
+      email =
+        decryptEmail(user?.emailEnc) ||
+        decryptEmail(user?.email) ||
+        payload.email ||
+        "";
+    } catch {
+      email = payload.email || "";
+    }
 
     return {
       id: payload.id,
-      email: payload.email,
+      email,
       handle: payload.handle,
       displayName: payload.displayName,
     };
@@ -125,7 +148,10 @@ export async function getSession(): Promise<SessionUser | null> {
 export async function isKeeperHandle(handle: string): Promise<boolean> {
   if (!handle) return false;
   const { db } = await connectToDatabase();
-  const keeper = await db.collection("keepers").findOne({ handle });
+  const n = handle.trim().toLowerCase().replace(/^@/, "");
+  const keeper = await db.collection("keepers").findOne({
+    handle: { $in: [handle, `@${n}`, n, `@${n}`.toLowerCase()] },
+  });
   return Boolean(keeper);
 }
 
@@ -147,8 +173,12 @@ export async function findOrCreateUser(
   const users = db.collection<UserRecord>("users");
 
   const normalizedEmail = email.toLowerCase().trim();
+  const emailHash = hashEmail(normalizedEmail);
+  const emailEnc = encryptEmail(normalizedEmail);
 
-  let user: UserRecord | null = await users.findOne({ email: normalizedEmail });
+  let user: UserRecord | null =
+    (await users.findOne({ emailHash })) ||
+    (await users.findOne({ email: normalizedEmail }));
 
   if (user) {
     await users.updateOne(
@@ -156,17 +186,25 @@ export async function findOrCreateUser(
       {
         $set: {
           lastLoginAt: new Date().toISOString(),
+          emailHash,
+          emailEnc,
           ...(displayName.trim() ? { displayName: displayName.trim() } : {}),
         },
+        $unset: { email: "" },
       }
     );
     user.lastLoginAt = new Date().toISOString();
+    user.emailHash = emailHash;
+    user.emailEnc = emailEnc;
+    delete user.email;
     if (displayName.trim()) user.displayName = displayName.trim();
   } else {
-    const base = normalizedEmail.split("@")[0].replace(/[^a-z0-9]/gi, "").slice(0, 12) || "user";
+    const base =
+      normalizedEmail.split("@")[0].replace(/[^a-z0-9]/gi, "").slice(0, 12) || "user";
     const handle = `@${base}${Math.floor(Math.random() * 9000 + 1000)}`;
     const newUser: UserRecord = {
-      email: normalizedEmail,
+      emailHash,
+      emailEnc,
       handle,
       displayName: displayName.trim() || base,
       createdAt: new Date().toISOString(),
@@ -178,4 +216,70 @@ export async function findOrCreateUser(
   }
 
   return user;
+}
+
+/** Wipe account + related data for the signed-in user. */
+export async function deleteUserAccount(session: SessionUser): Promise<void> {
+  const { db } = await connectToDatabase();
+  const handleVariants = Array.from(
+    new Set([
+      session.handle,
+      session.handle.toLowerCase(),
+      `@${session.handle.replace(/^@/, "")}`,
+      session.handle.replace(/^@/, ""),
+    ])
+  );
+
+  const posts = await db
+    .collection("posts")
+    .find({
+      $or: [{ user_id: session.id }, { handle: { $in: handleVariants } }],
+    })
+    .project({ _id: 1 })
+    .toArray();
+  const postIds = posts.map((p) => p._id.toString());
+
+  if (postIds.length) {
+    await db.collection("messages").deleteMany({ post_id: { $in: postIds } });
+    await db.collection("reactions").deleteMany({ post_id: { $in: postIds } });
+    await db.collection("reports").deleteMany({ post_id: { $in: postIds } });
+    await db.collection("notifications").deleteMany({ post_id: { $in: postIds } });
+    await db.collection("posts").deleteMany({
+      _id: { $in: posts.map((p) => p._id) },
+    });
+  }
+
+  await db.collection("messages").deleteMany({ handle: { $in: handleVariants } });
+  await db.collection("reactions").deleteMany({ handle: { $in: handleVariants } });
+  await db.collection("notifications").deleteMany({
+    $or: [
+      { recipient_handle: { $in: handleVariants } },
+      { actor_handle: { $in: handleVariants } },
+    ],
+  });
+  await db.collection("follows").deleteMany({
+    $or: [
+      { follower: { $in: handleVariants } },
+      { following: { $in: handleVariants } },
+    ],
+  });
+  await db.collection("user_prefs").deleteMany({ handle: { $in: handleVariants } });
+  await db.collection("push_subscriptions").deleteMany({ handle: { $in: handleVariants } });
+  await db.collection("profiles").deleteMany({
+    $or: [{ userId: session.id }, { handle: { $in: handleVariants } }],
+  });
+
+  const emailHash = session.email ? hashEmail(session.email) : null;
+  await db.collection("auth_codes").deleteMany({
+    $or: [
+      ...(emailHash ? [{ emailHash }] : []),
+      ...(session.email ? [{ email: session.email.toLowerCase() }] : []),
+    ],
+  });
+
+  try {
+    await db.collection("users").deleteOne({ _id: new ObjectId(session.id) });
+  } catch {
+    await db.collection("users").deleteMany({ handle: { $in: handleVariants } });
+  }
 }

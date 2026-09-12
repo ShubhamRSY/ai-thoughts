@@ -13,7 +13,8 @@ export default function PrivacyPage() {
           <p className="text-[var(--muted)]">
             When you share a take, we store the media, text, your chosen handle/display name, the
             feeling, language, tags, and a content fingerprint for integrity. If you sign in, we
-            store your email linked to a profile and send one-time sign-in codes to that address.
+            store your email encrypted at rest (linked to a profile) and send one-time sign-in
+            codes to that address.
             Optional features may also store: push-notification subscriptions, email-digest
             preferences, “feel with” (follow) relationships, and in-app activity about replies or
             reactions on your takes. Region ranking uses your browser timezone/language on your
@@ -58,8 +59,9 @@ export default function PrivacyPage() {
         <section>
           <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">Your rights</h2>
           <p className="text-[var(--muted)]">
-            You can delete your own takes from the app while signed in, and request removal of your
-            account data. Use the{" "}
+            You can delete your own takes from the app while signed in. You can also wipe your
+            account from You → Delete account (removes profile, takes, and related private data).
+            For help, use the{" "}
             <Link href="/contact" className="text-[var(--accent)] underline-offset-2 hover:underline">
               contact form
             </Link>{" "}

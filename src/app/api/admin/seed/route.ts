@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createHash } from "crypto";
+import { createHash, timingSafeEqual } from "crypto";
 import { ObjectId } from "mongodb";
 import { connectToDatabase } from "@/lib/mongodb";
 import { GLOBAL_SEED_POSTS } from "@/lib/seed-posts";
@@ -8,21 +8,34 @@ function hash(s: string) {
   return createHash("sha256").update(s).digest("hex").slice(0, 16);
 }
 
+function authorizeSeed(request: Request): boolean {
+  const secret =
+    process.env.ADMIN_SEED_SECRET?.trim() || process.env.CRON_SECRET?.trim();
+  if (!secret) return false;
+  const header = request.headers.get("authorization") || "";
+  const bearer = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+  if (!bearer) return false;
+  try {
+    const a = Buffer.from(bearer, "utf8");
+    const b = Buffer.from(secret, "utf8");
+    if (a.length !== b.length) return false;
+    return timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
+}
+
 /**
  * POST /api/admin/seed — insert missing global demo takes (idempotent).
- * Open only while the pulse is still tiny (< 10 posts), so launch seeding
- * works without leaking a long-lived secret into the client.
+ * Requires Authorization: Bearer <ADMIN_SEED_SECRET or CRON_SECRET>.
  */
-export async function POST() {
+export async function POST(request: Request) {
+  if (!authorizeSeed(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { db } = await connectToDatabase();
-    const totalBefore = await db.collection("posts").countDocuments();
-    if (totalBefore >= 10) {
-      return NextResponse.json(
-        { error: "Seed locked — pulse already has enough voices", total: totalBefore },
-        { status: 403 }
-      );
-    }
 
     await db.collection("posts").createIndex({ seed_id: 1 }, { unique: true, sparse: true });
 

@@ -26,7 +26,7 @@ function initials(name: string) {
 
 export default function ProfileView({ myThoughts, onCreate, onDelete }: ProfileViewProps) {
   const { profile, save } = useLocalProfile();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState(false);
   const [handle, setHandle] = useState(profile.handle || "");
@@ -36,6 +36,7 @@ export default function ProfileView({ myThoughts, onCreate, onDelete }: ProfileV
   const [uploading, setUploading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const name = user?.displayName || profile.author || profile.handle.replace(/^@/, "") || "You";
   const displayHandle = user?.handle || profile.handle || "@you";
@@ -258,6 +259,63 @@ export default function ProfileView({ myThoughts, onCreate, onDelete }: ProfileV
           </div>
         </div>
       </div>
+
+      {user && (
+        <div className="mt-6 rounded-2xl border border-rose-200/80 bg-rose-50/40 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wider text-rose-800/80">
+            Delete account
+          </p>
+          <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">
+            Permanently removes your profile, takes, replies, reactions, follows, push
+            subscriptions, and digest settings. This cannot be undone.
+          </p>
+          <button
+            type="button"
+            disabled={deletingAccount}
+            onClick={() => {
+              if (
+                !window.confirm(
+                  "Delete your account and all your takes forever? Type OK on the next prompt."
+                )
+              ) {
+                return;
+              }
+              const typed = window.prompt('Type DELETE to confirm account wipe:');
+              if (typed !== "DELETE") return;
+              void (async () => {
+                setDeletingAccount(true);
+                setError(null);
+                try {
+                  const res = await fetch("/api/account", {
+                    method: "DELETE",
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ confirm: "DELETE" }),
+                  });
+                  const data = await res.json().catch(() => ({}));
+                  if (!res.ok) {
+                    setError(
+                      typeof data.error === "string"
+                        ? data.error
+                        : "Couldn’t delete account"
+                    );
+                    return;
+                  }
+                  await signOut();
+                  window.location.href = "/";
+                } catch {
+                  setError("Couldn’t delete account. Try again.");
+                } finally {
+                  setDeletingAccount(false);
+                }
+              })();
+            }}
+            className="mt-3 w-full rounded-full border border-rose-300 bg-white py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:opacity-50"
+          >
+            {deletingAccount ? "Deleting…" : "Delete my account"}
+          </button>
+        </div>
+      )}
 
       <div className="mt-6">
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">

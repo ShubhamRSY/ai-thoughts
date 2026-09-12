@@ -37,7 +37,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: result.error }, { status: 401 });
     }
 
-    const user = await findOrCreateUser(email, result.displayName);
+    const normalized = email.toLowerCase().trim();
+    const user = await findOrCreateUser(normalized, result.displayName);
     const token = await createSession(user);
 
     // Set cookie on the response itself — cookies() alone can drop Set-Cookie
@@ -46,7 +47,7 @@ export async function POST(request: Request) {
       ok: true,
       user: {
         id: user._id?.toString(),
-        email: user.email,
+        email: normalized,
         handle: user.handle,
         displayName: user.displayName,
       },
