@@ -157,7 +157,7 @@ function SignInFormInner({ total }: { total: number }) {
                 placeholder="Alex"
               />
             </label>
-            {error && <p className="text-xs text-rose-700">{error}</p>}
+            {error && <p className="text-xs leading-relaxed text-rose-700">{error}</p>}
             <button
               type="submit"
               disabled={submitting}
@@ -189,7 +189,7 @@ function SignInFormInner({ total }: { total: number }) {
                 <span className="font-mono font-semibold text-[var(--foreground)]">{devCode}</span>
               </p>
             )}
-            {error && <p className="text-xs text-rose-700">{error}</p>}
+            {error && <p className="text-xs leading-relaxed text-rose-700">{error}</p>}
             <button
               type="submit"
               disabled={submitting || code.length !== 6}
