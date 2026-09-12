@@ -57,17 +57,14 @@ function SignInFormInner({ total }: { total: number }) {
   const [step, setStep] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [invite, setInvite] = useState("");
   const [code, setCode] = useState("");
   const [devCode, setDevCode] = useState<string | null>(null);
-  const [hint, setHint] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const from = searchParams.get("from") ?? "/app";
   const dest = from.startsWith("/") && !from.startsWith("//") ? from : "/app";
 
-  // Already joined — skip this screen
   useEffect(() => {
     if (!loading && user) {
       router.replace(dest);
@@ -81,19 +78,17 @@ function SignInFormInner({ total }: { total: number }) {
   const handleRequestCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setHint(null);
     if (!email.trim()) {
       setError("Please enter your email");
       return;
     }
     setSubmitting(true);
-    const result = await requestCode(email.trim(), displayName.trim(), invite.trim());
+    const result = await requestCode(email.trim(), displayName.trim());
     setSubmitting(false);
     if (result.ok) {
       setDevCode(result.devCode ?? null);
-      setHint(result.message ?? null);
       setStep("code");
-      setCode(result.devCode ?? "");
+      setCode("");
     } else {
       setError(result.error ?? "Could not send code");
     }
@@ -161,19 +156,6 @@ function SignInFormInner({ total }: { total: number }) {
                 placeholder="Alex"
               />
             </label>
-            <label className="block">
-              <span className="mb-1.5 block text-xs font-medium text-[var(--muted)]">
-                Invite code <span className="opacity-60">(if email fails)</span>
-              </span>
-              <input
-                type="text"
-                autoComplete="off"
-                value={invite}
-                onChange={(e) => setInvite(e.target.value)}
-                className="w-full rounded-xl border border-[var(--border-base)] bg-[var(--surface)] px-4 py-3 text-sm outline-none focus:border-[var(--accent)]"
-                placeholder="Ask the host"
-              />
-            </label>
             {error && <p className="text-xs leading-relaxed text-rose-700">{error}</p>}
             <button
               type="submit"
@@ -200,15 +182,10 @@ function SignInFormInner({ total }: { total: number }) {
                 required
               />
             </label>
-            {hint && !devCode && (
-              <p className="text-xs text-[var(--muted)]">{hint}</p>
-            )}
             {devCode && (
               <p className="rounded-xl bg-[var(--surface-2)] px-3 py-2 text-xs text-[var(--muted)]">
-                {hint ?? "Your code"}:{" "}
-                <span className="font-mono font-semibold tracking-widest text-[var(--foreground)]">
-                  {devCode}
-                </span>
+                Dev code:{" "}
+                <span className="font-mono font-semibold text-[var(--foreground)]">{devCode}</span>
               </p>
             )}
             {error && <p className="text-xs leading-relaxed text-rose-700">{error}</p>}
@@ -228,16 +205,16 @@ function SignInFormInner({ total }: { total: number }) {
               }}
               className="w-full text-left text-xs text-[var(--muted)] hover:text-[var(--foreground)]"
             >
-              Use a different email
+              ← Use a different email
             </button>
           </form>
         )}
 
-        <div className="mt-8">
-          <Link href="/" className="text-xs text-[var(--muted)] hover:text-[var(--foreground)]">
+        <p className="mt-8 text-center text-[11px] text-[var(--muted)]">
+          <Link href="/" className="hover:text-[var(--foreground)]">
             ← Back
           </Link>
-        </div>
+        </p>
       </div>
     </div>
   );

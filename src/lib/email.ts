@@ -42,6 +42,15 @@ async function sendEmail(opts: {
     return;
   }
 
+  // Permanent requirement: production must send from a verified custom domain.
+  // onboarding@resend.dev can only email the Resend account owner.
+  if (process.env.NODE_ENV === "production" && usingResendTestDomain(from)) {
+    throw new EmailDeliveryError(
+      "Sign-in email isn’t ready for everyone yet. The host must verify a custom domain on Resend and set EMAIL_FROM (not @resend.dev).",
+      "test_domain"
+    );
+  }
+
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -67,10 +76,11 @@ async function sendEmail(opts: {
     usingResendTestDomain(from) ||
     lower.includes("only send testing emails") ||
     lower.includes("you can only send") ||
-    lower.includes("verify a domain")
+    lower.includes("verify a domain") ||
+    lower.includes("domain is not verified")
   ) {
     throw new EmailDeliveryError(
-      "Sign-in email can only reach the account owner until a custom sending domain is verified on Resend. Ask the host to finish email setup.",
+      "Couldn’t deliver the sign-in email. The sending domain must be verified on Resend.",
       "test_domain"
     );
   }
