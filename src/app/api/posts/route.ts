@@ -8,6 +8,7 @@ import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { checkDignity, normalizeTag } from "@/lib/dignity";
 import { GLOBAL_SEED_POSTS } from "@/lib/seed-posts";
 import { notifyFollowersOfPost } from "@/lib/activity";
+import { dailyPrompt, todayKey } from "@/lib/daily-prompt";
 
 const MEDIA_TYPES = new Set(["audio", "video", "text"]);
 const FEELING_IDS = new Set(FEELINGS.map((f) => f.id));
@@ -38,6 +39,8 @@ interface PostDoc {
   boosts?: number;
   created_at: Date;
   seed_id?: string;
+  prompt_day?: string;
+  prompt_text?: string;
 }
 
 function hash(s: string) {
@@ -90,16 +93,20 @@ async function ensureSamplePosts(
   });
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const { db } = await connectToDatabase();
     await ensureSamplePosts(db);
 
+    const promptDay = request.nextUrl.searchParams.get("prompt_day")?.trim();
+    const limit = promptDay ? 60 : 40;
+
+    const filter = promptDay ? { prompt_day: promptDay } : {};
     const posts = await db
       .collection<PostDoc>("posts")
-      .find({})
+      .find(filter)
       .sort({ created_at: -1 })
-      .limit(40)
+      .limit(limit)
       .toArray();
 
     const postIds = posts.map((p) => p._id?.toString() ?? "");
@@ -135,6 +142,8 @@ export async function GET() {
         integrity_verified: Boolean(p.integrity_verified),
         integrity_label: p.integrity_label ?? null,
         transcript: p.transcript ?? null,
+        prompt_day: p.prompt_day ?? null,
+        prompt_text: p.prompt_text ?? null,
         created_at:
           p.created_at instanceof Date ? p.created_at.toISOString() : String(p.created_at),
         reactions: Object.entries(reacts).map(([type, count]) => ({ type, count })),
@@ -215,6 +224,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const fromDaily =
+      body.from_daily_prompt === true ||
+      (typeof body.prompt_day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.prompt_day));
+    const promptDay = fromDaily
+      ? typeof body.prompt_day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.prompt_day)
+        ? body.prompt_day
+        : todayKey()
+      : undefined;
+    const promptText = promptDay
+      ? typeof body.prompt_text === "string" && body.prompt_text.trim()
+        ? body.prompt_text.trim().slice(0, 280)
+        : dailyPrompt()
+      : undefined;
+
     const doc: PostDoc = {
       user_id: session.id,
       handle: session.handle,
@@ -235,6 +258,7 @@ export async function POST(request: NextRequest) {
       transcript: null,
       boosts: 0,
       created_at: new Date(),
+      ...(promptDay ? { prompt_day: promptDay, prompt_text: promptText } : {}),
     };
 
     const result = await db.collection<PostDoc>("posts").insertOne(doc);

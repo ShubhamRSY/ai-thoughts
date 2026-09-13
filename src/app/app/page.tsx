@@ -16,6 +16,7 @@ import PulseEpisode from "@/components/Pulse/PulseEpisode";
 import StreakCard from "@/components/StreakCard";
 import DailyCheckIn from "@/components/DailyCheckIn";
 import DailyHabits from "@/components/DailyHabits";
+import MissedYesterday from "@/components/MissedYesterday";
 import ActivityPanel, { useActivity } from "@/components/ActivityPanel";
 import { INITIAL_THOUGHTS } from "@/lib/mock-data";
 import { digestBytes } from "@/lib/integrity";
@@ -42,6 +43,7 @@ import {
   type ContinentId,
 } from "@/lib/region";
 import type { RegionScope } from "@/components/Feed/FilterBar";
+import { todayKey as promptTodayKey } from "@/lib/daily-prompt";
 
 type MediaFilter = "all" | MediaType;
 
@@ -66,6 +68,7 @@ export default function Home() {
   const [undoId, setUndoId] = useState<string | null>(null);
   const [activityOpen, setActivityOpen] = useState(false);
   const [following, setFollowing] = useState<string[]>([]);
+  const [shareFromDaily, setShareFromDaily] = useState(false);
   const { items: activityItems, unread: activityUnread, markAllRead, refresh: refreshActivity } =
     useActivity(!!user);
 
@@ -109,6 +112,12 @@ export default function Home() {
       return mOk && fOk;
     });
 
+    if (regionScope === "today") {
+      const day = promptTodayKey();
+      base = base.filter((t) => t.promptDay === day);
+      return rankByRegion(base, preferred);
+    }
+
     if (regionScope === "circle") {
       base = base.filter((t) =>
         followingSet.has(t.handle.trim().toLowerCase().replace(/^@/, ""))
@@ -122,8 +131,13 @@ export default function Home() {
     return rankByRegion(base, []);
   }, [thoughts, media, feeling, regionScope, preferred, followingSet]);
 
+  const todayAnswerCount = useMemo(() => {
+    const day = promptTodayKey();
+    return thoughts.filter((t) => t.promptDay === day).length;
+  }, [thoughts]);
+
   const onFeelWith = useCallback(
-    async (handle: string, next: boolean) => {
+    async (handle: string, next: boolean = true) => {
       if (!user) return;
       const norm = handle.trim().toLowerCase().replace(/^@/, "");
       setFollowing((prev) => {
@@ -144,12 +158,23 @@ export default function Home() {
     [user]
   );
 
-  const openShare = (tabPref: MediaType = "video", presetFeeling?: FeelingId) => {
+  const openShare = (
+    tabPref: MediaType = "video",
+    presetFeeling?: FeelingId,
+    fromDaily = false
+  ) => {
     setInitialTab(tabPref);
     setShareFeeling(presetFeeling);
+    setShareFromDaily(fromDaily);
     setModalSession((s) => s + 1);
     setShareOpen(true);
   };
+
+  const browseToday = useCallback(() => {
+    setTab("home");
+    setRoom(null);
+    setRegionScope("today");
+  }, []);
 
   const handleOpenRoom = (id: FeelingId) => {
     setFeeling(id);
@@ -269,6 +294,25 @@ export default function Home() {
     };
   }, [identityHandle]);
 
+  // Merge today's prompt lane posts so the filter has enough answers.
+  useEffect(() => {
+    if (!isLive() || regionScope !== "today") return;
+    let cancelled = false;
+    fetchPulsePosts({ promptDay: promptTodayKey() }).then((posts) => {
+      if (cancelled || !posts) return;
+      setThoughts((prev) => {
+        const byId = new Map(prev.map((t) => [t.id, t]));
+        for (const p of posts) byId.set(p.id, p);
+        return Array.from(byId.values()).sort(
+          (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        );
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [regionScope]);
+
   useEffect(() => {
     if (isLive()) return;
     const id = setInterval(() => {
@@ -323,7 +367,19 @@ export default function Home() {
                 <DailyCheckIn
                   streakCount={streak.count}
                   checkedInToday={streak.last === todayKey()}
-                  onShare={(feelingId) => openShare("text", feelingId)}
+                  todayAnswerCount={todayAnswerCount}
+                  onShare={(feelingId) => openShare("text", feelingId, true)}
+                  onBrowseToday={browseToday}
+                />
+
+                <MissedYesterday
+                  signedIn={!!user}
+                  hasCircle={following.length > 0}
+                  checkedInToday={streak.last === todayKey()}
+                  onOpenCircle={() => {
+                    setRegionScope("circle");
+                  }}
+                  onAnswerToday={() => openShare("text", undefined, true)}
                 />
 
                 <PulseEpisode thoughts={thoughts} onOpenRoom={handleOpenRoom} />
@@ -345,16 +401,19 @@ export default function Home() {
                   continent={continent}
                   onContinentChange={setContinent}
                   circleCount={following.length}
+                  todayCount={todayAnswerCount}
                 />
 
                 <div className="app-pad mt-2">
                   <div className="mb-1 flex items-end justify-between border-b border-[var(--border-base)] pb-3 pt-4">
                     <div>
                       <h2 className="font-display text-lg font-medium text-[var(--foreground)]">
-                        Latest takes
+                        {regionScope === "today" ? "Today’s answers" : "Latest takes"}
                       </h2>
                       <p className="mt-0.5 text-[11px] text-[var(--muted)]">
-                        {regionScope === "near"
+                        {regionScope === "today"
+                          ? "Same prompt, many voices · Feel with someone who resonates"
+                          : regionScope === "near"
                           ? `${continentLabel(continent)} first · other languages still here · tap Translate`
                           : regionScope === "circle"
                             ? following.length
@@ -468,8 +527,15 @@ export default function Home() {
         presetHandle={identityHandle}
         presetAuthor={identityAuthor}
         presetFeeling={shareFeeling}
+        fromDailyPrompt={shareFromDaily}
         lockedIdentity={!!user}
-        onClose={() => setShareOpen(false)}
+        signedIn={!!user}
+        onFeelWith={(handle) => onFeelWith(handle, true)}
+        onBrowseToday={browseToday}
+        onClose={() => {
+          setShareOpen(false);
+          setShareFromDaily(false);
+        }}
         onPublish={publish}
       />
     </div>

@@ -83,4 +83,8 @@ export interface Thought {
   language?: string;
   /** Human label, e.g. "English", "Español". */
   languageLabel?: string;
+  /** YYYY-MM-DD when this take answers that day's ritual prompt. */
+  promptDay?: string;
+  /** Snapshot of the prompt text at share time. */
+  promptText?: string;
 }

@@ -40,7 +40,7 @@ export async function notifyPostOwner(
 
   const post = await db.collection("posts").findOne(
     { _id: objectId },
-    { projection: { handle: 1, content: 1 } }
+    { projection: { handle: 1, content: 1, created_at: 1 } }
   );
   if (!post?.handle) return;
   if (normHandle(String(post.handle)) === normHandle(opts.actorHandle)) return;
@@ -58,12 +58,30 @@ export async function notifyPostOwner(
     created_at: new Date(),
   } satisfies ActivityDoc);
 
-  const title =
-    opts.kind === "reply"
+  const createdAt =
+    post.created_at instanceof Date
+      ? post.created_at
+      : post.created_at
+        ? new Date(String(post.created_at))
+        : null;
+  const sameDay =
+    createdAt &&
+    !Number.isNaN(createdAt.getTime()) &&
+    Date.now() - createdAt.getTime() < 24 * 60 * 60 * 1000;
+
+  // Same-day engagement is the retention hook — lead with that, not "don't forget to post".
+  const title = sameDay
+    ? opts.kind === "reply"
+      ? `Same day · ${opts.actorAuthor} replied`
+      : `Same day · ${opts.actorAuthor} reacted ${opts.preview}`
+    : opts.kind === "reply"
       ? `${opts.actorAuthor} replied`
       : `${opts.actorAuthor} reacted ${opts.preview}`;
-  const body =
-    opts.kind === "reply"
+  const body = sameDay
+    ? opts.kind === "reply"
+      ? opts.preview.slice(0, 120)
+      : "Someone felt today’s take. Open Voices while the thread is warm."
+    : opts.kind === "reply"
       ? opts.preview.slice(0, 120)
       : "Someone felt your take. Open Voices to see.";
 
@@ -71,7 +89,7 @@ export async function notifyPostOwner(
     title,
     body,
     url: "/app",
-    tag: `post-${opts.postId}`,
+    tag: `post-${opts.postId}-${opts.kind}`,
   });
 }
 

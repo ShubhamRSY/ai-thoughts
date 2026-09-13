@@ -1,14 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, AudioLines, Video, Type, Send, Check, Globe, ChevronDown } from "lucide-react";
+import { X, AudioLines, Video, Type, Send, Globe, ChevronDown } from "lucide-react";
 import { LANGS } from "@/lib/mock-data";
 import { BRAND, SUGGESTED_TAGS } from "@/lib/brand";
 import { checkDignity, normalizeTag } from "@/lib/dignity";
 import { fakeHash } from "@/lib/integrity";
+import { FEELINGS } from "@/lib/feelings";
+import { dailyPrompt, todayKey } from "@/lib/daily-prompt";
 import type { FeelingId, MediaType, Thought, PublishResult } from "@/lib/types";
 import MediaRecorderView, { type CapturedClip } from "@/components/Submit/MediaRecorderView";
 import TextForm from "@/components/Submit/TextForm";
+import FeelWithPeers from "@/components/FeelWithPeers";
 
 type Tab = MediaType;
 
@@ -22,7 +25,12 @@ interface SubmitModalProps {
   presetHandle?: string;
   presetAuthor?: string;
   presetFeeling?: FeelingId;
+  /** Tag this share as answering today’s ritual prompt. */
+  fromDailyPrompt?: boolean;
   lockedIdentity?: boolean;
+  signedIn?: boolean;
+  onFeelWith?: (handle: string) => void | Promise<void>;
+  onBrowseToday?: () => void;
 }
 
 const TABS: { id: Tab; label: string; icon: typeof AudioLines }[] = [
@@ -54,7 +62,12 @@ export default function SubmitModal({
   onPublish,
   presetHandle = "",
   presetAuthor = "",
+  presetFeeling,
+  fromDailyPrompt = false,
   lockedIdentity = false,
+  signedIn = false,
+  onFeelWith,
+  onBrowseToday,
 }: SubmitModalProps) {
   const [tab, setTab] = useState<Tab>(initialTab);
   const [handle, setHandle] = useState(presetHandle);
@@ -63,9 +76,16 @@ export default function SubmitModal({
   const [tags, setTags] = useState<string[]>([]);
   const [customTag, setCustomTag] = useState("");
   const [language, setLanguage] = useState(detectDefaultLanguage);
+  const [feeling, setFeeling] = useState<FeelingId | undefined>(presetFeeling);
   const [published, setPublished] = useState(false);
+  const [publishedAsPrompt, setPublishedAsPrompt] = useState(false);
   const [captured, setCaptured] = useState<CapturedClip | null>(null);
   const [publishError, setPublishError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setFeeling(presetFeeling);
+  }, [open, presetFeeling]);
 
   useEffect(() => {
     if (!open) return;
@@ -121,11 +141,13 @@ export default function SubmitModal({
 
     const seed = `${tab}:${handleValue}:${contentValue.slice(0, 40)}:${Date.now()}`;
     const langInfo = LANGS.find((l) => l.code === language);
+    const day = todayKey();
     const payload: SharePayload = {
       author: author.trim() || handle.trim(),
       handle: handleValue,
       content: contentValue,
       mediaType: tab,
+      feeling,
       mediaDuration: captured && captured.duration > 0 ? fmtDur(captured.duration) : undefined,
       mediaUrl: undefined,
       tags: tags.length ? tags : ["#Future"],
@@ -137,6 +159,9 @@ export default function SubmitModal({
         verified: false,
         statusLabel: tab === "text" ? "Signed on post" : "Pending signature",
       },
+      ...(fromDailyPrompt
+        ? { promptDay: day, promptText: dailyPrompt() }
+        : {}),
     };
 
     const result = await onPublish(payload, tab !== "text" ? (captured ?? undefined) : undefined);
@@ -152,8 +177,8 @@ export default function SubmitModal({
       }
       return;
     }
+    setPublishedAsPrompt(Boolean(fromDailyPrompt));
     setPublished(true);
-    setTimeout(() => onClose(), 1400);
   };
 
   return (
@@ -169,28 +194,50 @@ export default function SubmitModal({
             <span className="text-sm font-medium">Cancel</span>
           </button>
           <h2 className="font-display text-sm font-semibold text-[var(--foreground)]">
-            {BRAND.shareTitle}
+            {fromDailyPrompt ? "Answer today’s prompt" : BRAND.shareTitle}
           </h2>
           <span className="w-16" />
         </div>
       </div>
 
       {published ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
-          <span className="text-4xl text-[var(--accent)]" aria-hidden>
-            ◌
-          </span>
-          <h3 className="font-display text-lg font-bold text-[var(--foreground)]">
-            {BRAND.shareSuccess}
-          </h3>
-          <p className="text-sm text-[var(--muted)]">{BRAND.shareSuccessSub}</p>
-          <span className="mt-1 flex items-center gap-1.5 rounded-full bg-[var(--accent-soft)] px-3 py-1 text-xs font-medium text-[var(--accent-2)]">
-            <Check className="h-3.5 w-3.5" /> Shared
-          </span>
-        </div>
+        publishedAsPrompt && onFeelWith && onBrowseToday ? (
+          <FeelWithPeers
+            day={todayKey()}
+            signedIn={signedIn}
+            onFeelWith={onFeelWith}
+            onDone={onClose}
+            onBrowseToday={() => {
+              onBrowseToday();
+              onClose();
+            }}
+          />
+        ) : (
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
+            <span className="text-4xl text-[var(--accent)]" aria-hidden>
+              ◌
+            </span>
+            <h3 className="font-display text-lg font-bold text-[var(--foreground)]">
+              {BRAND.shareSuccess}
+            </h3>
+            <p className="text-sm text-[var(--muted)]">{BRAND.shareSuccessSub}</p>
+            <button
+              type="button"
+              onClick={onClose}
+              className="mt-2 rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-[var(--surface)]"
+            >
+              Done
+            </button>
+          </div>
+        )
       ) : (
         <>
           <div className="app-rail flex flex-1 flex-col overflow-y-auto">
+            {fromDailyPrompt && (
+              <p className="border-b border-[var(--border-base)] bg-[var(--accent-soft)]/40 px-4 py-2 text-xs leading-relaxed text-[var(--accent-2)]">
+                {dailyPrompt()}
+              </p>
+            )}
             <div className="grid grid-cols-3 border-b border-[var(--border-base)] bg-[var(--surface)]">
               {TABS.map(({ id, label, icon: Icon }) => {
                 const active = tab === id;
@@ -216,6 +263,31 @@ export default function SubmitModal({
               {tab === "audio" && <MediaRecorderView kind="audio" onCaptured={setCaptured} />}
               {tab === "video" && <MediaRecorderView kind="video" onCaptured={setCaptured} />}
               {tab === "text" && <TextForm value={content} onChange={setContent} />}
+
+              <div>
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+                  Feeling
+                </label>
+                <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1">
+                  {FEELINGS.map((f) => {
+                    const active = feeling === f.id;
+                    return (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => setFeeling(f.id)}
+                        className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                          active
+                            ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-2)]"
+                            : `${f.chip} hover:border-[var(--accent)]`
+                        }`}
+                      >
+                        {f.short}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
               {lockedIdentity ? (
                 <div className="flex items-center gap-3 rounded-lg border border-[var(--border-base)] bg-white px-3 py-2.5">

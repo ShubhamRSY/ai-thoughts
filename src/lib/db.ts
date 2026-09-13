@@ -50,6 +50,8 @@ interface RawPost {
   integrity_verified?: boolean | null;
   integrity_label?: string | null;
   transcript?: unknown;
+  prompt_day?: string | null;
+  prompt_text?: string | null;
   created_at: string;
   reactions?: { type: string; count: number }[];
 }
@@ -71,6 +73,8 @@ function toThought(r: RawPost): Thought {
     timeLabel: timeLabelFor(r.created_at),
     language: r.language ?? undefined,
     languageLabel: r.language_label ?? undefined,
+    promptDay: r.prompt_day ?? undefined,
+    promptText: r.prompt_text ?? undefined,
     integrity: {
       hash: r.integrity_hash ?? "—",
       verified: Boolean(r.integrity_verified),
@@ -86,9 +90,13 @@ function toThought(r: RawPost): Thought {
   };
 }
 
-export async function fetchPulsePosts(): Promise<Thought[] | null> {
+export async function fetchPulsePosts(opts?: {
+  promptDay?: string;
+}): Promise<Thought[] | null> {
   try {
-    const rows = await jsonFetch<RawPost[]>(`${API}/posts?t=${Date.now()}`);
+    const q = new URLSearchParams({ t: String(Date.now()) });
+    if (opts?.promptDay) q.set("prompt_day", opts.promptDay);
+    const rows = await jsonFetch<RawPost[]>(`${API}/posts?${q}`);
     return rows.map(toThought);
   } catch (e) {
     console.error("fetchPulsePosts:", e);
@@ -139,6 +147,9 @@ export async function publishPost(
         integrity_verified: payload.integrity.verified,
         integrity_label: payload.integrity.statusLabel,
         transcript: payload.transcript ?? null,
+        from_daily_prompt: Boolean(payload.promptDay),
+        prompt_day: payload.promptDay ?? null,
+        prompt_text: payload.promptText ?? null,
       }),
     });
     return toThought(row);

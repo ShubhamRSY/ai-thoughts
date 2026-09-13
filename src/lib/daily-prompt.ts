@@ -36,16 +36,43 @@ const PROMPTS = [
   "What would make you open AI·Thoughts again tomorrow?",
 ];
 
-export function dailyPrompt(date = new Date()): string {
-  const start = Date.UTC(date.getFullYear(), 0, 0);
-  const now = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
-  const day = Math.floor((now - start) / 864e5);
-  return PROMPTS[day % PROMPTS.length]!;
-}
-
-export function todayKey(date = new Date()): string {
+/** Local calendar day key YYYY-MM-DD */
+export function promptDayKey(date = new Date()): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
   const d = String(date.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
 }
+
+export function shiftDayKey(dayKey: string, deltaDays: number): string {
+  const [y, m, d] = dayKey.split("-").map(Number);
+  const dt = new Date(y!, m! - 1, d!);
+  dt.setDate(dt.getDate() + deltaDays);
+  return promptDayKey(dt);
+}
+
+export function yesterdayKey(date = new Date()): string {
+  return shiftDayKey(promptDayKey(date), -1);
+}
+
+export function todayKey(date = new Date()): string {
+  return promptDayKey(date);
+}
+
+function dayOfYear(date: Date): number {
+  const start = Date.UTC(date.getFullYear(), 0, 0);
+  const now = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+  return Math.floor((now - start) / 864e5);
+}
+
+export function dailyPrompt(date = new Date()): string {
+  return PROMPTS[dayOfYear(date) % PROMPTS.length]!;
+}
+
+/** Prompt text for a YYYY-MM-DD key (uses local calendar parse). */
+export function dailyPromptForDay(dayKey: string): string {
+  const [y, m, d] = dayKey.split("-").map(Number);
+  return dailyPrompt(new Date(y!, m! - 1, d!));
+}
+
+export { PROMPTS };

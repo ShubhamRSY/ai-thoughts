@@ -8,13 +8,17 @@ import { dailyPrompt } from "@/lib/daily-prompt";
 interface DailyCheckInProps {
   streakCount: number;
   checkedInToday: boolean;
+  todayAnswerCount?: number;
   onShare: (feeling?: FeelingId) => void;
+  onBrowseToday?: () => void;
 }
 
 export default function DailyCheckIn({
   streakCount,
   checkedInToday,
+  todayAnswerCount = 0,
   onShare,
+  onBrowseToday,
 }: DailyCheckInProps) {
   const prompt = dailyPrompt();
 
@@ -37,9 +41,18 @@ export default function DailyCheckIn({
           </h2>
           <p className="mt-1.5 text-xs text-[var(--muted)]">
             {checkedInToday
-              ? "You’re checked in for today. Come back tomorrow — or reply to someone now."
-              : "One honest take a day beats scrolling forever. Pick a feeling and share."}
+              ? "You’re checked in. React to someone while the thread is warm — or share another take."
+              : "One honest take a day beats scrolling forever. Peek at others first, then share."}
           </p>
+          {todayAnswerCount > 0 && onBrowseToday && (
+            <button
+              type="button"
+              onClick={onBrowseToday}
+              className="mt-2 text-xs font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
+            >
+              See {todayAnswerCount} answer{todayAnswerCount === 1 ? "" : "s"} to today’s prompt →
+            </button>
+          )}
         </div>
 
         <div className="px-4 py-3">

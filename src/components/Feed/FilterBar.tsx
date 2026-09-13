@@ -6,7 +6,7 @@ import { CONTINENTS, continentLabel } from "@/lib/region";
 
 type MediaFilter = "all" | MediaType;
 export type FeelingFilter = "all" | FeelingId;
-export type RegionScope = "near" | "world" | "circle";
+export type RegionScope = "near" | "world" | "circle" | "today";
 
 interface FilterBarProps {
   media: MediaFilter;
@@ -18,6 +18,7 @@ interface FilterBarProps {
   continent: ContinentId;
   onContinentChange: (c: ContinentId) => void;
   circleCount?: number;
+  todayCount?: number;
 }
 
 const MEDIA_FILTERS: { id: MediaFilter; label: string }[] = [
@@ -35,10 +36,22 @@ export default function FilterBar({
   continent,
   onContinentChange,
   circleCount = 0,
+  todayCount = 0,
 }: FilterBarProps) {
   return (
     <div className="app-pad mt-4 space-y-3 border-y border-[var(--border-base)] py-3">
       <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => onRegionScopeChange("today")}
+          className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+            regionScope === "today"
+              ? "bg-[var(--accent)] text-[var(--surface)]"
+              : "border border-[var(--border-base)] text-[var(--muted)] hover:text-[var(--foreground)]"
+          }`}
+        >
+          Today&apos;s prompt{todayCount > 0 ? ` · ${todayCount}` : ""}
+        </button>
         <button
           type="button"
           onClick={() => onRegionScopeChange("near")}
@@ -99,6 +112,12 @@ export default function FilterBar({
       {regionScope === "circle" && (
         <p className="text-[11px] text-[var(--muted)]">
           Takes from people you feel with. Tap Feel with on any voice to add them.
+        </p>
+      )}
+
+      {regionScope === "today" && (
+        <p className="text-[11px] text-[var(--muted)]">
+          Only answers to today&apos;s prompt — eavesdrop, then join.
         </p>
       )}
 

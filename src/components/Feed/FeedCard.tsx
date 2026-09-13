@@ -220,6 +220,11 @@ export default function FeedCard({
           </div>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-[var(--muted)]">
             <FeelingBadge feeling={thought.feeling} size="sm" />
+            {thought.promptDay && (
+              <span className="rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[10px] font-semibold text-[var(--accent-2)]">
+                Today&apos;s prompt
+              </span>
+            )}
             {thought.languageLabel && thought.language && !thought.language.toLowerCase().startsWith("en") && (
               <span>{thought.languageLabel}</span>
             )}

@@ -213,7 +213,7 @@ export default function DailyHabits({
       const reg = await navigator.serviceWorker?.ready;
       if (cancelled || !reg) return;
       await reg.showNotification("Your AI take is waiting", {
-        body: "One honest voice a day. Open AI·Thoughts and answer today’s prompt.",
+        body: "Someone may have reacted — open Voices while today’s thread is warm.",
         icon: "/icons/icon-192.png",
         tag: "aithoughts-daily",
         data: { url: "/app" },
@@ -286,7 +286,7 @@ export default function DailyHabits({
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-[var(--foreground)]">Soft daily nudge</p>
             <p className="mt-0.5 text-xs text-[var(--muted)]">
-              Local reminder when you open the app and haven’t shared today.
+              Backup reminder if Web Push is off. Same-day replies and reactions are the main hook.
             </p>
             <button
               type="button"
