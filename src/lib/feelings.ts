@@ -81,6 +81,11 @@ export function feelingOf(id?: FeelingId | string | null): Feeling | undefined {
   return FEELING_MAP[id as FeelingId];
 }
 
+export type FeelingTally = {
+  id: FeelingId;
+  count: number;
+};
+
 /** Subtle shared wash — one quiet accent, not a mood rainbow. */
 export function feelingWash(_id?: FeelingId | string | null): string {
   if (!_id) return "";

@@ -2,8 +2,8 @@
 
 import { Users } from "lucide-react";
 import type { FeelingId } from "@/lib/types";
+import type { FeelingTally } from "@/lib/feelings";
 import { FEELINGS } from "@/lib/feelings";
-import type { FeelingTally } from "@/components/Pulse/PulseOverview";
 
 interface FeelWithProps {
   tally: FeelingTally[];

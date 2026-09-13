@@ -10,9 +10,7 @@ import FeedGrid from "@/components/Feed/FeedGrid";
 import ProfileView from "@/components/ProfileView";
 import SubmitModal, { type SharePayload } from "@/components/Submit/SubmitModal";
 import type { CapturedClip } from "@/components/Submit/MediaRecorderView";
-import PulseOverview, { type FeelingTally } from "@/components/Pulse/PulseOverview";
 import FeelingRoom from "@/components/Pulse/FeelingRoom";
-import PulseEpisode from "@/components/Pulse/PulseEpisode";
 import StreakCard from "@/components/StreakCard";
 import DailyCheckIn from "@/components/DailyCheckIn";
 import DailyHabits from "@/components/DailyHabits";
@@ -337,8 +335,6 @@ export default function Home() {
     return () => clearInterval(id);
   }, []);
 
-  const feelingTally = useMemo(() => computeTally(thoughts), [thoughts]);
-
   const othersMap = useMemo(() => {
     const m: Record<string, number> = {};
     for (const t of thoughts) if (t.feeling) m[t.feeling] = (m[t.feeling] ?? 0) + 1;
@@ -381,15 +377,6 @@ export default function Home() {
                     setRegionScope("circle");
                   }}
                   onAnswerToday={() => openShare("text", undefined, true)}
-                />
-
-                <PulseEpisode thoughts={thoughts} onOpenRoom={handleOpenRoom} />
-
-                <PulseOverview
-                  thoughts={thoughts}
-                  tally={feelingTally}
-                  activeId={room}
-                  onOpenRoom={handleOpenRoom}
                 />
 
                 <FilterBar
@@ -547,14 +534,6 @@ export default function Home() {
 function sameAuthor(a?: string | null, b?: string | null) {
   if (!a || !b) return false;
   return a.trim().toLowerCase().replace(/^@/, "") === b.trim().toLowerCase().replace(/^@/, "");
-}
-
-function computeTally(thoughts: Thought[]): FeelingTally[] {
-  const counts: Record<string, number> = {};
-  for (const t of thoughts) if (t.feeling) counts[t.feeling] = (counts[t.feeling] ?? 0) + 1;
-  return (Object.entries(counts) as [FeelingId, number][])
-    .map(([id, count]) => ({ id, count }))
-    .sort((a, b) => b.count - a.count);
 }
 
 function todayKey(): string {
