@@ -39,21 +39,23 @@ export default function Header({ onShare }: HeaderProps) {
             Share
           </button>
           {user && (
-            <span
-              className="ml-1 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--surface-2)] text-xs font-semibold text-[var(--foreground)]"
-              title={user.displayName}
-            >
-              {user.displayName.slice(0, 1).toUpperCase()}
-            </span>
+            <>
+              <span
+                className="ml-1 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--surface-2)] text-xs font-semibold text-[var(--foreground)]"
+                title={user.displayName}
+              >
+                {user.displayName.slice(0, 1).toUpperCase()}
+              </span>
+              <button
+                type="button"
+                onClick={handleSignOut}
+                aria-label="Sign out"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--muted)] transition hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+              >
+                <LogOut className="h-4 w-4" strokeWidth={2} />
+              </button>
+            </>
           )}
-          <button
-            type="button"
-            onClick={handleSignOut}
-            aria-label="Sign out"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--muted)] transition hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
-          >
-            <LogOut className="h-4 w-4" strokeWidth={2} />
-          </button>
         </div>
       </div>
     </header>

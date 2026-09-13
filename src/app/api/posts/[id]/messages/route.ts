@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
 import { checkDignity } from "@/lib/dignity";
-import { notifyPostOwner } from "@/lib/activity";
+import { notifyPostOwner, notifyMentions } from "@/lib/activity";
+import { extractMentions, normHandle } from "@/lib/mentions";
+import { ObjectId } from "mongodb";
 
 export async function GET(
   _request: NextRequest,
@@ -62,12 +64,40 @@ export async function POST(
       created_at: new Date(),
     });
 
-    await notifyPostOwner(db, {
+    const mentioned = extractMentions(preview);
+    let postHandle: string | null = null;
+    try {
+      const post = await db.collection("posts").findOne(
+        { _id: new ObjectId(id) },
+        { projection: { handle: 1 } }
+      );
+      postHandle = post?.handle ? String(post.handle) : null;
+    } catch {
+      /* ignore */
+    }
+
+    const ownerMentioned =
+      Boolean(postHandle) &&
+      mentioned.some((h) => normHandle(h) === normHandle(postHandle!));
+
+    // If the author was @mentioned, prefer the mention notice over a plain reply.
+    if (!ownerMentioned) {
+      await notifyPostOwner(db, {
+        postId: id,
+        actorHandle: session.handle,
+        actorAuthor: session.displayName || session.handle,
+        kind: "reply",
+        preview,
+      });
+    }
+
+    await notifyMentions(db, {
       postId: id,
       actorHandle: session.handle,
       actorAuthor: session.displayName || session.handle,
-      kind: "reply",
       preview,
+      mentioned,
+      skipHandles: ownerMentioned || !postHandle ? [] : [postHandle],
     });
 
     return NextResponse.json({ ok: true, id: result.insertedId.toString() });

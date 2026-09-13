@@ -14,6 +14,7 @@ interface FeedGridProps {
   currentHandle?: string | null;
   currentAuthor?: string | null;
   othersMap?: Record<string, number>;
+  emptyHint?: string;
 }
 
 function norm(h: string) {
@@ -31,6 +32,7 @@ export default function FeedGrid({
   currentHandle,
   currentAuthor,
   othersMap,
+  emptyHint,
 }: FeedGridProps) {
   const following = new Set(
     (Array.isArray(followingHandles)
@@ -46,7 +48,7 @@ export default function FeedGrid({
       <div className="px-1 py-16 text-center">
         <p className="font-display text-lg text-[var(--foreground)]">Quiet for now.</p>
         <p className="mt-2 text-sm text-[var(--muted)]">
-          Be the first to answer today&apos;s prompt — or switch to Worldwide.
+          {emptyHint ?? "Be the first to share how AI makes you feel."}
         </p>
       </div>
     );

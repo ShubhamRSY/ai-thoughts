@@ -153,6 +153,20 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const messageCounts = new Map<string, number>();
+    if (postIds.length > 0) {
+      const counts = await db
+        .collection("messages")
+        .aggregate<{ _id: string; n: number }>([
+          { $match: { post_id: { $in: postIds } } },
+          { $group: { _id: "$post_id", n: { $sum: 1 } } },
+        ])
+        .toArray();
+      for (const row of counts) {
+        if (row._id) messageCounts.set(String(row._id), row.n);
+      }
+    }
+
     const result = posts.map((p) => {
       const id = p._id?.toString() ?? "";
       const reacts = reactMap[id] ?? {};
@@ -194,6 +208,7 @@ export async function GET(request: NextRequest) {
         liked_by: likedBy,
         like_count: unique.size,
         liked_by_me: likedByMe,
+        reply_count: messageCounts.get(id) ?? 0,
       };
     });
 

@@ -213,7 +213,7 @@ export default function DailyHabits({
       const reg = await navigator.serviceWorker?.ready;
       if (cancelled || !reg) return;
       await reg.showNotification("Your AI take is waiting", {
-        body: "Someone may have reacted — open Voices while today’s thread is warm.",
+        body: "Share how AI makes you feel today — while the prompt is still warm.",
         icon: "/icons/icon-192.png",
         tag: "aithoughts-daily",
         data: { url: "/app" },

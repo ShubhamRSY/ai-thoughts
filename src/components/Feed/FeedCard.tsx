@@ -4,7 +4,6 @@ import { useRef, useState } from "react";
 import {
   MessageCircle,
   Heart,
-  Bookmark,
   MoreHorizontal,
   Flag,
   ShieldCheck,
@@ -87,13 +86,14 @@ export default function FeedCard({
       : thought.reactions.find((e) => e.type === LIKE_REACTION)?.count ?? 0
   );
   const [likedBy, setLikedBy] = useState<LikedByPerson[]>(thought.likedBy ?? []);
-  const [saved, setSaved] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [reported, setReported] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
-  const [commentCount, setCommentCount] = useState<number | null>(null);
+  const [commentCount, setCommentCount] = useState<number | null>(
+    typeof thought.replyCount === "number" ? thought.replyCount : null
+  );
   const [showReact, setShowReact] = useState(false);
   const [feeling, setFeeling] = useState(Boolean(feelingWith));
   const isAuthor = sameHandle(currentHandle, thought.handle);
@@ -108,11 +108,13 @@ export default function FeedCard({
   const mediaSrc = thought.streamReady && thought.streamUrl ? thought.streamUrl : thought.mediaUrl;
 
   const react = (r: Reaction) => {
+    if (!currentHandle) return;
     if (mine === r) {
       setReactions((prev) =>
         prev.map((e) => (e.type === r ? { ...e, count: Math.max(0, e.count - 1) } : e))
       );
       setMine(null);
+      onReact?.(thought.id, r);
       return;
     }
     setReactions((prev) =>
@@ -354,17 +356,11 @@ export default function FeedCard({
         <button
           type="button"
           onClick={() => setShowReact((v) => !v)}
-          className="text-xs font-medium hover:text-[var(--foreground)]"
+          disabled={!currentHandle}
+          title={!currentHandle ? "Sign in to react" : undefined}
+          className="text-xs font-medium hover:text-[var(--foreground)] disabled:opacity-50"
         >
           React
-        </button>
-        <button
-          type="button"
-          onClick={() => setSaved((v) => !v)}
-          aria-label="Save"
-          className={`ml-auto transition ${saved ? "text-[var(--accent)]" : "hover:text-[var(--foreground)]"}`}
-        >
-          <Bookmark className="h-4 w-4" fill={saved ? "currentColor" : "none"} strokeWidth={2} />
         </button>
       </div>
 
@@ -382,8 +378,10 @@ export default function FeedCard({
             return (
               <button
                 key={r}
+                type="button"
+                disabled={!currentHandle}
                 onClick={() => react(r)}
-                className={`rounded-full px-2.5 py-1 text-sm transition ${
+                className={`rounded-full px-2.5 py-1 text-sm transition disabled:opacity-50 ${
                   isMine
                     ? "bg-[var(--accent-soft)] text-[var(--accent-2)]"
                     : "bg-[var(--surface-2)] text-[var(--foreground)] hover:bg-[var(--accent-soft)]"
@@ -457,6 +455,7 @@ export default function FeedCard({
       <ChatPanel
         postId={thought.id}
         postAuthor={thought.author}
+        postHandle={thought.handle}
         open={chatOpen}
         onClose={() => setChatOpen(false)}
         onCountChange={setCommentCount}

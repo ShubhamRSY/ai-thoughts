@@ -2,7 +2,7 @@ import { ObjectId } from "mongodb";
 import type { Db } from "mongodb";
 import { sendPushToHandle } from "@/lib/push";
 
-export type ActivityKind = "reply" | "reaction" | "follow_post";
+export type ActivityKind = "reply" | "reaction" | "follow_post" | "mention";
 
 export interface ActivityDoc {
   recipient_handle: string;
@@ -18,6 +18,47 @@ export interface ActivityDoc {
 
 function normHandle(h: string) {
   return h.trim().toLowerCase().replace(/^@/, "");
+}
+
+function recipientForm(h: string) {
+  const n = normHandle(h);
+  return h.trim().startsWith("@") ? h.trim() : `@${n}`;
+}
+
+async function writeActivity(
+  db: Db,
+  opts: {
+    recipientHandle: string;
+    actorHandle: string;
+    actorAuthor: string;
+    kind: ActivityKind;
+    postId: string;
+    preview: string;
+    pushTitle: string;
+    pushBody: string;
+    pushTag: string;
+  }
+): Promise<void> {
+  if (normHandle(opts.recipientHandle) === normHandle(opts.actorHandle)) return;
+
+  await db.collection("notifications").insertOne({
+    recipient_handle: recipientForm(opts.recipientHandle),
+    actor_handle: opts.actorHandle,
+    actor_author: opts.actorAuthor,
+    kind: opts.kind,
+    post_id: opts.postId,
+    preview: opts.preview.slice(0, 160),
+    read: false,
+    emailed: false,
+    created_at: new Date(),
+  } satisfies ActivityDoc);
+
+  await sendPushToHandle(db, opts.recipientHandle, {
+    title: opts.pushTitle,
+    body: opts.pushBody,
+    url: "/app",
+    tag: opts.pushTag,
+  });
 }
 
 /** Notify a post’s author that someone engaged — never notify yourself. */
@@ -44,19 +85,6 @@ export async function notifyPostOwner(
   );
   if (!post?.handle) return;
   if (normHandle(String(post.handle)) === normHandle(opts.actorHandle)) return;
-
-  const recipient = String(post.handle);
-  await db.collection("notifications").insertOne({
-    recipient_handle: recipient,
-    actor_handle: opts.actorHandle,
-    actor_author: opts.actorAuthor,
-    kind: opts.kind,
-    post_id: opts.postId,
-    preview: opts.preview.slice(0, 160),
-    read: false,
-    emailed: false,
-    created_at: new Date(),
-  } satisfies ActivityDoc);
 
   const createdAt =
     post.created_at instanceof Date
@@ -93,12 +121,93 @@ export async function notifyPostOwner(
         ? `${opts.actorAuthor} liked your take. Open Voices to see.`
         : "Someone felt your take. Open Voices to see.";
 
-  await sendPushToHandle(db, recipient, {
-    title,
-    body,
-    url: "/app",
-    tag: `post-${opts.postId}-${opts.kind}`,
+  await writeActivity(db, {
+    recipientHandle: String(post.handle),
+    actorHandle: opts.actorHandle,
+    actorAuthor: opts.actorAuthor,
+    kind: opts.kind,
+    postId: opts.postId,
+    preview: opts.preview,
+    pushTitle: title,
+    pushBody: body,
+    pushTag: `post-${opts.postId}-${opts.kind}`,
   });
+}
+
+/**
+ * Notify people @mentioned in a comment — prefers people on the thread
+ * (post author + commenters); also allows known user handles.
+ */
+export async function notifyMentions(
+  db: Db,
+  opts: {
+    postId: string;
+    actorHandle: string;
+    actorAuthor: string;
+    preview: string;
+    mentioned: string[];
+    /** Handles already notified (e.g. post owner via reply) — skip duplicates. */
+    skipHandles?: string[];
+  }
+): Promise<void> {
+  if (opts.mentioned.length === 0) return;
+
+  let objectId: ObjectId;
+  try {
+    objectId = new ObjectId(opts.postId);
+  } catch {
+    return;
+  }
+
+  const post = await db.collection("posts").findOne(
+    { _id: objectId },
+    { projection: { handle: 1, author: 1 } }
+  );
+  if (!post) return;
+
+  const threadHandles = new Set<string>();
+  threadHandles.add(normHandle(String(post.handle)));
+
+  const prior = await db
+    .collection<{ handle?: string }>("messages")
+    .find({ post_id: opts.postId })
+    .project({ handle: 1 })
+    .limit(200)
+    .toArray();
+  for (const m of prior) {
+    if (m.handle) threadHandles.add(normHandle(m.handle));
+  }
+
+  const skip = new Set((opts.skipHandles ?? []).map(normHandle));
+  skip.add(normHandle(opts.actorHandle));
+
+  for (const raw of opts.mentioned) {
+    const key = normHandle(raw);
+    if (!key || skip.has(key)) continue;
+
+    const onThread = threadHandles.has(key);
+    let allowed = onThread;
+    if (!allowed) {
+      const user = await db.collection("users").findOne({
+        handle: { $in: [key, `@${key}`] },
+      });
+      allowed = Boolean(user);
+    }
+    if (!allowed) continue;
+
+    skip.add(key);
+    await writeActivity(db, {
+      recipientHandle: `@${key}`,
+      actorHandle: opts.actorHandle,
+      actorAuthor: opts.actorAuthor,
+      kind: "mention",
+      postId: opts.postId,
+      preview: opts.preview,
+      pushTitle: `${opts.actorAuthor} mentioned you`,
+      pushBody: opts.preview.slice(0, 120),
+      pushTag: `mention-${opts.postId}-${key}`,
+    });
+  }
 }
 
 /** Notify followers when someone they feel with shares a new take. */
@@ -115,23 +224,16 @@ export async function notifyFollowersOfPost(
   const followers = await listFollowers(db, opts.authorHandle);
   for (const follower of followers) {
     if (normHandle(follower) === normHandle(opts.authorHandle)) continue;
-    await db.collection("notifications").insertOne({
-      recipient_handle: follower.startsWith("@") ? follower : `@${normHandle(follower)}`,
-      actor_handle: opts.authorHandle,
-      actor_author: opts.authorName,
+    await writeActivity(db, {
+      recipientHandle: follower,
+      actorHandle: opts.authorHandle,
+      actorAuthor: opts.authorName,
       kind: "follow_post",
-      post_id: opts.postId,
-      preview: opts.preview.slice(0, 160),
-      read: false,
-      emailed: false,
-      created_at: new Date(),
-    } satisfies ActivityDoc);
-
-    await sendPushToHandle(db, follower, {
-      title: `${opts.authorName} shared a take`,
-      body: opts.preview.slice(0, 120),
-      url: "/app",
-      tag: `follow-${opts.postId}`,
+      postId: opts.postId,
+      preview: opts.preview,
+      pushTitle: `${opts.authorName} shared a take`,
+      pushBody: opts.preview.slice(0, 120),
+      pushTag: `follow-${opts.postId}`,
     });
   }
 }

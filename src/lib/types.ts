@@ -88,6 +88,8 @@ export interface Thought {
   likeCount?: number;
   /** Whether the signed-in user already liked this take. */
   likedByMe?: boolean;
+  /** Prefetched reply/comment count. */
+  replyCount?: number;
   /** Human relative time label like "2m" */
   timeLabel: string;
   integrity: Integrity;

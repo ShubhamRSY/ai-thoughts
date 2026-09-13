@@ -16,7 +16,6 @@ import DailyCheckIn from "@/components/DailyCheckIn";
 import DailyHabits from "@/components/DailyHabits";
 import MissedYesterday from "@/components/MissedYesterday";
 import ActivityPanel, { useActivity } from "@/components/ActivityPanel";
-import { INITIAL_THOUGHTS } from "@/lib/mock-data";
 import { digestBytes } from "@/lib/integrity";
 import { useLocalProfile } from "@/hooks/useLocalProfile";
 import { useAuth } from "@/hooks/useAuth";
@@ -51,7 +50,7 @@ export default function Home() {
   const identityHandle = user?.handle || profile.handle;
   const identityAuthor = user?.displayName || profile.author;
   const { streak, bump } = useFeelingStreak();
-  const [thoughts, setThoughts] = useState<Thought[]>(INITIAL_THOUGHTS);
+  const [thoughts, setThoughts] = useState<Thought[]>([]);
   const [mine, setMine] = useState<Thought[]>([]);
   const [media, setMedia] = useState<MediaFilter>("all");
   const [feeling, setFeeling] = useState<FeelingFilter>("all");
@@ -188,14 +187,17 @@ export default function Home() {
     openShare("video", id);
   };
 
-  const onReport = useCallback((thoughtId: string, reason: ReportReason) => {
-    if (!isLive()) return;
-    const t = INITIAL_THOUGHTS.find((x) => x.id === thoughtId);
-    void reportPost(thoughtId, reason, {
-      handle: t?.handle,
-      content: t?.content,
-    });
-  }, []);
+  const onReport = useCallback(
+    (thoughtId: string, reason: ReportReason) => {
+      if (!isLive()) return;
+      const t = thoughts.find((x) => x.id === thoughtId);
+      void reportPost(thoughtId, reason, {
+        handle: t?.handle,
+        content: t?.content,
+      });
+    },
+    [thoughts]
+  );
 
   const removeLocal = useCallback((thoughtId: string) => {
     setThoughts((prev) => prev.filter((t) => t.id !== thoughtId));
@@ -283,7 +285,12 @@ export default function Home() {
     if (!isLive()) return;
     let cancelled = false;
     fetchPulsePosts().then((posts) => {
-      if (cancelled || !posts || posts.length === 0) return;
+      if (cancelled) return;
+      if (!posts) {
+        setThoughts([]);
+        setMine([]);
+        return;
+      }
       setThoughts(posts);
       setMine(posts.filter((t) => sameAuthor(t.handle, identityHandle)));
     });
@@ -311,30 +318,6 @@ export default function Home() {
     };
   }, [regionScope]);
 
-  useEffect(() => {
-    if (isLive()) return;
-    const id = setInterval(() => {
-      setThoughts((prev) => {
-        if (prev.length === 0) return prev;
-        const tIdx = (Date.now() / 1000) % prev.length;
-        const target = prev[Math.floor(tIdx)];
-        if (!target) return prev;
-        const rIdx = Math.floor(Math.random() * Math.max(target.reactions.length, 1));
-        return prev.map((t) =>
-          t.id === target.id
-            ? {
-                ...t,
-                reactions: t.reactions.map((r, i) =>
-                  i === rIdx ? { ...r, count: r.count + 1 } : r
-                ),
-              }
-            : t
-        );
-      });
-    }, 5000);
-    return () => clearInterval(id);
-  }, []);
-
   const othersMap = useMemo(() => {
     const m: Record<string, number> = {};
     for (const t of thoughts) if (t.feeling) m[t.feeling] = (m[t.feeling] ?? 0) + 1;
@@ -355,7 +338,12 @@ export default function Home() {
                 onCreate={() => handleShareInRoom(room)}
                 onBack={backFromRoom}
                 onReact={onReact}
+                onReport={onReport}
                 onDelete={onDelete}
+                onOpenRoom={handleOpenRoom}
+                onFeelWith={user ? onFeelWith : undefined}
+                followingHandles={followingSet}
+                othersMap={othersMap}
                 currentHandle={user?.handle ?? null}
                 currentAuthor={identityAuthor ?? null}
               />
@@ -425,6 +413,19 @@ export default function Home() {
                     onFeelWith={user ? onFeelWith : undefined}
                     followingHandles={followingSet}
                     othersMap={othersMap}
+                    emptyHint={
+                      regionScope === "today"
+                        ? "No answers to today’s prompt yet — share yours."
+                        : regionScope === "circle"
+                          ? following.length
+                            ? "No takes from people you feel with yet."
+                            : "Feel with someone on a take to build your circle."
+                          : regionScope === "near"
+                            ? "Nothing nearby yet — try Worldwide, or share first."
+                            : media !== "all"
+                              ? "No takes in this format — try All."
+                              : "Be the first to share how AI makes you feel."
+                    }
                   />
                 </div>
 

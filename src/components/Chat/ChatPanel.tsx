@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   fetchMessages,
   sendMessage,
@@ -8,12 +8,22 @@ import {
   type ChatMessage,
 } from "@/lib/db";
 import { useLocalProfile } from "@/hooks/useLocalProfile";
+import { useAuth } from "@/hooks/useAuth";
 import TranslateToEnglish from "@/components/TranslateToEnglish";
 import { checkDignity } from "@/lib/dignity";
+import {
+  mentionQueryAt,
+  normHandle,
+  splitMentionParts,
+  type MentionPerson,
+} from "@/lib/mentions";
+import Link from "next/link";
 
 interface ChatPanelProps {
   postId: string;
   postAuthor: string;
+  /** Handle of the take’s author — used for @ suggestions + quick mention. */
+  postHandle?: string | null;
   open: boolean;
   onClose: () => void;
   onCountChange?: (count: number) => void;
@@ -31,19 +41,41 @@ function timeLabel(iso: string): string {
   return new Date(iso).toLocaleDateString();
 }
 
+function CommentBody({ body }: { body: string }) {
+  const parts = splitMentionParts(body);
+  return (
+    <span dir="auto" className="break-words font-normal">
+      {parts.map((p, i) =>
+        p.type === "mention" ? (
+          <span key={i} className="font-semibold text-[var(--accent)]">
+            {p.value}
+          </span>
+        ) : (
+          <span key={i}>{p.value}</span>
+        )
+      )}
+    </span>
+  );
+}
+
 export default function ChatPanel({
   postId,
   postAuthor,
+  postHandle,
   open,
   onClose,
   onCountChange,
 }: ChatPanelProps) {
   const { profile } = useLocalProfile();
+  const { user } = useAuth();
+  const signedIn = Boolean(user);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [caret, setCaret] = useState(0);
+  const [suggestOpen, setSuggestOpen] = useState(false);
   const listRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -51,6 +83,43 @@ export default function ChatPanel({
     const el = listRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, []);
+
+  const me = normHandle(profile.handle || "");
+
+  const people = useMemo(() => {
+    const map = new Map<string, MentionPerson>();
+    if (postHandle) {
+      const key = normHandle(postHandle);
+      if (key && key !== me) {
+        map.set(key, {
+          handle: postHandle.startsWith("@") ? postHandle : `@${key}`,
+          author: postAuthor || key,
+        });
+      }
+    }
+    for (const m of messages) {
+      const key = normHandle(m.handle);
+      if (!key || key === me || map.has(key)) continue;
+      map.set(key, {
+        handle: m.handle.startsWith("@") ? m.handle : `@${key}`,
+        author: m.author || key,
+      });
+    }
+    return [...map.values()];
+  }, [messages, postHandle, postAuthor, me]);
+
+  const activeMention = mentionQueryAt(draft, caret);
+  const suggestions = useMemo(() => {
+    if (!activeMention || !suggestOpen) return [];
+    const q = activeMention.query;
+    return people
+      .filter((p) => {
+        const h = normHandle(p.handle);
+        const a = p.author.toLowerCase();
+        return !q || h.startsWith(q) || a.startsWith(q);
+      })
+      .slice(0, 6);
+  }, [activeMention, people, suggestOpen]);
 
   useEffect(() => {
     if (!open || !postId) return;
@@ -85,7 +154,39 @@ export default function ChatPanel({
     };
   }, [open, postId, scrollToBottom, onCountChange]);
 
+  const insertMention = (person: MentionPerson) => {
+    const el = inputRef.current;
+    const pos = el?.selectionStart ?? caret;
+    const mq = mentionQueryAt(draft, pos);
+    const handle = person.handle.startsWith("@")
+      ? person.handle
+      : `@${normHandle(person.handle)}`;
+    let next: string;
+    let nextCaret: number;
+    if (mq) {
+      next = `${draft.slice(0, mq.start)}${handle} ${draft.slice(mq.end)}`;
+      nextCaret = mq.start + handle.length + 1;
+    } else {
+      const prefix = draft && !draft.endsWith(" ") ? `${draft} ` : draft;
+      next = `${prefix}${handle} `;
+      nextCaret = next.length;
+    }
+    setDraft(next);
+    setSuggestOpen(false);
+    requestAnimationFrame(() => {
+      const input = inputRef.current;
+      if (!input) return;
+      input.focus();
+      input.setSelectionRange(nextCaret, nextCaret);
+      setCaret(nextCaret);
+    });
+  };
+
   const handleSend = async () => {
+    if (!signedIn) {
+      setError("Sign in to reply");
+      return;
+    }
     const body = draft.trim();
     if (!body || sending) return;
     const dignity = checkDignity(body);
@@ -97,8 +198,8 @@ export default function ChatPanel({
     setError(null);
     const err = await sendMessage(
       postId,
-      profile.handle || "you",
-      profile.author || "You",
+      user?.handle || profile.handle || "you",
+      user?.displayName || profile.author || "You",
       body
     );
     setSending(false);
@@ -107,14 +208,15 @@ export default function ChatPanel({
       return;
     }
     setDraft("");
+    setSuggestOpen(false);
     setMessages((prev) => {
       const next = [
         ...prev,
         {
           id: `local-${Date.now()}`,
           post_id: postId,
-          handle: profile.handle || "you",
-          author: profile.author || "You",
+          handle: user?.handle || profile.handle || "you",
+          author: user?.displayName || profile.author || "You",
           body,
           created_at: new Date().toISOString(),
         },
@@ -127,23 +229,43 @@ export default function ChatPanel({
 
   if (!open) return null;
 
+  const authorPerson: MentionPerson | null = postHandle
+    ? {
+        handle: postHandle.startsWith("@")
+          ? postHandle
+          : `@${normHandle(postHandle)}`,
+        author: postAuthor,
+      }
+    : null;
+
+  const commentLabel = !loaded
+    ? "Loading comments…"
+    : messages.length === 0
+      ? "No comments yet"
+      : `${messages.length} comment${messages.length === 1 ? "" : "s"}`;
+
   return (
     <div className="mt-4 border-t border-[var(--border-base)] pt-3">
-      <div className="mb-2 flex items-center justify-between">
-        <p className="text-xs font-medium text-[var(--muted)]">
-          {loaded
-            ? messages.length === 0
-              ? "No comments yet"
-              : `${messages.length} comment${messages.length === 1 ? "" : "s"}`
-            : "Loading comments…"}
-        </p>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-xs font-medium text-[var(--muted)] hover:text-[var(--foreground)]"
-        >
-          Hide
-        </button>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-xs font-medium text-[var(--muted)]">{commentLabel}</p>
+        <div className="flex items-center gap-2">
+          {signedIn && authorPerson && me !== normHandle(authorPerson.handle) && (
+            <button
+              type="button"
+              onClick={() => insertMention(authorPerson)}
+              className="text-xs font-semibold text-[var(--accent)] hover:underline"
+            >
+              @{normHandle(authorPerson.handle)}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-xs font-medium text-[var(--muted)] hover:text-[var(--foreground)]"
+          >
+            Hide
+          </button>
+        </div>
       </div>
 
       <div
@@ -152,7 +274,7 @@ export default function ChatPanel({
       >
         {loaded && messages.length === 0 && (
           <p className="text-sm text-[var(--muted)]">
-            Be the first to reply to {postAuthor}.
+            Be the first to reply to {postAuthor}. Type @ to mention them.
           </p>
         )}
 
@@ -164,9 +286,7 @@ export default function ChatPanel({
             <div className="min-w-0 flex-1">
               <p className="text-sm leading-snug text-[var(--foreground)]">
                 <span className="font-semibold">{m.handle}</span>{" "}
-                <span dir="auto" className="break-words font-normal">
-                  {m.body}
-                </span>
+                <CommentBody body={m.body} />
               </p>
               <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
                 <span className="text-[11px] text-[var(--muted)]">{timeLabel(m.created_at)}</span>
@@ -177,8 +297,40 @@ export default function ChatPanel({
         ))}
       </div>
 
-      <div className="mt-3">
+      <div className="relative mt-3">
         {error && <p className="mb-1.5 text-[11px] text-rose-700">{error}</p>}
+        {!signedIn ? (
+          <p className="border-t border-[var(--border-base)] pt-3 text-sm text-[var(--muted)]">
+            <Link href="/sign-in" className="font-semibold text-[var(--accent)] hover:underline">
+              Sign in
+            </Link>{" "}
+            to reply or @mention someone.
+          </p>
+        ) : (
+          <>
+        {suggestions.length > 0 && (
+          <div className="absolute bottom-full left-0 z-20 mb-1 w-full max-w-xs overflow-hidden rounded-xl border border-[var(--border-base)] bg-[var(--surface)] shadow-md">
+            <p className="border-b border-[var(--border-base)] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+              Mention
+            </p>
+            {suggestions.map((p) => (
+              <button
+                key={normHandle(p.handle)}
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  insertMention(p);
+                }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-[var(--surface-2)]"
+              >
+                <span className="font-semibold text-[var(--accent)]">
+                  @{normHandle(p.handle)}
+                </span>
+                <span className="truncate text-[var(--muted)]">{p.author}</span>
+              </button>
+            ))}
+          </div>
+        )}
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -189,16 +341,36 @@ export default function ChatPanel({
           <textarea
             ref={inputRef}
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => {
+              const v = e.target.value;
+              const pos = e.target.selectionStart ?? v.length;
+              setDraft(v);
+              setCaret(pos);
+              setSuggestOpen(Boolean(mentionQueryAt(v, pos)));
+            }}
+            onSelect={(e) => {
+              const pos = (e.target as HTMLTextAreaElement).selectionStart ?? 0;
+              setCaret(pos);
+              setSuggestOpen(Boolean(mentionQueryAt(draft, pos)));
+            }}
             onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setSuggestOpen(false);
+                return;
+              }
               if (e.key === "Enter" && !e.shiftKey) {
+                if (suggestions.length > 0 && suggestOpen) {
+                  e.preventDefault();
+                  insertMention(suggestions[0]);
+                  return;
+                }
                 e.preventDefault();
                 void handleSend();
               }
             }}
             rows={1}
             dir="auto"
-            placeholder={`Add a comment…`}
+            placeholder="Add a comment… use @handle to mention"
             className="max-h-24 min-h-[36px] flex-1 resize-none bg-transparent py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted)] outline-none"
           />
           <button
@@ -210,6 +382,8 @@ export default function ChatPanel({
             {sending ? "…" : "Post"}
           </button>
         </form>
+          </>
+        )}
       </div>
     </div>
   );

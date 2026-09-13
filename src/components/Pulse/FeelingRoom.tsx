@@ -3,7 +3,7 @@
 import { ArrowLeft } from "lucide-react";
 import type { Thought, FeelingId, Reaction } from "@/lib/types";
 import { feelingOf, feelingWash } from "@/lib/feelings";
-import FeedCard from "@/components/Feed/FeedCard";
+import FeedCard, { type ReportReason } from "@/components/Feed/FeedCard";
 
 interface FeelingRoomProps {
   feelingId: FeelingId;
@@ -11,9 +11,18 @@ interface FeelingRoomProps {
   onCreate: () => void;
   onBack: () => void;
   onReact?: (thoughtId: string, reaction: Reaction) => void;
+  onReport?: (thoughtId: string, reason: ReportReason) => void;
   onDelete?: (thoughtId: string) => void;
+  onOpenRoom?: (id: FeelingId) => void;
+  onFeelWith?: (handle: string, next: boolean) => void;
+  followingHandles?: Set<string> | string[];
+  othersMap?: Record<string, number>;
   currentHandle?: string | null;
   currentAuthor?: string | null;
+}
+
+function norm(h: string) {
+  return h.trim().toLowerCase().replace(/^@/, "");
 }
 
 export default function FeelingRoom({
@@ -22,18 +31,32 @@ export default function FeelingRoom({
   onCreate,
   onBack,
   onReact,
+  onReport,
   onDelete,
+  onOpenRoom,
+  onFeelWith,
+  followingHandles,
+  othersMap,
   currentHandle,
   currentAuthor,
 }: FeelingRoomProps) {
   const meta = feelingOf(feelingId)!;
   const roomThoughts = thoughts.filter((t) => (t.feeling ?? "") === feelingId);
+  const following = new Set(
+    (Array.isArray(followingHandles)
+      ? followingHandles
+      : followingHandles
+        ? Array.from(followingHandles)
+        : []
+    ).map(norm)
+  );
 
   return (
     <div className={`flex-1 ${feelingWash(feelingId)}`}>
       <div className="sticky top-0 z-20 border-b border-[var(--border-base)] bg-[var(--surface)]/95 backdrop-blur-sm app-pad py-4">
         <div className="flex items-center gap-3">
           <button
+            type="button"
             onClick={onBack}
             aria-label="Back"
             className="rounded-full p-1.5 text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
@@ -54,6 +77,7 @@ export default function FeelingRoom({
           </div>
         </div>
         <button
+          type="button"
           onClick={onCreate}
           className="mt-4 w-full rounded-full bg-[var(--accent)] py-3 text-sm font-semibold text-[var(--surface)] hover:bg-[var(--accent-2)]"
         >
@@ -75,9 +99,14 @@ export default function FeelingRoom({
               key={t.id}
               thought={t}
               onReact={onReact}
+              onReport={onReport}
               onDelete={onDelete}
+              onOpenRoom={onOpenRoom}
+              onFeelWith={onFeelWith}
+              feelingWith={following.has(norm(t.handle))}
               currentHandle={currentHandle}
               currentAuthor={currentAuthor}
+              others={t.feeling ? othersMap?.[t.feeling] : undefined}
             />
           ))
         )}
