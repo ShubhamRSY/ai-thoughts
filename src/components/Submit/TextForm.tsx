@@ -16,7 +16,7 @@ export default function TextForm({ value, onChange }: TextFormProps) {
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value.slice(0, MAX_CHARS))}
-        placeholder="What’s your honest take on AI right now?"
+        placeholder="How does AI make you feel right now?"
         rows={5}
         dir="auto"
         className="w-full resize-none rounded-t-xl bg-transparent px-4 py-3 text-sm text-[var(--foreground)] placeholder:text-[var(--muted)]/60 focus:outline-none"

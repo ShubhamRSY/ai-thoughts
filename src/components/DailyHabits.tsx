@@ -229,7 +229,7 @@ export default function DailyHabits({
 
   const invite = useCallback(async () => {
     const url = typeof window !== "undefined" ? window.location.origin : "";
-    const text = `I’m sharing honest takes about how AI is changing us on AI·Thoughts. Join me: ${url}`;
+    const text = `I’m saying how AI makes me feel on AI·Thoughts — love it, fear it, or both. Join me: ${url}`;
     try {
       if (navigator.share) {
         await navigator.share({ title: "AI·Thoughts", text, url });

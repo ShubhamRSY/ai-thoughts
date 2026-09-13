@@ -1,5 +1,22 @@
 # Ops runbook (must-do for live Voices)
 
+## Owner engagement dashboard (private)
+
+Not linked from Voices. Bookmark:
+
+`https://YOUR_APP/owner`
+
+1. Set `OWNER_DASHBOARD_SECRET` on Vercel (or reuse `CRON_SECRET`).
+2. Open `/owner`, paste the secret, Refresh.
+3. See today / 7d / 30d users & takes, WoW trend, feelings mix, active posters.
+
+API (for scripts):
+
+```bash
+curl -sS https://YOUR_APP/api/owner/metrics \
+  -H "Authorization: Bearer $OWNER_DASHBOARD_SECRET" | jq .
+```
+
 ## Before inviting people
 
 1. **Vercel env** (Production): `AUTH_SECRET`, `MONGODB_URL`, `CRON_SECRET`, Resend (`RESEND_API_KEY` + verified `EMAIL_FROM`), Blob, VAPID keys.

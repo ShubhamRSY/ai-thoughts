@@ -4,6 +4,7 @@ import { Flame, Heart } from "lucide-react";
 import { FEELINGS } from "@/lib/feelings";
 import type { FeelingId } from "@/lib/types";
 import { dailyPrompt } from "@/lib/daily-prompt";
+import { BRAND } from "@/lib/brand";
 
 interface DailyCheckInProps {
   streakCount: number;
@@ -79,7 +80,7 @@ export default function DailyCheckIn({
             onClick={() => onShare()}
             className="mt-3 w-full rounded-full bg-[var(--accent)] py-2.5 text-sm font-semibold text-[var(--surface)] hover:bg-[var(--accent-2)]"
           >
-            {checkedInToday ? "Share another take" : "Share your take"}
+            {checkedInToday ? "Share another feeling" : BRAND.shareCta}
           </button>
         </div>
       </div>

@@ -2,10 +2,10 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "AI·Thoughts — Honest takes on AI",
+    name: "AI·Thoughts — Say how AI makes you feel",
     short_name: "AI·Thoughts",
     description:
-      "Honest takes on how AI is changing us — voice, video, or words. All ages, all languages.",
+      "Express how AI makes you feel — love it, fear it, or both. Voice, video, or words.",
     id: "/app",
     start_url: "/app",
     scope: "/",

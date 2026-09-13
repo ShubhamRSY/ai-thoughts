@@ -18,9 +18,9 @@ const manrope = Manrope({
 });
 
 const siteUrl = getSiteUrl();
-const title = "AI·Thoughts — Honest takes on AI";
+const title = "AI·Thoughts — Say how AI makes you feel";
 const description =
-  "Honest takes on how AI is changing us — voice, video, or words. All ages, all languages, one place for real human voices.";
+  "Express how AI makes you feel — love it, fear it, or both. Voice, video, or words. Not tips. Not debates. Your honest feeling.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
         url: "/icons/icon-512.png",
         width: 512,
         height: 512,
-        alt: "AI·Thoughts",
+        alt: "AI·Thoughts — say how AI makes you feel",
       },
     ],
   },

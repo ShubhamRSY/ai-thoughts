@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import BrandMark from "@/components/BrandMark";
+import { BRAND } from "@/lib/brand";
 
 function OpeningPulse({ name }: { name?: string }) {
   return (
@@ -129,13 +130,16 @@ function SignInFormInner({ total }: { total: number }) {
         <h1 className="font-display mt-8 text-3xl font-medium tracking-tight text-[var(--foreground)]">
           {step === "email" ? "Join Voices" : "Check your email"}
         </h1>
-        <p className="mt-2 text-sm text-[var(--muted)]">
+        <p className="mt-2 max-w-[34ch] text-sm leading-relaxed text-[var(--muted)]">
           {step === "email"
-            ? total < 25
-              ? "Be one of the first voices."
-              : `${total.toLocaleString()} voices already here.`
+            ? BRAND.tagline
             : `Code sent to ${email}`}
         </p>
+        {step === "email" && (
+          <p className="mt-2 text-xs text-[var(--muted)]">
+            Pick a feeling. Say it in voice, video, or words. Feel with others.
+          </p>
+        )}
 
         {step === "email" ? (
           <form onSubmit={handleRequestCode} className="mt-8 space-y-4">
