@@ -28,6 +28,8 @@ export interface Feeling {
   short: string;
   /** Soft pill color classes for the badge. */
   chip: string;
+  /** Emotional tone word for copy (“warm”, “tender”…). */
+  tone?: string;
 }
 
 export type Reaction = "🔥" | "😂" | "🤔" | "💯" | "🚀" | "😴" | "👏" | "🙌";

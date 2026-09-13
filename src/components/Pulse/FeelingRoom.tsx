@@ -2,7 +2,7 @@
 
 import { ArrowLeft } from "lucide-react";
 import type { Thought, FeelingId, Reaction } from "@/lib/types";
-import { feelingOf } from "@/lib/feelings";
+import { feelingOf, feelingWash } from "@/lib/feelings";
 import FeedCard from "@/components/Feed/FeedCard";
 
 interface FeelingRoomProps {
@@ -28,8 +28,8 @@ export default function FeelingRoom({
   const roomThoughts = thoughts.filter((t) => (t.feeling ?? "") === feelingId);
 
   return (
-    <div className="flex-1">
-      <div className="sticky top-0 z-20 border-b border-[var(--border-base)] bg-[var(--surface)] app-pad py-4">
+    <div className={`flex-1 ${feelingWash(feelingId)}`}>
+      <div className="sticky top-0 z-20 border-b border-[var(--border-base)] bg-[var(--surface)]/95 backdrop-blur-sm app-pad py-4">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
@@ -39,11 +39,15 @@ export default function FeelingRoom({
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+              Feeling room
+            </p>
             <h2 className="font-display text-xl font-medium text-[var(--foreground)]">
               {meta.short}
             </h2>
-            <p className="text-xs text-[var(--muted)]">
-              {roomThoughts.length} voice{roomThoughts.length === 1 ? "" : "s"} · {meta.label}
+            <p className="text-sm text-[var(--muted)]">
+              {meta.label} · {roomThoughts.length} voice
+              {roomThoughts.length === 1 ? "" : "s"}
             </p>
           </div>
         </div>
@@ -51,7 +55,7 @@ export default function FeelingRoom({
           onClick={onCreate}
           className="mt-4 w-full rounded-full bg-[var(--accent)] py-3 text-sm font-semibold text-[var(--surface)] hover:bg-[var(--accent-2)]"
         >
-          Share in this room
+          Share this feeling
         </button>
       </div>
 

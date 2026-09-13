@@ -108,6 +108,7 @@ export default function SubmitModal({
 
   const canSubmit =
     handle.trim().length > 0 &&
+    !!feeling &&
     (tab === "text" ? content.trim().length >= 3 : !!captured?.blob);
 
   const switchTab = (t: Tab) => {
@@ -265,9 +266,12 @@ export default function SubmitModal({
               {tab === "text" && <TextForm value={content} onChange={setContent} />}
 
               <div>
-                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-                  Feeling
+                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+                  How does this feel?
                 </label>
+                <p className="mb-2 text-xs text-[var(--muted)]">
+                  Every take carries a feeling — that&apos;s what Voices is for.
+                </p>
                 <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1">
                   {FEELINGS.map((f) => {
                     const active = feeling === f.id;
@@ -276,17 +280,25 @@ export default function SubmitModal({
                         key={f.id}
                         type="button"
                         onClick={() => setFeeling(f.id)}
-                        className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                        className={`shrink-0 rounded-full border px-3 py-2 text-left transition ${
                           active
                             ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-2)]"
-                            : `${f.chip} hover:border-[var(--accent)]`
+                            : `${f.chip} opacity-90 hover:border-[var(--accent)]`
                         }`}
                       >
-                        {f.short}
+                        <span className="block text-xs font-semibold">{f.short}</span>
+                        <span className="mt-0.5 block max-w-[9rem] truncate text-[10px] opacity-80">
+                          {f.label}
+                        </span>
                       </button>
                     );
                   })}
                 </div>
+                {feeling && (
+                  <p className="mt-2 text-xs font-medium text-[var(--accent)]">
+                    {FEELINGS.find((f) => f.id === feeling)?.label}
+                  </p>
+                )}
               </div>
 
               {lockedIdentity ? (
@@ -442,7 +454,11 @@ export default function SubmitModal({
                 {BRAND.shareCta}
               </button>
               <p className="text-center text-[11px] text-[var(--muted)]">
-                {tab === "text" ? "Write at least a few words" : "Record a short clip"}
+                {!feeling
+                  ? "Choose how this feels"
+                  : tab === "text"
+                    ? "Write at least a few words"
+                    : "Record a short clip"}
                 {handle.trim() ? "" : " · add a handle"}
               </p>
             </div>

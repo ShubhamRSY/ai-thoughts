@@ -21,6 +21,7 @@ import FeelingBadge from "@/components/FeelingBadge";
 import ChatPanel from "@/components/Chat/ChatPanel";
 import TranslateToEnglish from "@/components/TranslateToEnglish";
 import { shouldOfferTranslate } from "@/lib/lang";
+import { feelingOf, feelingWash } from "@/lib/feelings";
 
 function initials(name: string) {
   return name
@@ -133,7 +134,9 @@ export default function FeedCard({
   };
 
   return (
-    <article className="relative isolate border-b border-[var(--border-base)] bg-[var(--surface)] py-5">
+    <article
+      className={`relative isolate border-b border-[var(--border-base)] bg-[var(--surface)] py-5 ${feelingWash(thought.feeling)}`}
+    >
       <div className="flex items-start gap-3">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-2)] text-[11px] font-semibold text-[var(--foreground)]">
           {initials(thought.author)}
@@ -218,8 +221,18 @@ export default function FeedCard({
               )}
             </div>
           </div>
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-[var(--muted)]">
-            <FeelingBadge feeling={thought.feeling} size="sm" />
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs text-[var(--muted)]">
+            {thought.feeling && (
+              <FeelingBadge
+                feeling={thought.feeling}
+                size="sm"
+                onClick={
+                  onOpenRoom && thought.feeling
+                    ? () => onOpenRoom(thought.feeling!)
+                    : undefined
+                }
+              />
+            )}
             {thought.promptDay && (
               <span className="rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[10px] font-semibold text-[var(--accent-2)]">
                 Today&apos;s prompt
@@ -230,6 +243,11 @@ export default function FeedCard({
             )}
             <IntegrityBadge integrity={thought.integrity} />
           </div>
+          {thought.feeling && feelingOf(thought.feeling) && (
+            <p className="mt-2 text-[13px] italic leading-snug text-[var(--foreground)]/80">
+              {feelingOf(thought.feeling)!.label}
+            </p>
+          )}
         </div>
       </div>
 
@@ -347,9 +365,9 @@ export default function FeedCard({
       {thought.feeling && others && others > 1 && onOpenRoom && (
         <button
           onClick={() => onOpenRoom(thought.feeling!)}
-          className="mt-3 text-left text-xs text-[var(--muted)] underline-offset-2 hover:text-[var(--accent)] hover:underline"
+          className="mt-3 text-left text-xs font-medium text-[var(--accent)] underline-offset-2 hover:underline"
         >
-          {others} others feel this too — open room
+          {others} others feel this too — sit with them
         </button>
       )}
 
