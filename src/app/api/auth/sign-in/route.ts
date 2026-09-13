@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { generateOtpCode, storeOtp } from "@/lib/otp";
 import { EmailDeliveryError, sendOtpEmail } from "@/lib/email";
+import { getSession } from "@/lib/auth";
 
 const SIGN_IN_LIMIT = 8;
 const SIGN_IN_WINDOW_MS = 15 * 60_000;
@@ -12,6 +13,17 @@ const GLOBAL_OTP_WINDOW_MS = 60 * 60_000;
 
 export async function POST(request: Request) {
   try {
+    // Already signed in — never send another email code.
+    const existing = await getSession();
+    if (existing) {
+      return NextResponse.json({
+        ok: true,
+        alreadySignedIn: true,
+        user: existing,
+        message: "You’re already signed in",
+      });
+    }
+
     const ip = clientIp(request);
     const { ok, retryInSec } = rateLimit(`sign-in:${ip}`, SIGN_IN_LIMIT, SIGN_IN_WINDOW_MS);
     if (!ok) {

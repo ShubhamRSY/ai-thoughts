@@ -15,7 +15,7 @@ interface AuthContextValue {
   requestCode: (
     email: string,
     displayName: string
-  ) => Promise<{ ok: boolean; error?: string; devCode?: string }>;
+  ) => Promise<{ ok: boolean; error?: string; devCode?: string; alreadySignedIn?: boolean }>;
   verifyCode: (
     email: string,
     code: string
@@ -70,6 +70,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const requestCode = useCallback(async (email: string, displayName: string) => {
+    if (user) {
+      return { ok: true, alreadySignedIn: true };
+    }
     try {
       const res = await fetch("/api/auth/sign-in", {
         method: "POST",
@@ -78,6 +81,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ email, displayName }),
       });
       const data = await res.json();
+      if (data.alreadySignedIn && data.user) {
+        setUser(data.user);
+        return { ok: true, alreadySignedIn: true };
+      }
       if (data.ok) {
         return { ok: true, devCode: data.devCode as string | undefined };
       }
@@ -85,9 +92,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       return { ok: false, error: "Network error" };
     }
-  }, []);
+  }, [user]);
 
   const verifyCode = useCallback(async (email: string, code: string) => {
+    if (user) {
+      return { ok: true };
+    }
     try {
       const res = await fetch("/api/auth/verify", {
         method: "POST",
@@ -104,7 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       return { ok: false, error: "Network error" };
     }
-  }, []);
+  }, [user]);
 
   const signOut = useCallback(async () => {
     try {

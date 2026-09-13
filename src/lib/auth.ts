@@ -9,7 +9,8 @@ import {
 } from "@/lib/secure";
 
 export const SESSION_COOKIE = "aithoughts.session";
-const SESSION_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
+/** Stay signed in across app closes — 90 days, refreshed on each visit. */
+const SESSION_MAX_AGE = 60 * 60 * 24 * 90;
 
 export interface SessionUser {
   id: string;
@@ -71,19 +72,36 @@ export function decodeSessionPayload(encoded: string): unknown {
 }
 
 export function sessionCookieOptions(maxAge: number = SESSION_MAX_AGE) {
+  const secure =
+    process.env.NODE_ENV === "production" ||
+    process.env.VERCEL === "1" ||
+    process.env.VERCEL_ENV === "production";
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure,
     sameSite: "lax" as const,
     maxAge,
     path: "/",
+    // Explicit expiry helps some mobile WebViews keep the cookie after app kill.
+    expires: new Date(Date.now() + Math.max(maxAge, 0) * 1000),
   };
 }
 
-export async function createSession(user: UserRecord): Promise<string> {
+export async function createSession(user: {
+  _id?: ObjectId | string;
+  id?: string;
+  handle: string;
+  displayName: string;
+}): Promise<string> {
   // Do not put email in the cookie — load from DB when needed.
+  const id =
+    typeof user.id === "string"
+      ? user.id
+      : user._id
+        ? String(user._id)
+        : "";
   const payload = {
-    id: user._id?.toString() ?? "",
+    id,
     handle: user.handle,
     displayName: user.displayName,
     exp: Date.now() + SESSION_MAX_AGE * 1000,

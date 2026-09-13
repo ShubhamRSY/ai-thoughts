@@ -78,6 +78,10 @@ function SignInFormInner({ total }: { total: number }) {
   const handleRequestCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (user) {
+      router.replace(dest);
+      return;
+    }
     if (!email.trim()) {
       setError("Please enter your email");
       return;
@@ -86,6 +90,10 @@ function SignInFormInner({ total }: { total: number }) {
     const result = await requestCode(email.trim(), displayName.trim());
     setSubmitting(false);
     if (result.ok) {
+      if (result.alreadySignedIn) {
+        router.replace(dest);
+        return;
+      }
       setDevCode(result.devCode ?? null);
       setStep("code");
       setCode("");

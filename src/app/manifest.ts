@@ -6,8 +6,8 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "AI·Thoughts",
     description:
       "Honest takes on how AI is changing us — voice, video, or words. All ages, all languages.",
-    id: "/",
-    start_url: "/",
+    id: "/app",
+    start_url: "/app",
     scope: "/",
     display: "standalone",
     orientation: "any",

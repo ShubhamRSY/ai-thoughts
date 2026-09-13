@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   findOrCreateUser,
   createSession,
+  getSession,
   SESSION_COOKIE,
   sessionCookieOptions,
 } from "@/lib/auth";
@@ -13,6 +14,22 @@ const VERIFY_WINDOW_MS = 10 * 60_000;
 
 export async function POST(request: Request) {
   try {
+    const existing = await getSession();
+    if (existing) {
+      const token = await createSession({
+        id: existing.id,
+        handle: existing.handle,
+        displayName: existing.displayName,
+      });
+      const res = NextResponse.json({
+        ok: true,
+        alreadySignedIn: true,
+        user: existing,
+      });
+      res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
+      return res;
+    }
+
     const ip = clientIp(request);
     const { ok, retryInSec } = rateLimit(`verify:${ip}`, VERIFY_LIMIT, VERIFY_WINDOW_MS);
     if (!ok) {
