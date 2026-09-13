@@ -9,6 +9,7 @@ import { checkDignity, normalizeTag } from "@/lib/dignity";
 import { GLOBAL_SEED_POSTS } from "@/lib/seed-posts";
 import { notifyFollowersOfPost } from "@/lib/activity";
 import { dailyPrompt, todayKey } from "@/lib/daily-prompt";
+import { LIKE_REACTION, buildLikedBy } from "@/lib/likes";
 
 const MEDIA_TYPES = new Set(["audio", "video", "text"]);
 const FEELING_IDS = new Set(FEELINGS.map((f) => f.id));
@@ -109,21 +110,64 @@ export async function GET(request: NextRequest) {
       .limit(limit)
       .toArray();
 
+    const session = await getSession();
+    const me = session?.handle?.trim().toLowerCase().replace(/^@/, "") ?? null;
+
     const postIds = posts.map((p) => p._id?.toString() ?? "");
     const reactions = await db
-      .collection<{ post_id: string; reaction: string }>("reactions")
+      .collection<{
+        post_id: string;
+        reaction: string;
+        handle?: string;
+        created_at?: Date;
+      }>("reactions")
       .find({ post_id: { $in: postIds } })
       .toArray();
 
     const reactMap: Record<string, Record<string, number>> = {};
+    const rowsByPost: Record<
+      string,
+      { handle?: string; reaction?: string; created_at?: Date }[]
+    > = {};
+    const allHandles = new Set<string>();
     for (const r of reactions) {
       if (!reactMap[r.post_id]) reactMap[r.post_id] = {};
       reactMap[r.post_id][r.reaction] = (reactMap[r.post_id][r.reaction] ?? 0) + 1;
+      if (!rowsByPost[r.post_id]) rowsByPost[r.post_id] = [];
+      rowsByPost[r.post_id].push(r);
+      if (r.handle) allHandles.add(r.handle.trim().toLowerCase().replace(/^@/, ""));
+    }
+
+    const nameByHandle = new Map<string, string>();
+    if (allHandles.size > 0) {
+      const handleVariants = [...allHandles].flatMap((h) => [h, `@${h}`]);
+      const users = await db
+        .collection<{ handle?: string; displayName?: string }>("users")
+        .find({ handle: { $in: handleVariants } })
+        .project({ handle: 1, displayName: 1 })
+        .toArray();
+      for (const u of users) {
+        if (!u.handle) continue;
+        const key = u.handle.trim().toLowerCase().replace(/^@/, "");
+        if (u.displayName) nameByHandle.set(key, u.displayName);
+      }
     }
 
     const result = posts.map((p) => {
       const id = p._id?.toString() ?? "";
       const reacts = reactMap[id] ?? {};
+      const rows = rowsByPost[id] ?? [];
+      const heartRows = rows.filter((r) => r.reaction === LIKE_REACTION);
+      const likedBy = buildLikedBy(heartRows, nameByHandle, 5);
+      const unique = new Set(
+        heartRows
+          .map((r) => r.handle?.trim().toLowerCase().replace(/^@/, ""))
+          .filter(Boolean) as string[]
+      );
+      const likedByMe = Boolean(
+        me &&
+          heartRows.some((r) => r.handle?.trim().toLowerCase().replace(/^@/, "") === me)
+      );
       return {
         id,
         handle: p.handle,
@@ -147,6 +191,9 @@ export async function GET(request: NextRequest) {
         created_at:
           p.created_at instanceof Date ? p.created_at.toISOString() : String(p.created_at),
         reactions: Object.entries(reacts).map(([type, count]) => ({ type, count })),
+        liked_by: likedBy,
+        like_count: unique.size,
+        liked_by_me: likedByMe,
       };
     });
 

@@ -13,6 +13,7 @@ interface FeelingRoomProps {
   onReact?: (thoughtId: string, reaction: Reaction) => void;
   onDelete?: (thoughtId: string) => void;
   currentHandle?: string | null;
+  currentAuthor?: string | null;
 }
 
 export default function FeelingRoom({
@@ -23,6 +24,7 @@ export default function FeelingRoom({
   onReact,
   onDelete,
   currentHandle,
+  currentAuthor,
 }: FeelingRoomProps) {
   const meta = feelingOf(feelingId)!;
   const roomThoughts = thoughts.filter((t) => (t.feeling ?? "") === feelingId);
@@ -75,6 +77,7 @@ export default function FeelingRoom({
               onReact={onReact}
               onDelete={onDelete}
               currentHandle={currentHandle}
+              currentAuthor={currentAuthor}
             />
           ))
         )}

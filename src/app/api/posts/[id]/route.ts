@@ -23,11 +23,48 @@ export async function GET(
     const post = await db.collection("posts").findOne({ _id: objectId });
     if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
     const reactions = await db
-      .collection("reactions")
+      .collection<{ reaction: string; handle?: string; created_at?: Date }>("reactions")
       .find({ post_id: id })
       .toArray();
     const reactMap: Record<string, number> = {};
     for (const r of reactions) reactMap[r.reaction] = (reactMap[r.reaction] ?? 0) + 1;
+
+    const { LIKE_REACTION, buildLikedBy } = await import("@/lib/likes");
+    const session = await getSession();
+    const me = session?.handle?.trim().toLowerCase().replace(/^@/, "") ?? null;
+    const nameByHandle = new Map<string, string>();
+    const handles = [
+      ...new Set(
+        reactions
+          .map((r) => r.handle?.trim().toLowerCase().replace(/^@/, ""))
+          .filter(Boolean) as string[]
+      ),
+    ];
+    if (handles.length > 0) {
+      const variants = handles.flatMap((h) => [h, `@${h}`]);
+      const users = await db
+        .collection<{ handle?: string; displayName?: string }>("users")
+        .find({ handle: { $in: variants } })
+        .project({ handle: 1, displayName: 1 })
+        .toArray();
+      for (const u of users) {
+        if (!u.handle) continue;
+        const key = u.handle.trim().toLowerCase().replace(/^@/, "");
+        if (u.displayName) nameByHandle.set(key, u.displayName);
+      }
+    }
+    const heartRows = reactions.filter((r) => r.reaction === LIKE_REACTION);
+    const likedBy = buildLikedBy(heartRows, nameByHandle, 8);
+    const unique = new Set(
+      heartRows
+        .map((r) => r.handle?.trim().toLowerCase().replace(/^@/, ""))
+        .filter(Boolean) as string[]
+    );
+    const likedByMe = Boolean(
+      me &&
+        heartRows.some((r) => r.handle?.trim().toLowerCase().replace(/^@/, "") === me)
+    );
+
     return NextResponse.json({
       id: post._id.toString(),
       handle: post.handle,
@@ -48,6 +85,9 @@ export async function GET(
       transcript: post.transcript ?? null,
       created_at: post.created_at instanceof Date ? post.created_at.toISOString() : String(post.created_at),
       reactions: Object.entries(reactMap).map(([type, count]) => ({ type, count })),
+      liked_by: likedBy,
+      like_count: unique.size,
+      liked_by_me: likedByMe,
     });
   } catch (error) {
     console.error(error);

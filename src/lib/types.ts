@@ -32,11 +32,17 @@ export interface Feeling {
   tone?: string;
 }
 
-export type Reaction = "🔥" | "😂" | "🤔" | "💯" | "🚀" | "😴" | "👏" | "🙌";
+export type Reaction = "❤️" | "🔥" | "😂" | "🤔" | "💯" | "🚀" | "😴" | "👏" | "🙌";
 
 export interface ReactionCount {
   type: Reaction;
   count: number;
+}
+
+/** People who reacted / liked a take (most recent first). */
+export interface LikedByPerson {
+  handle: string;
+  author: string;
 }
 
 export interface Integrity {
@@ -76,6 +82,12 @@ export interface Thought {
   tags: string[];
   timestamp: string;
   reactions: ReactionCount[];
+  /** Unique people who liked/reacted (preview for “Liked by …”). */
+  likedBy?: LikedByPerson[];
+  /** How many unique people liked/reacted. */
+  likeCount?: number;
+  /** Whether the signed-in user already liked this take. */
+  likedByMe?: boolean;
   /** Human relative time label like "2m" */
   timeLabel: string;
   integrity: Integrity;

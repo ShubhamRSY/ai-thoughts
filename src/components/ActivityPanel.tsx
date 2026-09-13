@@ -134,8 +134,10 @@ export default function ActivityPanel({
                     ? " replied"
                     : item.kind === "follow_post"
                       ? " shared a take"
-                      : " reacted"}
-                  {item.kind === "reaction" ? ` ${item.preview}` : ""}
+                      : item.preview === "❤️"
+                        ? " liked your take"
+                        : " reacted"}
+                  {item.kind === "reaction" && item.preview !== "❤️" ? ` ${item.preview}` : ""}
                 </p>
                 {(item.kind === "reply" || item.kind === "follow_post") && (
                   <p className="mt-0.5 line-clamp-2 text-xs text-[var(--muted)]">{item.preview}</p>

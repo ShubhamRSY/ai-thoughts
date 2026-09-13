@@ -17,7 +17,7 @@ export const BRAND = {
   openCta: "Open Voices",
   homeNav: "Voices",
   dignityNote:
-    "Speak honestly about how AI feels — love it or critique it. Insults, slurs, and sexual content are not welcome.",
+    "Be honest about how AI feels — love it or critique it. Personal attacks, hate speech, and sexual content don’t belong here.",
   /** Three things you do here — keep short */
   whatYouDo: [
     {

@@ -11,8 +11,9 @@ import {
   Trash2,
   HeartHandshake,
 } from "lucide-react";
-import type { Thought, Reaction, FeelingId } from "@/lib/types";
+import type { Thought, Reaction, FeelingId, LikedByPerson } from "@/lib/types";
 import { REACTION_TYPES } from "@/lib/mock-data";
+import { LIKE_REACTION, formatLikedBy } from "@/lib/likes";
 import AudioPlayer from "@/components/Player/AudioPlayer";
 import VideoPlayer from "@/components/Player/VideoPlayer";
 import IntegrityBadge from "@/components/IntegrityBadge";
@@ -48,6 +49,8 @@ interface FeedCardProps {
   feelingWith?: boolean;
   /** Signed-in handle — only this author sees Delete on their take. */
   currentHandle?: string | null;
+  /** Display name for optimistic “Liked by You”. */
+  currentAuthor?: string | null;
   others?: number;
 }
 
@@ -72,14 +75,18 @@ export default function FeedCard({
   onFeelWith,
   feelingWith,
   currentHandle,
+  currentAuthor,
   others,
 }: FeedCardProps) {
   const [reactions, setReactions] = useState(thought.reactions);
   const [mine, setMine] = useState<Reaction | null>(null);
-  const [liked, setLiked] = useState(false);
+  const [liked, setLiked] = useState(Boolean(thought.likedByMe));
   const [likes, setLikes] = useState(
-    thought.reactions.reduce((s, e) => s + e.count, 0) + 12
+    typeof thought.likeCount === "number"
+      ? thought.likeCount
+      : thought.reactions.find((e) => e.type === LIKE_REACTION)?.count ?? 0
   );
+  const [likedBy, setLikedBy] = useState<LikedByPerson[]>(thought.likedBy ?? []);
   const [saved, setSaved] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [reporting, setReporting] = useState(false);
@@ -120,9 +127,26 @@ export default function FeedCard({
   };
 
   const like = () => {
-    setLiked((v) => {
-      setLikes((n) => n + (v ? -1 : 1));
-      return !v;
+    if (!currentHandle) return;
+    setLiked((was) => {
+      const next = !was;
+      setLikes((n) => Math.max(0, n + (next ? 1 : -1)));
+      setLikedBy((prev) => {
+        const key = currentHandle.trim().toLowerCase().replace(/^@/, "");
+        if (next) {
+          if (prev.some((p) => sameHandle(p.handle, currentHandle))) return prev;
+          return [
+            {
+              handle: currentHandle.startsWith("@") ? currentHandle : `@${key}`,
+              author: currentAuthor?.trim() || "You",
+            },
+            ...prev,
+          ];
+        }
+        return prev.filter((p) => !sameHandle(p.handle, currentHandle));
+      });
+      onReact?.(thought.id, LIKE_REACTION);
+      return next;
     });
   };
 
@@ -305,14 +329,17 @@ export default function FeedCard({
 
       <div className="relative z-0 mt-4 flex items-center gap-4 text-[var(--muted)]">
         <button
+          type="button"
           onClick={like}
+          disabled={!currentHandle}
           aria-label={liked ? "Unlike" : "Like"}
-          className={`flex items-center gap-1.5 text-xs font-medium transition ${
+          title={!currentHandle ? "Sign in to like" : undefined}
+          className={`flex items-center gap-1.5 text-xs font-medium transition disabled:opacity-50 ${
             liked ? "text-[var(--accent)]" : "hover:text-[var(--foreground)]"
           }`}
         >
           <Heart className="h-4 w-4" fill={liked ? "currentColor" : "none"} strokeWidth={2} />
-          {likes}
+          {likes > 0 ? likes : null}
         </button>
         <button
           type="button"
@@ -325,12 +352,14 @@ export default function FeedCard({
           {commentCount != null && commentCount > 0 ? commentCount : "Reply"}
         </button>
         <button
+          type="button"
           onClick={() => setShowReact((v) => !v)}
           className="text-xs font-medium hover:text-[var(--foreground)]"
         >
           React
         </button>
         <button
+          type="button"
           onClick={() => setSaved((v) => !v)}
           aria-label="Save"
           className={`ml-auto transition ${saved ? "text-[var(--accent)]" : "hover:text-[var(--foreground)]"}`}
@@ -338,6 +367,12 @@ export default function FeedCard({
           <Bookmark className="h-4 w-4" fill={saved ? "currentColor" : "none"} strokeWidth={2} />
         </button>
       </div>
+
+      {likes > 0 && (
+        <p className="relative z-0 mt-2 text-xs text-[var(--muted)]">
+          {formatLikedBy(likedBy, likes, currentHandle)}
+        </p>
+      )}
 
       {showReact && (
         <div className="mt-3 flex flex-wrap gap-1.5">

@@ -361,6 +361,7 @@ export default function Home() {
                 onReact={onReact}
                 onDelete={onDelete}
                 currentHandle={user?.handle ?? null}
+                currentAuthor={identityAuthor ?? null}
               />
             ) : (
               <>
@@ -432,6 +433,7 @@ export default function Home() {
                     onReport={onReport}
                     onDelete={onDelete}
                     currentHandle={user?.handle ?? null}
+                    currentAuthor={identityAuthor ?? null}
                     onOpenRoom={handleOpenRoom}
                     onFeelWith={user ? onFeelWith : undefined}
                     followingHandles={followingSet}

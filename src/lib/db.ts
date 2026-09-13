@@ -54,6 +54,9 @@ interface RawPost {
   prompt_text?: string | null;
   created_at: string;
   reactions?: { type: string; count: number }[];
+  liked_by?: { handle: string; author: string }[];
+  like_count?: number;
+  liked_by_me?: boolean;
 }
 
 function toThought(r: RawPost): Thought {
@@ -87,6 +90,9 @@ function toThought(r: RawPost): Thought {
       type: e.type as Thought["reactions"][number]["type"],
       count: e.count,
     })),
+    likedBy: Array.isArray(r.liked_by) ? r.liked_by : undefined,
+    likeCount: typeof r.like_count === "number" ? r.like_count : undefined,
+    likedByMe: Boolean(r.liked_by_me),
   };
 }
 

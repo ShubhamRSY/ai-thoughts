@@ -69,21 +69,29 @@ export async function notifyPostOwner(
     !Number.isNaN(createdAt.getTime()) &&
     Date.now() - createdAt.getTime() < 24 * 60 * 60 * 1000;
 
-  // Same-day engagement is the retention hook — lead with that, not "don't forget to post".
+  const isLike = opts.kind === "reaction" && opts.preview === "❤️";
   const title = sameDay
     ? opts.kind === "reply"
       ? `Same day · ${opts.actorAuthor} replied`
-      : `Same day · ${opts.actorAuthor} reacted ${opts.preview}`
+      : isLike
+        ? `Same day · ${opts.actorAuthor} liked your take`
+        : `Same day · ${opts.actorAuthor} reacted ${opts.preview}`
     : opts.kind === "reply"
       ? `${opts.actorAuthor} replied`
-      : `${opts.actorAuthor} reacted ${opts.preview}`;
+      : isLike
+        ? `${opts.actorAuthor} liked your take`
+        : `${opts.actorAuthor} reacted ${opts.preview}`;
   const body = sameDay
     ? opts.kind === "reply"
       ? opts.preview.slice(0, 120)
-      : "Someone felt today’s take. Open Voices while the thread is warm."
+      : isLike
+        ? `${opts.actorAuthor} liked today’s take. Open Voices while the thread is warm.`
+        : "Someone felt today’s take. Open Voices while the thread is warm."
     : opts.kind === "reply"
       ? opts.preview.slice(0, 120)
-      : "Someone felt your take. Open Voices to see.";
+      : isLike
+        ? `${opts.actorAuthor} liked your take. Open Voices to see.`
+        : "Someone felt your take. Open Voices to see.";
 
   await sendPushToHandle(db, recipient, {
     title,

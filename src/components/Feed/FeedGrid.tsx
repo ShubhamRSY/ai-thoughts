@@ -12,6 +12,7 @@ interface FeedGridProps {
   onFeelWith?: (handle: string, next: boolean) => void;
   followingHandles?: Set<string> | string[];
   currentHandle?: string | null;
+  currentAuthor?: string | null;
   othersMap?: Record<string, number>;
 }
 
@@ -28,6 +29,7 @@ export default function FeedGrid({
   onFeelWith,
   followingHandles,
   currentHandle,
+  currentAuthor,
   othersMap,
 }: FeedGridProps) {
   const following = new Set(
@@ -63,6 +65,7 @@ export default function FeedGrid({
           onFeelWith={onFeelWith}
           feelingWith={following.has(norm(t.handle))}
           currentHandle={currentHandle}
+          currentAuthor={currentAuthor}
           others={t.feeling ? othersMap?.[t.feeling] : undefined}
         />
       ))}
