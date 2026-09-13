@@ -28,9 +28,11 @@ Sensitive collections if Atlas is exposed: `users` (emailEnc), `user_prefs`, `pu
 
 ## Keepers / admin
 
-- [ ] Only add trusted handles to the `keepers` collection (Atlas UI or trusted script).
+- [ ] Set `ADMIN_HANDLES` to your product-owner handle(s) on Vercel; open `/admin` while signed in.
+- [ ] Only add trusted handles to the `keepers` collection (via `/admin` or Atlas).
 - [ ] Keepers alone can list/resolve reports and contact inbox APIs; `/keeper` is session-gated.
-- [ ] Do not put keeper handles in public client config.
+- [ ] Admins inherit keeper powers and can delete any take, seed the feed, and toggle maintenance.
+- [ ] Do not put keeper/admin handles in public client config.
 
 ## Media (Vercel Blob)
 

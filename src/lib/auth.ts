@@ -165,6 +165,10 @@ export async function getSession(): Promise<SessionUser | null> {
 
 export async function isKeeperHandle(handle: string): Promise<boolean> {
   if (!handle) return false;
+  // Global admins inherit keeper moderation powers.
+  const { isAdminHandle } = await import("@/lib/admin");
+  if (await isAdminHandle(handle)) return true;
+
   const { db } = await connectToDatabase();
   const n = handle.trim().toLowerCase().replace(/^@/, "");
   const keeper = await db.collection("keepers").findOne({

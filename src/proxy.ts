@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const SESSION_COOKIE = "aithoughts.session";
-const PROTECTED_PATHS = ["/app", "/keeper"];
+const PROTECTED_PATHS = ["/app", "/keeper", "/admin"];
 const AUTH_PAGES = ["/sign-in"];
 
 function getSecret(): string {

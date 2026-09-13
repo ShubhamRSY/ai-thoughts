@@ -16,6 +16,7 @@ import DailyCheckIn from "@/components/DailyCheckIn";
 import DailyHabits from "@/components/DailyHabits";
 import MissedYesterday from "@/components/MissedYesterday";
 import ActivityPanel, { useActivity } from "@/components/ActivityPanel";
+import MaintenanceBanner, { useSiteFlags } from "@/components/MaintenanceBanner";
 import { digestBytes } from "@/lib/integrity";
 import { useLocalProfile } from "@/hooks/useLocalProfile";
 import { useAuth } from "@/hooks/useAuth";
@@ -68,6 +69,7 @@ export default function Home() {
   const [shareFromDaily, setShareFromDaily] = useState(false);
   const { items: activityItems, unread: activityUnread, markAllRead, refresh: refreshActivity } =
     useActivity(!!user);
+  const { maintenance, message: maintenanceMessage } = useSiteFlags();
 
   useEffect(() => {
     setContinent(detectContinent());
@@ -160,6 +162,10 @@ export default function Home() {
     presetFeeling?: FeelingId,
     fromDaily = false
   ) => {
+    if (maintenance) {
+      window.alert(maintenanceMessage || "Voices is pausing briefly — check back soon.");
+      return;
+    }
     setInitialTab(tabPref);
     setShareFeeling(presetFeeling);
     setShareFromDaily(fromDaily);
@@ -326,6 +332,7 @@ export default function Home() {
 
   return (
     <div className="app-frame">
+      <MaintenanceBanner />
       <Header onShare={() => openShare("video")} />
 
       <main className="flex-1 pb-nav">

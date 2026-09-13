@@ -1,5 +1,26 @@
 # Ops runbook (must-do for live Voices)
 
+## Global admin console (private)
+
+Not linked from Voices. Bookmark:
+
+`https://YOUR_APP/admin`
+
+1. Set `ADMIN_HANDLES` on Vercel to your handle, e.g. `@yourname` (comma-separated for more).
+2. Sign in on the site as that handle → open `/admin`.
+3. From there you can: seed the feed, add/remove keepers & admins, toggle maintenance, delete any take, jump to `/owner` metrics and `/keeper` moderation.
+
+**One-time bootstrap** (if you prefer DB over env):
+
+```bash
+curl -sS -X POST https://YOUR_APP/api/admin/controls \
+  -H "Authorization: Bearer $CRON_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"action":"bootstrap","handle":"@yourhandle"}'
+```
+
+Admins inherit keeper powers automatically.
+
 ## Owner engagement dashboard (private)
 
 Not linked from Voices. Bookmark:
