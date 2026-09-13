@@ -1,28 +1,12 @@
 import { NextResponse } from "next/server";
-import { createHash, timingSafeEqual } from "crypto";
+import { createHash } from "crypto";
 import { ObjectId } from "mongodb";
 import { connectToDatabase } from "@/lib/mongodb";
 import { GLOBAL_SEED_POSTS } from "@/lib/seed-posts";
+import { authorizeBearer } from "@/lib/cron-auth";
 
 function hash(s: string) {
   return createHash("sha256").update(s).digest("hex").slice(0, 16);
-}
-
-function authorizeSeed(request: Request): boolean {
-  const secret =
-    process.env.ADMIN_SEED_SECRET?.trim() || process.env.CRON_SECRET?.trim();
-  if (!secret) return false;
-  const header = request.headers.get("authorization") || "";
-  const bearer = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
-  if (!bearer) return false;
-  try {
-    const a = Buffer.from(bearer, "utf8");
-    const b = Buffer.from(secret, "utf8");
-    if (a.length !== b.length) return false;
-    return timingSafeEqual(a, b);
-  } catch {
-    return false;
-  }
 }
 
 /**
@@ -30,7 +14,12 @@ function authorizeSeed(request: Request): boolean {
  * Requires Authorization: Bearer <ADMIN_SEED_SECRET or CRON_SECRET>.
  */
 export async function POST(request: Request) {
-  if (!authorizeSeed(request)) {
+  if (
+    !authorizeBearer(request, {
+      secrets: [process.env.ADMIN_SEED_SECRET, process.env.CRON_SECRET],
+      allowInsecureDev: false,
+    })
+  ) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

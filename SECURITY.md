@@ -41,20 +41,20 @@ Feed media uses **public URLs by design** (social playback). Treat takes as publ
 | Area | Behavior |
 |------|----------|
 | Sessions | httpOnly cookie, HMAC-signed; signature compare is timing-safe |
-| OTP | HMAC’d codes; compare timing-safe; codes keyed by `emailHash` |
+| OTP | HMAC’d codes; compare timing-safe; codes keyed by `emailHash`; IP + email + global rate limits |
 | Email at rest | `emailHash` + AES-GCM `emailEnc` on users/prefs; plaintext migrated on login/digest |
 | Account wipe | `DELETE /api/account` with `{ "confirm": "DELETE" }` + Profile UI |
-| Admin seed | Bearer secret required |
+| Account export | `GET /api/account` JSON download + Profile UI |
+| Admin seed | Bearer secret required (timing-safe) |
+| Cron | Bearer `CRON_SECRET` required in production (timing-safe) |
 | Reports | Keeper session required |
+| Health | `GET /api/health` checks env + Mongo ping + ensures indexes |
+| Tests | `npm test` covers crypto, cron auth, rate limit, env gate |
 
 ## After deploy
 
 1. Confirm production env has `AUTH_SECRET`, `MONGODB_URL`, Resend, Blob, VAPID, `CRON_SECRET`.
-2. Sign in once (migrates your user email off plaintext).
-3. Spot-check Atlas: new users should show `emailHash` / `emailEnc`, not raw `email`.
-4. Optional seed:
-
-```bash
-curl -X POST https://YOUR_APP/api/admin/seed \
-  -H "Authorization: Bearer $CRON_SECRET"
-```
+2. Hit `/api/health` until `ok: true`.
+3. Sign in once (migrates your user email off plaintext).
+4. Spot-check Atlas: new users should show `emailHash` / `emailEnc`, not raw `email`.
+5. Follow [RUNBOOK.md](./RUNBOOK.md) smoke checklist.

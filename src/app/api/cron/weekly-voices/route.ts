@@ -4,17 +4,11 @@ import { listDigestRecipients } from "@/lib/prefs";
 import { sendWeeklyVoicesEmail } from "@/lib/email";
 import { feelingOf } from "@/lib/feelings";
 import type { FeelingId } from "@/lib/types";
-
-function authorized(request: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET?.trim();
-  if (!secret) return process.env.NODE_ENV !== "production";
-  const header = request.headers.get("authorization") || "";
-  return header === `Bearer ${secret}`;
-}
+import { authorizeCron } from "@/lib/cron-auth";
 
 export async function GET(request: NextRequest) {
   try {
-    if (!authorized(request)) {
+    if (!authorizeCron(request)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

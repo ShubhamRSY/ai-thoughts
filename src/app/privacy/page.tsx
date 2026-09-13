@@ -59,9 +59,8 @@ export default function PrivacyPage() {
         <section>
           <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">Your rights</h2>
           <p className="text-[var(--muted)]">
-            You can delete your own takes from the app while signed in. You can also wipe your
-            account from You → Delete account (removes profile, takes, and related private data).
-            For help, use the{" "}
+            You can delete your own takes from the app while signed in. You can download a copy of
+            your data or wipe your account from You → Your data / Delete account. For help, use the{" "}
             <Link href="/contact" className="text-[var(--accent)] underline-offset-2 hover:underline">
               contact form
             </Link>{" "}

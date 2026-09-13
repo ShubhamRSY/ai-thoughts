@@ -2,13 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { listDigestRecipients } from "@/lib/prefs";
 import { sendActivityDigestEmail } from "@/lib/email";
-
-function authorized(request: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET?.trim();
-  if (!secret) return process.env.NODE_ENV !== "production";
-  const header = request.headers.get("authorization") || "";
-  return header === `Bearer ${secret}`;
-}
+import { authorizeCron } from "@/lib/cron-auth";
 
 function normHandle(h: string) {
   return h.trim().toLowerCase().replace(/^@/, "");
@@ -16,7 +10,7 @@ function normHandle(h: string) {
 
 export async function GET(request: NextRequest) {
   try {
-    if (!authorized(request)) {
+    if (!authorizeCron(request)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

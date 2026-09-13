@@ -3,8 +3,12 @@ import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { generateOtpCode, storeOtp } from "@/lib/otp";
 import { EmailDeliveryError, sendOtpEmail } from "@/lib/email";
 
-const SIGN_IN_LIMIT = 5;
-const SIGN_IN_WINDOW_MS = 10 * 60_000;
+const SIGN_IN_LIMIT = 8;
+const SIGN_IN_WINDOW_MS = 15 * 60_000;
+const EMAIL_OTP_LIMIT = 3;
+const EMAIL_OTP_WINDOW_MS = 15 * 60_000;
+const GLOBAL_OTP_LIMIT = 40;
+const GLOBAL_OTP_WINDOW_MS = 60 * 60_000;
 
 export async function POST(request: Request) {
   try {
@@ -13,6 +17,18 @@ export async function POST(request: Request) {
     if (!ok) {
       return NextResponse.json(
         { error: "Too many attempts — try again shortly", retry_in_sec: retryInSec },
+        { status: 429 }
+      );
+    }
+
+    const { ok: globalOk, retryInSec: globalRetry } = rateLimit(
+      "sign-in:global",
+      GLOBAL_OTP_LIMIT,
+      GLOBAL_OTP_WINDOW_MS
+    );
+    if (!globalOk) {
+      return NextResponse.json(
+        { error: "Sign-in is temporarily busy — try again soon", retry_in_sec: globalRetry },
         { status: 429 }
       );
     }
@@ -32,8 +48,8 @@ export async function POST(request: Request) {
     const normalized = email.toLowerCase().trim();
     const { ok: emailOk, retryInSec: emailRetry } = rateLimit(
       `sign-in-email:${normalized}`,
-      3,
-      SIGN_IN_WINDOW_MS
+      EMAIL_OTP_LIMIT,
+      EMAIL_OTP_WINDOW_MS
     );
     if (!emailOk) {
       return NextResponse.json(

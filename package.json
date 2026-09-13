@@ -10,6 +10,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "node --experimental-strip-types --test src/lib/security.test.ts",
     "seed": "node scripts/seed-mongo.mjs"
   },
   "dependencies": {
