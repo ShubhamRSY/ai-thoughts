@@ -73,7 +73,7 @@ export default function DailyCheckIn({
             onClick={() => onShare()}
             className="mt-3 w-full rounded-full bg-[var(--accent)] py-2.5 text-sm font-semibold text-[var(--surface)] hover:bg-[var(--accent-2)]"
           >
-            {checkedInToday ? "Share another take" : "Answer today’s prompt"}
+            {checkedInToday ? "Share another take" : "Share your take"}
           </button>
         </div>
       </div>

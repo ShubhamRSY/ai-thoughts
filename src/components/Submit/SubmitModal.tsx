@@ -194,7 +194,7 @@ export default function SubmitModal({
             <span className="text-sm font-medium">Cancel</span>
           </button>
           <h2 className="font-display text-sm font-semibold text-[var(--foreground)]">
-            {fromDailyPrompt ? "Answer today’s prompt" : BRAND.shareTitle}
+            {BRAND.shareTitle}
           </h2>
           <span className="w-16" />
         </div>

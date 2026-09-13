@@ -139,7 +139,7 @@ export default function MissedYesterday({
               }}
               className="flex-1 rounded-full bg-[var(--accent)] py-2 text-xs font-semibold text-[var(--surface)] hover:bg-[var(--accent-2)]"
             >
-              Answer today’s prompt
+              Share your take
             </button>
           )}
         </div>
