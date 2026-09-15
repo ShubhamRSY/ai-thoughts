@@ -24,7 +24,7 @@ export default function Header({ onShare }: HeaderProps) {
       <div className="app-pad flex min-h-[var(--header-h)] items-center justify-between gap-3 py-2">
         <div className="min-w-0">
           <p className="font-display truncate text-[15px] font-semibold tracking-tight text-[var(--foreground)]">
-            {BRAND.name}
+            {BRAND.shortName}
           </p>
           <p className="truncate text-[11px] leading-tight text-[var(--muted)]">{BRAND.tagline}</p>
         </div>

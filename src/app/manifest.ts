@@ -3,7 +3,7 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "AI·Thoughts — Say how AI makes you feel",
-    short_name: "AI·Thoughts",
+    short_name: "AiTo",
     description:
       "Express how AI makes you feel — love it, fear it, or both. Voice, video, or words.",
     id: "/app",

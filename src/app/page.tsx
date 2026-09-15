@@ -24,7 +24,7 @@ export default async function LandingPage() {
             <BrandMark className="h-8 w-8" />
           </div>
           <h1 className="font-display text-4xl font-medium leading-none tracking-tight text-[var(--foreground)] sm:text-5xl">
-            {BRAND.name}
+            {BRAND.shortName}
           </h1>
         </div>
         <p className="mt-8 max-w-[22ch] text-xl font-medium leading-snug text-[var(--foreground)] sm:max-w-[28ch] sm:text-2xl">

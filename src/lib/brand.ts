@@ -1,6 +1,8 @@
 /** Product naming — one source for UI chrome. */
 export const BRAND = {
   name: "AI·Thoughts",
+  /** Compact label beside the logo / tight chrome */
+  shortName: "AiTo",
   /** Short line under / beside the brand — what this place is for */
   tagline: "Say how AI makes you feel — love it, fear it, or both.",
   /** One-line promise for landing / share cards */

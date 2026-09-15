@@ -238,6 +238,12 @@ Format: **Decision → Why → Alternatives considered → Libraries / stack**.
 - **Alternatives:** Name stacked under logo — previous layout; rejected.
 - **Stack:** Flex row on landing `h1`.
 
+### Short name `AiTo`
+- **Decision:** Add `BRAND.shortName = "AiTo"`; use it beside the logo on landing and in the app header. Keep full `AI·Thoughts` for footer, legal, emails, metadata.
+- **Why:** Owner asked for a short name AiTo for compact brand chrome.
+- **Alternatives:** Rename product entirely to AiTo — rejected; full name stays formal.
+- **Stack:** `src/lib/brand.ts` single source.
+
 ---
 
-*Last updated: 2026-09-15 (landing: brand beside logo).*
+*Last updated: 2026-09-15 (short name AiTo).*
