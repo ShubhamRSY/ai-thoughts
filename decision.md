@@ -226,6 +226,12 @@ Format: **Decision → Why → Alternatives considered → Libraries / stack**.
 - **Alternatives:** Keep samples for social proof — rejected; owner wants them gone.
 - **Stack:** Landing stays a Server Component; still uses `getPulseStats()` for the people count only.
 
+### Single CTA at bottom of landing
+- **Decision:** Remove the top “Start expressing” button; keep one CTA under “What you do here” (with “Email code · no password” for guests).
+- **Why:** Owner: don’t keep two Start expressing — only at the bottom.
+- **Alternatives:** Top-only CTA — rejected.
+- **Stack:** Same `Link` to `/sign-in` or `/app`.
+
 ---
 
-*Last updated: 2026-09-15 (landing: remove feelings catalog + sample voices).*
+*Last updated: 2026-09-15 (landing: one bottom CTA).*

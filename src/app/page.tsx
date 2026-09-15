@@ -40,18 +40,6 @@ export default async function LandingPage() {
               : `${total.toLocaleString()} people already expressing themselves.`}
         </p>
 
-        <div className="mt-8">
-          <Link
-            href={ctaHref}
-            className="inline-flex items-center justify-center rounded-full bg-[var(--accent)] px-6 py-3.5 text-sm font-semibold text-[var(--surface)] transition hover:bg-[var(--accent-2)]"
-          >
-            {ctaLabel}
-          </Link>
-          {!session && (
-            <p className="mt-3 text-xs text-[var(--muted)]">Email code · no password</p>
-          )}
-        </div>
-
         <section className="mt-12 border-t border-[var(--border-base)] pt-8">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
             What you do here
@@ -71,16 +59,17 @@ export default async function LandingPage() {
           </ol>
         </section>
 
-        {!session && (
-          <div className="mt-10">
-            <Link
-              href={ctaHref}
-              className="inline-flex w-full items-center justify-center rounded-full bg-[var(--accent)] px-6 py-3.5 text-sm font-semibold text-[var(--surface)] transition hover:bg-[var(--accent-2)] sm:w-auto"
-            >
-              {ctaLabel}
-            </Link>
-          </div>
-        )}
+        <div className="mt-10">
+          <Link
+            href={ctaHref}
+            className="inline-flex w-full items-center justify-center rounded-full bg-[var(--accent)] px-6 py-3.5 text-sm font-semibold text-[var(--surface)] transition hover:bg-[var(--accent-2)] sm:w-auto"
+          >
+            {ctaLabel}
+          </Link>
+          {!session && (
+            <p className="mt-3 text-xs text-[var(--muted)]">Email code · no password</p>
+          )}
+        </div>
       </main>
       <Footer />
     </div>
