@@ -232,6 +232,12 @@ Format: **Decision → Why → Alternatives considered → Libraries / stack**.
 - **Alternatives:** Top-only CTA — rejected.
 - **Stack:** Same `Link` to `/sign-in` or `/app`.
 
+### Brand name beside logo
+- **Decision:** Put `AI·Thoughts` in a horizontal row next to the BrandMark tile on `/`.
+- **Why:** Owner asked to keep the name beside the logo.
+- **Alternatives:** Name stacked under logo — previous layout; rejected.
+- **Stack:** Flex row on landing `h1`.
+
 ---
 
-*Last updated: 2026-09-15 (landing: one bottom CTA).*
+*Last updated: 2026-09-15 (landing: brand beside logo).*

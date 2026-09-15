@@ -19,14 +19,15 @@ export default async function LandingPage() {
   return (
     <div className="app-frame">
       <main className="app-pad flex flex-1 flex-col pb-12 pt-14">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--accent)]">
-          <BrandMark className="h-8 w-8" />
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent)]">
+            <BrandMark className="h-8 w-8" />
+          </div>
+          <h1 className="font-display text-4xl font-medium leading-none tracking-tight text-[var(--foreground)] sm:text-5xl">
+            {BRAND.name}
+          </h1>
         </div>
-
-        <h1 className="font-display mt-8 text-4xl font-medium leading-[1.15] tracking-tight text-[var(--foreground)] sm:text-5xl">
-          {BRAND.name}
-        </h1>
-        <p className="mt-3 max-w-[22ch] text-xl font-medium leading-snug text-[var(--foreground)] sm:max-w-[28ch] sm:text-2xl">
+        <p className="mt-8 max-w-[22ch] text-xl font-medium leading-snug text-[var(--foreground)] sm:max-w-[28ch] sm:text-2xl">
           {BRAND.tagline}
         </p>
         <p className="mt-3 max-w-[34ch] text-sm leading-relaxed text-[var(--muted)]">
