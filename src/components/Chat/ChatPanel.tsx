@@ -176,7 +176,12 @@ export default function ChatPanel({
       requestAnimationFrame(scrollToBottom);
     });
 
-    const focusTimer = window.setTimeout(() => inputRef.current?.focus(), 80);
+    const focusTimer = window.setTimeout(() => {
+      // Autofocus opens the mobile keyboard and covers the composer — only on fine pointers.
+      const fine = window.matchMedia("(pointer: fine)").matches;
+      if (fine) inputRef.current?.focus();
+      composerRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }, 80);
 
     return () => {
       cancelled = true;
@@ -308,10 +313,7 @@ export default function ChatPanel({
       : `${messages.length} comment${messages.length === 1 ? "" : "s"}`;
 
   return (
-    <div
-      className="mt-4 border-t border-[var(--border-base)] pt-3"
-      style={keyboardPad ? { paddingBottom: keyboardPad } : undefined}
-    >
+    <div className="mt-4 border-t border-[var(--border-base)] pt-3">
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="text-xs font-medium text-[var(--muted)]">{commentLabel}</p>
         <div className="flex items-center gap-2">
@@ -363,7 +365,11 @@ export default function ChatPanel({
         ))}
       </div>
 
-      <div className="relative mt-3" ref={composerRef}>
+      <div
+        className="relative mt-3 border-t border-[var(--border-base)] bg-[var(--surface)] pt-3"
+        ref={composerRef}
+        style={keyboardPad ? { paddingBottom: keyboardPad } : undefined}
+      >
         {error && <p className="mb-1.5 text-[11px] text-rose-700">{error}</p>}
         {!signedIn ? (
           <p className="border-t border-[var(--border-base)] pt-3 text-sm text-[var(--muted)]">

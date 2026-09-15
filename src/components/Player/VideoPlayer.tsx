@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Play, Pause, Clapperboard } from "lucide-react";
 
 interface VideoPlayerProps {
@@ -27,6 +27,14 @@ export default function VideoPlayer({
   const hasMedia = Boolean(src && src.trim() !== "");
   const showPlaceholder = !hasMedia || failed;
 
+  useEffect(() => {
+    setFailed(false);
+    setPlaying(false);
+    setProgress(0);
+    setCurrent(0);
+    setDurationSec(0);
+  }, [src]);
+
   const wrapRef = (el: HTMLVideoElement | null) => {
     videoRef.current = el;
     onElement?.(el);
@@ -34,15 +42,15 @@ export default function VideoPlayer({
 
   const toggle = async () => {
     const el = videoRef.current;
-    if (!el) return;
-    if (el.src && !el.paused) {
+    if (!el || showPlaceholder) return;
+    if (!el.paused) {
       el.pause();
-    } else {
-      try {
-        await el.play();
-      } catch {
-        /* ignore */
-      }
+      return;
+    }
+    try {
+      await el.play();
+    } catch {
+      /* ignore autoplay blocks */
     }
   };
 
@@ -51,7 +59,7 @@ export default function VideoPlayer({
     if (!el) return;
     setCurrent(el.currentTime);
     onProgress?.(el.currentTime);
-    if (el.duration) {
+    if (el.duration && Number.isFinite(el.duration)) {
       setProgress((el.currentTime / el.duration) * 100);
       setDurationSec(el.duration);
     }
@@ -66,59 +74,63 @@ export default function VideoPlayer({
             <span className="text-[11px]">{failed ? "Couldn’t play this video" : "No video yet"}</span>
           </div>
         ) : (
-          <video
-            ref={wrapRef}
-            src={src}
-            preload="metadata"
-            className="h-full w-full object-cover"
-            onPlay={() => {
-              setPlaying(true);
-              onPlayChange?.(true);
-            }}
-            onPause={() => {
-              setPlaying(false);
-              onPlayChange?.(false);
-            }}
-            onTimeUpdate={onTime}
-            onLoadedMetadata={onTime}
-            onError={() => setFailed(true)}
-          />
+          <>
+            <video
+              ref={wrapRef}
+              src={src}
+              playsInline
+              preload="metadata"
+              className="h-full w-full object-cover"
+              onPlay={() => {
+                setPlaying(true);
+                onPlayChange?.(true);
+              }}
+              onPause={() => {
+                setPlaying(false);
+                onPlayChange?.(false);
+              }}
+              onEnded={() => {
+                setPlaying(false);
+                onPlayChange?.(false);
+              }}
+              onTimeUpdate={onTime}
+              onLoadedMetadata={onTime}
+              onError={() => setFailed(true)}
+            />
+            <button
+              type="button"
+              onClick={() => void toggle()}
+              className="absolute inset-0 flex items-center justify-center bg-black/0 transition hover:bg-black/20"
+              aria-label={playing ? "Pause" : "Play"}
+            >
+              <span
+                className={`flex h-14 w-14 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-xl transition ${
+                  playing ? "opacity-0 hover:opacity-100" : "opacity-100"
+                }`}
+              >
+                {playing ? (
+                  <Pause className="h-6 w-6" fill="currentColor" />
+                ) : (
+                  <Play className="ml-0.5 h-6 w-6" fill="currentColor" />
+                )}
+              </span>
+            </button>
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/70 to-transparent">
+              <div className="absolute inset-x-0 bottom-0 px-3 pb-3">
+                <div className="h-1 w-full overflow-hidden rounded-full bg-white/30">
+                  <div
+                    className="h-full rounded-full bg-white transition-[width] duration-150"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+                <div className="mt-1 flex items-center justify-between text-[10px] font-medium text-white/80">
+                  <span className="tabular-nums">{formatTime(current)}</span>
+                  <span className="tabular-nums">{durationLabel ?? formatTime(durationSec)}</span>
+                </div>
+              </div>
+            </div>
+          </>
         )}
-
-        {/* Custom play overlay */}
-        <button
-          onClick={toggle}
-          className="absolute inset-0 flex items-center justify-center bg-black/0 transition hover:bg-black/20"
-          aria-label={playing ? "Pause" : "Play"}
-        >
-          <span
-            className={`flex h-14 w-14 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-xl transition ${
-              playing ? "opacity-0 hover:opacity-100" : "opacity-100"
-            }`}
-          >
-            {playing ? (
-              <Pause className="h-6 w-6" fill="currentColor" />
-            ) : (
-              <Play className="ml-0.5 h-6 w-6" fill="currentColor" />
-            )}
-          </span>
-        </button>
-
-        {/* Progress bar */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/70 to-transparent">
-          <div className="absolute inset-x-0 bottom-0 px-3 pb-3">
-            <div className="h-1 w-full overflow-hidden rounded-full bg-white/30">
-              <div
-                className="h-full rounded-full bg-white transition-[width] duration-150"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <div className="mt-1 flex items-center justify-between text-[10px] font-medium text-white/80">
-              <span className="tabular-nums">{formatTime(current)}</span>
-              <span className="tabular-nums">{durationLabel ?? formatTime(durationSec)}</span>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

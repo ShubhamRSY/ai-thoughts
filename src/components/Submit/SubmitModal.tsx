@@ -140,7 +140,7 @@ export default function SubmitModal({
       setPublishError(dignity.reason);
       return;
     }
-    const quality = checkContentQuality(contentValue, { newAccount: true });
+    const quality = checkContentQuality(contentValue, { newAccount: false });
     if (!quality.ok) {
       setPublishError(quality.reason);
       return;
@@ -195,7 +195,7 @@ export default function SubmitModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[var(--background)]/95 backdrop-blur-md">
+    <div className="fixed inset-0 z-[90] flex flex-col bg-[var(--background)]/95 backdrop-blur-md">
       <div className="safe-top border-b border-[var(--border-base)] bg-[var(--surface)]">
         <div className="app-rail flex items-center justify-between py-3">
           <button

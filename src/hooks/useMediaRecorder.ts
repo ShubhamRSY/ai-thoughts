@@ -16,15 +16,30 @@ interface UseMediaRecorderReturn {
   reset: () => void;
 }
 
+function pickMime(kind: "audio" | "video"): string | undefined {
+  if (typeof MediaRecorder === "undefined") return undefined;
+  const candidates =
+    kind === "audio"
+      ? ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/aac"]
+      : [
+          "video/webm;codecs=vp9,opus",
+          "video/webm;codecs=vp8,opus",
+          "video/webm",
+          "video/mp4",
+        ];
+  for (const c of candidates) {
+    try {
+      if (MediaRecorder.isTypeSupported(c)) return c;
+    } catch {
+      /* ignore */
+    }
+  }
+  return undefined;
+}
+
 /**
  * Real client-side recording via MediaRecorder.
- *
- * - audio:  getUserMedia({ audio: true })
- * - video:  getUserMedia({ audio: true, video: true })  (camera + mic)
- *
- * Recording requires a secure context (HTTPS or localhost) and explicit device
- * permission. Files are captured as webm. On stop the chunks are combined into
- * a Blob and a preview URL is exposed so the clip is immediately playable.
+ * Tries several MIME types so Safari/iOS don't hard-fail on webm-only.
  */
 export function useMediaRecorder(kind: "audio" | "video"): UseMediaRecorderReturn {
   const [status, setStatus] = useState<RecorderStatus>("idle");
@@ -39,11 +54,6 @@ export function useMediaRecorder(kind: "audio" | "video"): UseMediaRecorderRetur
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const previewUrlRef = useRef<string | null>(null);
-
-  const mimeType = kind === "audio" ? "audio/webm" : "video/webm";
-  // Keeps clips a reasonable size for a "quick take" and bounds storage
-  // cost — recordings upload straight to Blob storage now, so nothing else
-  // enforces a ceiling on how long someone could otherwise record.
   const MAX_DURATION_SEC = 120;
 
   const releasePreview = useCallback(() => {
@@ -90,7 +100,12 @@ export function useMediaRecorder(kind: "audio" | "video"): UseMediaRecorderRetur
     clearTimer();
     const rec = mediaRecorderRef.current;
     if (rec && rec.state === "recording") {
-      rec.stop(); // onstop flips status to "stopped" + builds the blob
+      try {
+        rec.requestData?.();
+      } catch {
+        /* optional */
+      }
+      rec.stop();
     } else {
       stopTracks();
       setStatus("stopped");
@@ -103,30 +118,65 @@ export function useMediaRecorder(kind: "audio" | "video"): UseMediaRecorderRetur
     setBlob(null);
     setPreviewUrl(null);
     setStatus("requesting");
+
+    if (typeof window !== "undefined" && !window.isSecureContext) {
+      setError("Recording needs a secure connection (HTTPS).");
+      setStatus("error");
+      return;
+    }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError("This browser can’t record audio or video.");
+      setStatus("error");
+      return;
+    }
+
     try {
       const constraints: MediaStreamConstraints =
         kind === "audio"
           ? { audio: true, video: false }
-          : { audio: true, video: { width: { ideal: 1280 }, height: { ideal: 720 } } };
+          : {
+              audio: true,
+              video: {
+                facingMode: "user",
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+              },
+            };
 
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
-      setStream(stream);
+      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = mediaStream;
+      setStream(mediaStream);
 
-      const mime =
-        typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(mimeType)
-          ? mimeType
-          : kind === "audio"
-            ? "audio/webm"
-            : "video/webm";
+      const mime = pickMime(kind);
+      let recorder: MediaRecorder;
+      try {
+        recorder = mime
+          ? new MediaRecorder(mediaStream, { mimeType: mime })
+          : new MediaRecorder(mediaStream);
+      } catch {
+        recorder = new MediaRecorder(mediaStream);
+      }
 
-      const recorder = new MediaRecorder(stream, { mimeType: mime });
+      const blobType = recorder.mimeType || mime || (kind === "audio" ? "audio/webm" : "video/webm");
       chunksRef.current = [];
       recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
+        if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      recorder.onerror = () => {
+        clearTimer();
+        stopTracks();
+        setError("Recording failed mid-clip. Try again.");
+        setStatus("error");
       };
       recorder.onstop = () => {
-        const fullBlob = new Blob(chunksRef.current, { type: mime });
+        clearTimer();
+        if (chunksRef.current.length === 0) {
+          stopTracks();
+          setError("Nothing was captured — try recording a bit longer.");
+          setStatus("error");
+          return;
+        }
+        const fullBlob = new Blob(chunksRef.current, { type: blobType });
         const url = URL.createObjectURL(fullBlob);
         if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
         previewUrlRef.current = url;
@@ -136,7 +186,8 @@ export function useMediaRecorder(kind: "audio" | "video"): UseMediaRecorderRetur
         setStatus("stopped");
       };
       mediaRecorderRef.current = recorder;
-      recorder.start();
+      // timeslice keeps Safari/iOS from returning an empty blob on stop
+      recorder.start(1000);
 
       setDuration(0);
       setStatus("recording");
@@ -153,15 +204,16 @@ export function useMediaRecorder(kind: "audio" | "video"): UseMediaRecorderRetur
           ? "Microphone/camera permission was denied."
           : e instanceof Error && e.name === "NotFoundError"
             ? "No recording device was found."
-            : "Could not access the recording device."
+            : e instanceof Error && e.name === "NotSupportedError"
+              ? "Recording isn’t supported in this browser."
+              : "Could not access the recording device."
       );
       setStatus("error");
     }
-  }, [kind, mimeType, stopTracks, releasePreview, stop]);
+  }, [kind, stopTracks, releasePreview, stop, clearTimer]);
 
   useEffect(() => {
     return () => {
-      // Cleanup on unmount: stop capture and revoke any preview URL.
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
         try {
           mediaRecorderRef.current.stop();

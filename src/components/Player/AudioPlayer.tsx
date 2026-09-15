@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Play, Pause, Volume2, VolumeX, AudioLines } from "lucide-react";
 
 interface AudioPlayerProps {
@@ -26,6 +26,13 @@ export default function AudioPlayer({
   const [durationSec, setDurationSec] = useState(0);
   const hasMedia = Boolean(src && src.trim() !== "");
 
+  useEffect(() => {
+    setPlaying(false);
+    setProgress(0);
+    setCurrent(0);
+    setDurationSec(0);
+  }, [src]);
+
   const wrapRef = (el: HTMLAudioElement | null) => {
     audioRef.current = el;
     onElement?.(el);
@@ -33,15 +40,15 @@ export default function AudioPlayer({
 
   const toggle = async () => {
     const el = audioRef.current;
-    if (!el) return;
-    if (el.src && !el.paused) {
+    if (!el || !hasMedia) return;
+    if (!el.paused) {
       el.pause();
-    } else {
-      try {
-        await el.play();
-      } catch {
-        /* autoplay / no media — ignore */
-      }
+      return;
+    }
+    try {
+      await el.play();
+    } catch {
+      /* autoplay / no media — ignore */
     }
   };
 

@@ -46,6 +46,14 @@ export default function PWAInstall() {
     };
   }, []);
 
+  useEffect(() => {
+    if (show) document.documentElement.dataset.pwaBanner = "1";
+    else delete document.documentElement.dataset.pwaBanner;
+    return () => {
+      delete document.documentElement.dataset.pwaBanner;
+    };
+  }, [show]);
+
   if (!show || isStandalone()) return null;
 
   function dismiss() {
