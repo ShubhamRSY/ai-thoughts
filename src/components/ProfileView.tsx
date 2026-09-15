@@ -270,51 +270,7 @@ export default function ProfileView({ myThoughts, onCreate, onDelete }: ProfileV
       </div>
 
       {user && (
-        <div className="mt-6 space-y-3">
-          <div className="rounded-2xl border border-[var(--border-base)] bg-[var(--surface)] p-4">
-            <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-              Your data
-            </p>
-            <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">
-              Download a JSON copy of your profile, takes, replies, reactions, and
-              notification prefs.
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                void (async () => {
-                  try {
-                    const res = await fetch("/api/account", {
-                      credentials: "include",
-                      cache: "no-store",
-                    });
-                    if (!res.ok) {
-                      const data = await res.json().catch(() => ({}));
-                      setError(
-                        typeof data.error === "string"
-                          ? data.error
-                          : "Couldn’t export your data"
-                      );
-                      return;
-                    }
-                    const blob = await res.blob();
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement("a");
-                    a.href = url;
-                    a.download = `ai-thoughts-export.json`;
-                    a.click();
-                    URL.revokeObjectURL(url);
-                  } catch {
-                    setError("Couldn’t export your data. Try again.");
-                  }
-                })();
-              }}
-              className="mt-3 w-full rounded-full border border-[var(--border-base)] bg-[var(--surface-2)] py-2.5 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
-            >
-              Download my data
-            </button>
-          </div>
-
+        <div className="mt-6">
           <div className="rounded-2xl border border-rose-200/80 bg-rose-50/40 p-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-rose-800/80">
             Delete account

@@ -34,13 +34,6 @@ import {
   markPublished,
 } from "@/lib/db";
 import type { ReportReason } from "@/components/Feed/FeedCard";
-import {
-  detectContinent,
-  preferredLanguages,
-  rankByRegion,
-  continentLabel,
-  type ContinentId,
-} from "@/lib/region";
 import type { RegionScope } from "@/components/Feed/FilterBar";
 import { todayKey as promptTodayKey } from "@/lib/daily-prompt";
 
@@ -65,8 +58,7 @@ export default function Home() {
   const [modalSession, setModalSession] = useState(0);
   const [room, setRoom] = useState<FeelingId | null>(null);
   const [shareFeeling, setShareFeeling] = useState<FeelingId | undefined>(undefined);
-  const [continent, setContinent] = useState<ContinentId>("americas");
-  const [regionScope, setRegionScope] = useState<RegionScope>("near");
+  const [regionScope, setRegionScope] = useState<RegionScope>("world");
   const [undoId, setUndoId] = useState<string | null>(null);
   const [activityOpen, setActivityOpen] = useState(false);
   const [following, setFollowing] = useState<string[]>([]);
@@ -74,10 +66,6 @@ export default function Home() {
   const { items: activityItems, unread: activityUnread, markAllRead, refresh: refreshActivity } =
     useActivity(!!user);
   const { maintenance, message: maintenanceMessage } = useSiteFlags();
-
-  useEffect(() => {
-    setContinent(detectContinent());
-  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -102,7 +90,6 @@ export default function Home() {
     return () => window.clearTimeout(t);
   }, [undoId]);
 
-  const preferred = useMemo(() => preferredLanguages(continent), [continent]);
   const followingSet = useMemo(
     () => new Set(following.map((h) => h.trim().toLowerCase().replace(/^@/, ""))),
     [following]
@@ -118,21 +105,17 @@ export default function Home() {
     if (regionScope === "today") {
       const day = promptTodayKey();
       base = base.filter((t) => t.promptDay === day);
-      return rankByRegion(base, preferred);
+      return base;
     }
 
     if (regionScope === "circle") {
-      base = base.filter((t) =>
+      return base.filter((t) =>
         followingSet.has(t.handle.trim().toLowerCase().replace(/^@/, ""))
       );
-      return rankByRegion(base, []);
     }
 
-    if (regionScope === "near") {
-      return rankByRegion(base, preferred);
-    }
-    return rankByRegion(base, []);
-  }, [thoughts, media, feeling, regionScope, preferred, followingSet]);
+    return base;
+  }, [thoughts, media, feeling, regionScope, followingSet]);
 
   const todayAnswerCount = useMemo(() => {
     const day = promptTodayKey();
@@ -430,7 +413,7 @@ export default function Home() {
                   streakCount={streak.count}
                   checkedInToday={streak.last === todayKey()}
                   todayAnswerCount={todayAnswerCount}
-                  onShare={(feelingId) => openShare("text", feelingId, true)}
+                  onShare={() => openShare("text", undefined, true)}
                   onBrowseToday={browseToday}
                 />
 
@@ -451,8 +434,6 @@ export default function Home() {
                   onFeelingChange={setFeeling}
                   regionScope={regionScope}
                   onRegionScopeChange={setRegionScope}
-                  continent={continent}
-                  onContinentChange={setContinent}
                   circleCount={following.length}
                   todayCount={todayAnswerCount}
                 />
@@ -466,8 +447,6 @@ export default function Home() {
                       <p className="mt-0.5 text-[11px] text-[var(--muted)]">
                         {regionScope === "today"
                           ? "Same prompt, many voices · Feel with someone who resonates"
-                          : regionScope === "near"
-                          ? `${continentLabel(continent)} first · other languages still here · tap Translate`
                           : regionScope === "circle"
                             ? following.length
                               ? "People you feel with · Translate anytime"
@@ -501,11 +480,9 @@ export default function Home() {
                             ? following.length
                               ? "No takes from people you feel with yet."
                               : "Feel with someone on a take to build your circle."
-                            : regionScope === "near"
-                              ? "Nothing nearby yet — try Worldwide, or share first."
-                              : media !== "all"
-                                ? "No takes in this format — try All."
-                                : "Be the first to share how AI makes you feel."
+                            : media !== "all"
+                              ? "No takes in this format — try All."
+                              : "Be the first to share how AI makes you feel."
                     }
                   />
                 </div>
