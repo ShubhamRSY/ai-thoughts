@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   MessageCircle,
   Heart,
@@ -46,7 +47,7 @@ export type ReportReason =
 interface FeedCardProps {
   thought: Thought;
   onReact?: (thoughtId: string, reaction: Reaction) => void | Promise<boolean>;
-  onReport?: (thoughtId: string, reason: ReportReason) => void;
+  onReport?: (thoughtId: string, reason: ReportReason) => void | Promise<boolean>;
   onDelete?: (thoughtId: string) => void;
   onOpenRoom?: (id: FeelingId) => void;
   onFeelWith?: (handle: string, next: boolean) => void;
@@ -100,18 +101,53 @@ export default function FeedCard({
   const [menuOpen, setMenuOpen] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [reported, setReported] = useState(false);
+  const [reportBusy, setReportBusy] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [chatOpen, setChatOpen] = useState(Boolean(forceChatOpen));
-
-  useEffect(() => {
-    if (forceChatOpen) setChatOpen(true);
-  }, [forceChatOpen]);
   const [actionError, setActionError] = useState<string | null>(null);
   const [commentCount, setCommentCount] = useState<number | null>(
     typeof thought.replyCount === "number" ? thought.replyCount : null
   );
   const [showReact, setShowReact] = useState(false);
   const [feeling, setFeeling] = useState(Boolean(feelingWith));
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (forceChatOpen) setChatOpen(true);
+  }, [forceChatOpen]);
+
+  const submitReport = async (reason: ReportReason) => {
+    if (reportBusy) return;
+    setReportBusy(true);
+    setReportError(null);
+    try {
+      if (!currentHandle) {
+        setReportError("Sign in to report a take.");
+        return;
+      }
+      const ok = onReport ? await Promise.resolve(onReport(thought.id, reason)) : true;
+      if (ok === false) {
+        setReportError("Couldn’t send that report — try again.");
+        return;
+      }
+      setReported(true);
+    } finally {
+      setReportBusy(false);
+    }
+  };
+
+  const closeReport = () => {
+    setReporting(false);
+    setReported(false);
+    setReportError(null);
+    setReportBusy(false);
+  };
+
   const isAuthor = sameHandle(currentHandle, thought.handle);
   const authorIsNew = isNewAccount(thought.authorJoinedAt ?? null, 7 * 24 * 3600_000);
   // Prefer prop when parent knows follow state; fall back to optimistic local toggle.
@@ -461,53 +497,78 @@ export default function FeedCard({
         </button>
       )}
 
-      {(reporting || reported) && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/25 sm:items-center">
-          <div
-            className="absolute inset-0"
-            onClick={() => {
-              setReporting(false);
-              setReported(false);
-            }}
-          />
-          <div className="relative w-full max-w-md rounded-t-2xl border border-[var(--border-base)] bg-[var(--surface)] p-5 sm:rounded-2xl">
-            {reported ? (
-              <div className="flex flex-col items-center gap-3 py-4 text-center">
-                <ShieldCheck className="h-8 w-8 text-[var(--accent)]" />
-                <p className="text-sm font-semibold">Thanks — reported</p>
-                <p className="text-xs text-[var(--muted)]">Keepers will review this take.</p>
-                <button
-                  onClick={() => {
-                    setReported(false);
-                    setReporting(false);
-                  }}
-                  className="mt-1 w-full rounded-full border border-[var(--border-base)] py-2.5 text-sm font-semibold"
-                >
-                  Done
-                </button>
-              </div>
-            ) : (
-              <>
-                <h3 className="font-display text-base font-semibold">Report this take</h3>
-                <div className="mt-3 flex flex-col gap-2">
-                  {REPORT_REASONS.map((reason) => (
-                    <button
-                      key={reason}
-                      onClick={() => {
-                        setReported(true);
-                        onReport?.(thought.id, reason);
-                      }}
-                      className="rounded-xl border border-[var(--border-base)] px-3 py-2.5 text-left text-sm hover:bg-[var(--surface-2)]"
-                    >
-                      {reason}
-                    </button>
-                  ))}
+      {mounted &&
+        (reporting || reported) &&
+        createPortal(
+          <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/40 sm:items-center">
+            <button
+              type="button"
+              className="absolute inset-0 cursor-default"
+              aria-label="Close report"
+              onClick={closeReport}
+            />
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="report-title"
+              className="relative z-10 flex max-h-[min(85dvh,32rem)] w-full max-w-md flex-col rounded-t-2xl border border-[var(--border-base)] bg-[var(--surface)] shadow-xl sm:rounded-2xl"
+            >
+              {reported ? (
+                <div className="flex flex-col items-center gap-3 px-5 py-8 text-center">
+                  <ShieldCheck className="h-8 w-8 text-[var(--accent)]" />
+                  <p className="text-sm font-semibold">Thanks — reported</p>
+                  <p className="text-xs text-[var(--muted)]">Keepers will review this take.</p>
+                  <button
+                    type="button"
+                    onClick={closeReport}
+                    className="mt-1 w-full rounded-full border border-[var(--border-base)] py-2.5 text-sm font-semibold"
+                  >
+                    Done
+                  </button>
                 </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+              ) : (
+                <>
+                  <div className="flex items-center justify-between border-b border-[var(--border-base)] px-5 py-3">
+                    <h3 id="report-title" className="font-display text-base font-semibold">
+                      Report this take
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={closeReport}
+                      className="text-sm font-medium text-[var(--muted)] hover:text-[var(--foreground)]"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  <div className="overflow-y-auto overscroll-contain px-5 py-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+                    {!currentHandle && (
+                      <p className="mb-3 text-sm text-[var(--muted)]">
+                        Sign in to send a report to keepers.
+                      </p>
+                    )}
+                    {reportError && (
+                      <p className="mb-3 text-sm text-rose-700">{reportError}</p>
+                    )}
+                    <div className="flex flex-col gap-2">
+                      {REPORT_REASONS.map((reason) => (
+                        <button
+                          key={reason}
+                          type="button"
+                          disabled={reportBusy || !currentHandle}
+                          onClick={() => void submitReport(reason)}
+                          className="rounded-xl border border-[var(--border-base)] px-3 py-2.5 text-left text-sm hover:bg-[var(--surface-2)] disabled:opacity-50"
+                        >
+                          {reason}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
 
       <ChatPanel
         postId={thought.id}

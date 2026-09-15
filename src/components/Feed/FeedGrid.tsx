@@ -6,7 +6,7 @@ import FeedCard, { type ReportReason } from "@/components/Feed/FeedCard";
 interface FeedGridProps {
   thoughts: Thought[];
   onReact?: (thoughtId: string, reaction: Reaction) => void | Promise<boolean>;
-  onReport?: (thoughtId: string, reason: ReportReason) => void;
+  onReport?: (thoughtId: string, reason: ReportReason) => void | Promise<boolean>;
   onDelete?: (thoughtId: string) => void;
   onOpenRoom?: (id: FeelingId) => void;
   onFeelWith?: (handle: string, next: boolean) => void;

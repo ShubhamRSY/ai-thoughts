@@ -11,7 +11,7 @@ interface FeelingRoomProps {
   onCreate: () => void;
   onBack: () => void;
   onReact?: (thoughtId: string, reaction: Reaction) => void;
-  onReport?: (thoughtId: string, reason: ReportReason) => void;
+  onReport?: (thoughtId: string, reason: ReportReason) => void | Promise<boolean>;
   onDelete?: (thoughtId: string) => void;
   onOpenRoom?: (id: FeelingId) => void;
   onFeelWith?: (handle: string, next: boolean) => void;

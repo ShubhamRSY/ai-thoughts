@@ -226,10 +226,10 @@ export default function Home() {
   };
 
   const onReport = useCallback(
-    (thoughtId: string, reason: ReportReason) => {
-      if (!isLive()) return;
+    async (thoughtId: string, reason: ReportReason) => {
+      if (!isLive()) return false;
       const t = thoughts.find((x) => x.id === thoughtId);
-      void reportPost(thoughtId, reason, {
+      return reportPost(thoughtId, reason, {
         handle: t?.handle,
         content: t?.content,
       });
