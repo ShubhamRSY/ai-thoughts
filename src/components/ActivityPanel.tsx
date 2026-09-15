@@ -76,6 +76,7 @@ interface ActivityPanelProps {
   items: ActivityItem[];
   unread: number;
   onMarkAllRead: () => void;
+  onSelectPost?: (postId: string) => void;
 }
 
 export default function ActivityPanel({
@@ -84,6 +85,7 @@ export default function ActivityPanel({
   items,
   unread,
   onMarkAllRead,
+  onSelectPost,
 }: ActivityPanelProps) {
   if (!open) return null;
 
@@ -124,9 +126,16 @@ export default function ActivityPanel({
             </p>
           ) : (
             items.map((item) => (
-              <div
+              <button
                 key={item.id}
-                className={`rounded-xl px-3 py-2.5 ${item.read ? "" : "bg-[var(--accent-soft)]/40"}`}
+                type="button"
+                onClick={() => {
+                  if (item.post_id && onSelectPost) onSelectPost(item.post_id);
+                  else onClose();
+                }}
+                className={`w-full rounded-xl px-3 py-2.5 text-left transition hover:bg-[var(--surface-2)] ${
+                  item.read ? "" : "bg-[var(--accent-soft)]/40"
+                }`}
               >
                 <p className="text-sm text-[var(--foreground)]">
                   <span className="font-semibold">{item.actor_author}</span>
@@ -148,8 +157,9 @@ export default function ActivityPanel({
                 )}
                 <p className="mt-1 text-[10px] tabular-nums text-[var(--muted)]">
                   {timeAgo(item.created_at)}
+                  {item.post_id ? " · Open take" : ""}
                 </p>
-              </div>
+              </button>
             ))
           )}
         </div>

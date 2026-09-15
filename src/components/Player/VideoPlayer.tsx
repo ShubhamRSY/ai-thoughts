@@ -63,9 +63,7 @@ export default function VideoPlayer({
         {showPlaceholder ? (
           <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-[var(--surface-2)] text-[var(--muted)]">
             <Clapperboard className="h-8 w-8" />
-            <span className="text-[11px]">
-              {failed ? "Video unavailable" : "Placeholder video area"}
-            </span>
+            <span className="text-[11px]">{failed ? "Couldn’t play this video" : "No video yet"}</span>
           </div>
         ) : (
           <video

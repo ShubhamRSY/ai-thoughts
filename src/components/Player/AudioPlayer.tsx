@@ -129,9 +129,7 @@ export default function AudioPlayer({
       {!hasMedia && (
         <div className="mt-3 flex items-center gap-2 rounded-lg border border-dashed border-[var(--border-base)] bg-white px-3 py-2 text-[11px] text-[var(--muted)]">
           <AudioLines className="h-3.5 w-3.5" />
-          Placeholder audio — drop an <span className="font-mono text-[var(--foreground)]">.mp3</span> in{" "}
-          <span className="font-mono text-[var(--foreground)]">/public/media</span> and point{" "}
-          <span className="font-mono text-[var(--foreground)]">mediaUrl</span> at it.
+          Audio unavailable
         </div>
       )}
     </div>

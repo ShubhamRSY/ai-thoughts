@@ -5,6 +5,7 @@ import { X, AudioLines, Video, Type, Send, Globe, ChevronDown } from "lucide-rea
 import { LANGS } from "@/lib/mock-data";
 import { BRAND, SUGGESTED_TAGS } from "@/lib/brand";
 import { checkDignity, normalizeTag } from "@/lib/dignity";
+import { checkContentQuality } from "@/lib/anti-abuse";
 import { fakeHash } from "@/lib/integrity";
 import { FEELINGS } from "@/lib/feelings";
 import { dailyPrompt, todayKey } from "@/lib/daily-prompt";
@@ -139,6 +140,11 @@ export default function SubmitModal({
       setPublishError(dignity.reason);
       return;
     }
+    const quality = checkContentQuality(contentValue, { newAccount: true });
+    if (!quality.ok) {
+      setPublishError(quality.reason);
+      return;
+    }
 
     const seed = `${tab}:${handleValue}:${contentValue.slice(0, 40)}:${Date.now()}`;
     const langInfo = LANGS.find((l) => l.code === language);
@@ -151,7 +157,7 @@ export default function SubmitModal({
       feeling,
       mediaDuration: captured && captured.duration > 0 ? fmtDur(captured.duration) : undefined,
       mediaUrl: undefined,
-      tags: tags.length ? tags : ["#Future"],
+      tags: tags.length ? tags : [],
       timestamp: new Date().toISOString(),
       language: langInfo?.code ?? "en",
       languageLabel: langInfo?.label ?? "English",
@@ -173,8 +179,14 @@ export default function SubmitModal({
         );
       } else if (result.reason === "too_long") {
         setPublishError(`A little long — keep it under ${result.max} characters.`);
+      } else if (result.reason === "auth") {
+        setPublishError("Sign in to share your feeling.");
+      } else if (result.reason === "blocked") {
+        setPublishError(result.message);
+      } else if (result.reason === "failed" && result.message) {
+        setPublishError(result.message);
       } else {
-        setPublishError("Couldn’t share right now. Check your clip and try again.");
+        setPublishError("Couldn’t share right now. Try again in a moment.");
       }
       return;
     }
@@ -227,7 +239,7 @@ export default function SubmitModal({
               onClick={onClose}
               className="mt-2 rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-[var(--surface)]"
             >
-              Done
+              See it in Voices
             </button>
           </div>
         )

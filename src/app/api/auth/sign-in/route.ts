@@ -3,6 +3,8 @@ import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { generateOtpCode, storeOtp } from "@/lib/otp";
 import { EmailDeliveryError, sendOtpEmail } from "@/lib/email";
 import { getSession } from "@/lib/auth";
+import { checkDisposableEmail, checkDisplayNameAllowed } from "@/lib/anti-abuse";
+import { getSiteSettings } from "@/lib/admin";
 
 const SIGN_IN_LIMIT = 8;
 const SIGN_IN_WINDOW_MS = 15 * 60_000;
@@ -13,7 +15,6 @@ const GLOBAL_OTP_WINDOW_MS = 60 * 60_000;
 
 export async function POST(request: Request) {
   try {
-    // Already signed in — never send another email code.
     const existing = await getSession();
     if (existing) {
       return NextResponse.json({
@@ -22,6 +23,17 @@ export async function POST(request: Request) {
         user: existing,
         message: "You’re already signed in",
       });
+    }
+
+    const settings = await getSiteSettings();
+    if (!settings.invitesOpen) {
+      return NextResponse.json(
+        {
+          error: "New sign-ups are paused right now. Try again later.",
+          code: "invites_closed",
+        },
+        { status: 403 }
+      );
     }
 
     const ip = clientIp(request);
@@ -58,6 +70,11 @@ export async function POST(request: Request) {
     }
 
     const normalized = email.toLowerCase().trim();
+    const disposable = checkDisposableEmail(normalized);
+    if (!disposable.ok) {
+      return NextResponse.json({ error: disposable.reason, code: disposable.code }, { status: 400 });
+    }
+
     const { ok: emailOk, retryInSec: emailRetry } = rateLimit(
       `sign-in-email:${normalized}`,
       EMAIL_OTP_LIMIT,
@@ -74,6 +91,11 @@ export async function POST(request: Request) {
       displayName && typeof displayName === "string" && displayName.trim()
         ? displayName.trim().slice(0, 80)
         : normalized.split("@")[0].slice(0, 80);
+
+    const nameCheck = checkDisplayNameAllowed(name);
+    if (!nameCheck.ok) {
+      return NextResponse.json({ error: nameCheck.reason, code: nameCheck.code }, { status: 400 });
+    }
 
     const code = generateOtpCode();
     await storeOtp(normalized, code, name);

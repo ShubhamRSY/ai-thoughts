@@ -78,11 +78,33 @@ export default function ChatPanel({
   const [suggestOpen, setSuggestOpen] = useState(false);
   const listRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const composerRef = useRef<HTMLDivElement | null>(null);
+  const [keyboardPad, setKeyboardPad] = useState(0);
 
   const scrollToBottom = useCallback(() => {
     const el = listRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, []);
+
+  useEffect(() => {
+    if (!open || typeof window === "undefined") return;
+    const sync = () => {
+      const vv = window.visualViewport;
+      if (!vv) {
+        setKeyboardPad(0);
+        return;
+      }
+      const covered = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      setKeyboardPad(covered > 40 ? covered : 0);
+    };
+    sync();
+    window.visualViewport?.addEventListener("resize", sync);
+    window.visualViewport?.addEventListener("scroll", sync);
+    return () => {
+      window.visualViewport?.removeEventListener("resize", sync);
+      window.visualViewport?.removeEventListener("scroll", sync);
+    };
+  }, [open]);
 
   const me = normHandle(profile.handle || "");
 
@@ -138,7 +160,16 @@ export default function ChatPanel({
       if (cancelled) return;
       setMessages((prev) => {
         if (prev.some((m) => m.id === msg.id)) return prev;
-        const next = [...prev, msg];
+        const key = normHandle(msg.handle);
+        const withoutDup = prev.filter(
+          (m) =>
+            !(
+              m.id.startsWith("local-") &&
+              normHandle(m.handle) === key &&
+              m.body.trim() === msg.body.trim()
+            )
+        );
+        const next = [...withoutDup, msg];
         onCountChange?.(next.length);
         return next;
       });
@@ -196,27 +227,17 @@ export default function ChatPanel({
     }
     setSending(true);
     setError(null);
-    const err = await sendMessage(
-      postId,
-      user?.handle || profile.handle || "you",
-      user?.displayName || profile.author || "You",
-      body
-    );
-    setSending(false);
-    if (err) {
-      setError(err);
-      return;
-    }
-    setDraft("");
-    setSuggestOpen(false);
+    const handle = user?.handle || profile.handle || "you";
+    const author = user?.displayName || profile.author || "You";
+    const localId = `local-${Date.now()}`;
     setMessages((prev) => {
       const next = [
         ...prev,
         {
-          id: `local-${Date.now()}`,
+          id: localId,
           post_id: postId,
-          handle: user?.handle || profile.handle || "you",
-          author: user?.displayName || profile.author || "You",
+          handle,
+          author,
           body,
           created_at: new Date().toISOString(),
         },
@@ -224,7 +245,49 @@ export default function ChatPanel({
       onCountChange?.(next.length);
       return next;
     });
+    setDraft("");
+    setSuggestOpen(false);
     requestAnimationFrame(scrollToBottom);
+
+    const result = await sendMessage(postId, handle, author, body);
+    setSending(false);
+    if ("error" in result) {
+      setError(result.error);
+      setMessages((prev) => {
+        const next = prev.filter((m) => m.id !== localId);
+        onCountChange?.(next.length);
+        return next;
+      });
+      return;
+    }
+    setMessages((prev) => {
+      const withoutLocal = prev.filter(
+        (m) =>
+          m.id !== localId &&
+          !(
+            m.id.startsWith("local-") &&
+            normHandle(m.handle) === normHandle(handle) &&
+            m.body.trim() === body
+          )
+      );
+      if (withoutLocal.some((m) => m.id === result.id)) {
+        onCountChange?.(withoutLocal.length);
+        return withoutLocal;
+      }
+      const next = [
+        ...withoutLocal,
+        {
+          id: result.id,
+          post_id: postId,
+          handle,
+          author,
+          body,
+          created_at: new Date().toISOString(),
+        },
+      ];
+      onCountChange?.(next.length);
+      return next;
+    });
   };
 
   if (!open) return null;
@@ -245,7 +308,10 @@ export default function ChatPanel({
       : `${messages.length} comment${messages.length === 1 ? "" : "s"}`;
 
   return (
-    <div className="mt-4 border-t border-[var(--border-base)] pt-3">
+    <div
+      className="mt-4 border-t border-[var(--border-base)] pt-3"
+      style={keyboardPad ? { paddingBottom: keyboardPad } : undefined}
+    >
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="text-xs font-medium text-[var(--muted)]">{commentLabel}</p>
         <div className="flex items-center gap-2">
@@ -297,7 +363,7 @@ export default function ChatPanel({
         ))}
       </div>
 
-      <div className="relative mt-3">
+      <div className="relative mt-3" ref={composerRef}>
         {error && <p className="mb-1.5 text-[11px] text-rose-700">{error}</p>}
         {!signedIn ? (
           <p className="border-t border-[var(--border-base)] pt-3 text-sm text-[var(--muted)]">

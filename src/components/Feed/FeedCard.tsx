@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   MessageCircle,
   Heart,
@@ -22,6 +22,8 @@ import ChatPanel from "@/components/Chat/ChatPanel";
 import TranslateToEnglish from "@/components/TranslateToEnglish";
 import { shouldOfferTranslate } from "@/lib/lang";
 import { feelingOf, feelingWash } from "@/lib/feelings";
+import { isNewAccount } from "@/lib/anti-abuse";
+import { todayKey } from "@/lib/daily-prompt";
 
 function initials(name: string) {
   return name
@@ -35,12 +37,15 @@ function initials(name: string) {
 export type ReportReason =
   | "Hate or harassment"
   | "Unsafe or explicit"
-  | "Spam or fake"
+  | "Spam or coordinated accounts"
+  | "Misleading or fake story"
+  | "Sounds AI-generated"
+  | "Impersonation"
   | "Harms someone";
 
 interface FeedCardProps {
   thought: Thought;
-  onReact?: (thoughtId: string, reaction: Reaction) => void;
+  onReact?: (thoughtId: string, reaction: Reaction) => void | Promise<boolean>;
   onReport?: (thoughtId: string, reason: ReportReason) => void;
   onDelete?: (thoughtId: string) => void;
   onOpenRoom?: (id: FeelingId) => void;
@@ -51,6 +56,8 @@ interface FeedCardProps {
   /** Display name for optimistic “Liked by You”. */
   currentAuthor?: string | null;
   others?: number;
+  /** Open comments when deep-linked from activity. */
+  forceChatOpen?: boolean;
 }
 
 function sameHandle(a?: string | null, b?: string | null) {
@@ -61,7 +68,10 @@ function sameHandle(a?: string | null, b?: string | null) {
 const REPORT_REASONS: ReportReason[] = [
   "Hate or harassment",
   "Unsafe or explicit",
-  "Spam or fake",
+  "Spam or coordinated accounts",
+  "Misleading or fake story",
+  "Sounds AI-generated",
+  "Impersonation",
   "Harms someone",
 ];
 
@@ -76,6 +86,7 @@ export default function FeedCard({
   currentHandle,
   currentAuthor,
   others,
+  forceChatOpen,
 }: FeedCardProps) {
   const [reactions, setReactions] = useState(thought.reactions);
   const [mine, setMine] = useState<Reaction | null>(null);
@@ -90,13 +101,19 @@ export default function FeedCard({
   const [reporting, setReporting] = useState(false);
   const [reported, setReported] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(Boolean(forceChatOpen));
+
+  useEffect(() => {
+    if (forceChatOpen) setChatOpen(true);
+  }, [forceChatOpen]);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [commentCount, setCommentCount] = useState<number | null>(
     typeof thought.replyCount === "number" ? thought.replyCount : null
   );
   const [showReact, setShowReact] = useState(false);
   const [feeling, setFeeling] = useState(Boolean(feelingWith));
   const isAuthor = sameHandle(currentHandle, thought.handle);
+  const authorIsNew = isNewAccount(thought.authorJoinedAt ?? null, 7 * 24 * 3600_000);
   // Prefer prop when parent knows follow state; fall back to optimistic local toggle.
   const feelingActive = feelingWith !== undefined ? Boolean(feelingWith) : feeling;
 
@@ -107,49 +124,64 @@ export default function FeedCard({
   );
   const mediaSrc = thought.streamReady && thought.streamUrl ? thought.streamUrl : thought.mediaUrl;
 
-  const react = (r: Reaction) => {
+  const react = async (r: Reaction) => {
     if (!currentHandle) return;
+    setActionError(null);
+    const prevReactions = reactions;
+    const prevMine = mine;
     if (mine === r) {
       setReactions((prev) =>
         prev.map((e) => (e.type === r ? { ...e, count: Math.max(0, e.count - 1) } : e))
       );
       setMine(null);
-      onReact?.(thought.id, r);
-      return;
+    } else {
+      setReactions((prev) =>
+        prev.map((e) => {
+          if (e.type === r) return { ...e, count: e.count + 1 };
+          if (mine && e.type === mine) return { ...e, count: Math.max(0, e.count - 1) };
+          return e;
+        })
+      );
+      setMine(r);
     }
-    setReactions((prev) =>
-      prev.map((e) => {
-        if (e.type === r) return { ...e, count: e.count + 1 };
-        if (mine && e.type === mine) return { ...e, count: Math.max(0, e.count - 1) };
-        return e;
-      })
-    );
-    setMine(r);
-    onReact?.(thought.id, r);
+    const ok = onReact ? await Promise.resolve(onReact(thought.id, r)) : true;
+    if (ok === false) {
+      setReactions(prevReactions);
+      setMine(prevMine);
+      setActionError("Couldn’t save that reaction — try again.");
+    }
   };
 
-  const like = () => {
+  const like = async () => {
     if (!currentHandle) return;
-    setLiked((was) => {
-      const next = !was;
-      setLikes((n) => Math.max(0, n + (next ? 1 : -1)));
-      setLikedBy((prev) => {
-        const key = currentHandle.trim().toLowerCase().replace(/^@/, "");
-        if (next) {
-          if (prev.some((p) => sameHandle(p.handle, currentHandle))) return prev;
-          return [
-            {
-              handle: currentHandle.startsWith("@") ? currentHandle : `@${key}`,
-              author: currentAuthor?.trim() || "You",
-            },
-            ...prev,
-          ];
-        }
-        return prev.filter((p) => !sameHandle(p.handle, currentHandle));
-      });
-      onReact?.(thought.id, LIKE_REACTION);
-      return next;
+    setActionError(null);
+    const was = liked;
+    const prevLikes = likes;
+    const prevLikedBy = likedBy;
+    const next = !was;
+    setLiked(next);
+    setLikes(Math.max(0, likes + (next ? 1 : -1)));
+    setLikedBy((prev) => {
+      const key = currentHandle.trim().toLowerCase().replace(/^@/, "");
+      if (next) {
+        if (prev.some((p) => sameHandle(p.handle, currentHandle))) return prev;
+        return [
+          {
+            handle: currentHandle.startsWith("@") ? currentHandle : `@${key}`,
+            author: currentAuthor?.trim() || "You",
+          },
+          ...prev,
+        ];
+      }
+      return prev.filter((p) => !sameHandle(p.handle, currentHandle));
     });
+    const ok = onReact ? await Promise.resolve(onReact(thought.id, LIKE_REACTION)) : true;
+    if (ok === false) {
+      setLiked(was);
+      setLikes(prevLikes);
+      setLikedBy(prevLikedBy);
+      setActionError("Couldn’t save that like — try again.");
+    }
   };
 
   const seekTo = (t: number) => {
@@ -172,6 +204,14 @@ export default function FeedCard({
             <span className="truncate text-sm font-semibold text-[var(--foreground)]">
               {thought.author}
             </span>
+            {authorIsNew && (
+              <span
+                className="shrink-0 rounded-full border border-[var(--border-base)] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]"
+                title="Account created in the last 7 days"
+              >
+                New
+              </span>
+            )}
             <span className="shrink-0 text-xs text-[var(--muted)]">{thought.timeLabel}</span>
             <div className="relative ml-auto shrink-0">
               <button
@@ -259,9 +299,19 @@ export default function FeedCard({
                 }
               />
             )}
-            {thought.promptDay && (
+            {thought.promptDay === todayKey() && (
               <span className="rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[10px] font-semibold text-[var(--accent-2)]">
                 Today&apos;s prompt
+              </span>
+            )}
+            {thought.promptDay && thought.promptDay !== todayKey() && (
+              <span className="rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[10px] font-semibold text-[var(--muted)]">
+                Prompt · {thought.promptDay.slice(5)}
+              </span>
+            )}
+            {thought.integrity.statusLabel === "Sample voice" && (
+              <span className="rounded-full border border-[var(--border-base)] px-2 py-0.5 text-[10px] font-semibold text-[var(--muted)]">
+                Sample
               </span>
             )}
             {thought.languageLabel && thought.language && !thought.language.toLowerCase().startsWith("en") && (
@@ -319,6 +369,9 @@ export default function FeedCard({
         >
           {thought.content}
         </p>
+        <p className="text-[10px] text-[var(--muted)]">
+          Personal feeling — not a verified claim. Report if it looks fake, copied, or AI spam.
+        </p>
         {shouldOfferTranslate(thought.language) && (
           <TranslateToEnglish text={thought.content} sourceLang={thought.language} />
         )}
@@ -332,7 +385,7 @@ export default function FeedCard({
       <div className="relative z-0 mt-4 flex items-center gap-4 text-[var(--muted)]">
         <button
           type="button"
-          onClick={like}
+          onClick={() => void like()}
           disabled={!currentHandle}
           aria-label={liked ? "Unlike" : "Like"}
           title={!currentHandle ? "Sign in to like" : undefined}
@@ -364,6 +417,10 @@ export default function FeedCard({
         </button>
       </div>
 
+      {actionError && (
+        <p className="relative z-0 mt-2 text-[11px] text-rose-700">{actionError}</p>
+      )}
+
       {likes > 0 && (
         <p className="relative z-0 mt-2 text-xs text-[var(--muted)]">
           {formatLikedBy(likedBy, likes, currentHandle)}
@@ -380,7 +437,7 @@ export default function FeedCard({
                 key={r}
                 type="button"
                 disabled={!currentHandle}
-                onClick={() => react(r)}
+                onClick={() => void react(r)}
                 className={`rounded-full px-2.5 py-1 text-sm transition disabled:opacity-50 ${
                   isMine
                     ? "bg-[var(--accent-soft)] text-[var(--accent-2)]"

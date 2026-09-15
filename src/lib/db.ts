@@ -11,7 +11,13 @@ async function jsonFetch<T>(url: string, init?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error((body as { error?: string }).error ?? `Request failed (${res.status})`);
+    const err = body as { error?: string; code?: string; retry_in_sec?: number };
+    const message = err.error ?? `Request failed (${res.status})`;
+    const e = new Error(message) as Error & { code?: string; retryInSec?: number; status?: number };
+    e.code = err.code;
+    e.retryInSec = err.retry_in_sec;
+    e.status = res.status;
+    throw e;
   }
   return (await res.json()) as T;
 }
@@ -58,6 +64,7 @@ interface RawPost {
   like_count?: number;
   liked_by_me?: boolean;
   reply_count?: number;
+  author_joined_at?: string | null;
 }
 
 function toThought(r: RawPost): Thought {
@@ -95,6 +102,7 @@ function toThought(r: RawPost): Thought {
     likeCount: typeof r.like_count === "number" ? r.like_count : undefined,
     likedByMe: Boolean(r.liked_by_me),
     replyCount: typeof r.reply_count === "number" ? r.reply_count : undefined,
+    authorJoinedAt: r.author_joined_at ?? undefined,
   };
 }
 
@@ -115,7 +123,7 @@ export async function fetchPulsePosts(opts?: {
 export async function publishPost(
   payload: PublishInput,
   mediaBlob?: Blob | null
-): Promise<Thought | null> {
+): Promise<{ thought: Thought } | { error: string; code?: string; retryInSec?: number }> {
   try {
     let mediaUrl = payload.mediaUrl ?? null;
     if (mediaBlob) {
@@ -126,9 +134,6 @@ export async function publishPost(
           : mediaBlob.type.includes("mp3")
             ? "mp3"
             : "webm";
-      // Uploads straight from the browser to Vercel Blob storage — the
-      // file never passes through our server, so there's no request-body
-      // size ceiling on how long a recording can be.
       const uploaded = await upload(`take-${Date.now()}.${ext}`, mediaBlob, {
         access: "public",
         contentType: mediaBlob.type || "application/octet-stream",
@@ -160,10 +165,15 @@ export async function publishPost(
         prompt_text: payload.promptText ?? null,
       }),
     });
-    return toThought(row);
+    return { thought: toThought(row) };
   } catch (e) {
     console.error("publishPost:", e);
-    return null;
+    const err = e as Error & { code?: string; retryInSec?: number; status?: number };
+    return {
+      error: err.message || "Couldn’t share right now",
+      code: err.code,
+      retryInSec: err.retryInSec,
+    };
   }
 }
 
@@ -221,18 +231,20 @@ export async function sendMessage(
   handle: string,
   author: string,
   body: string
-): Promise<string | null> {
+): Promise<{ error: string } | { id: string }> {
   try {
-    await jsonFetch(`${API}/posts/${postId}/messages`, {
+    const row = await jsonFetch<{ ok: boolean; id: string }>(`${API}/posts/${postId}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ handle, author, body }),
     });
-    return null;
+    return { id: row.id };
   } catch (e) {
     console.error("sendMessage:", e);
     const msg = e instanceof Error ? e.message : "";
-    return msg && msg !== "Failed to fetch" ? msg : "Couldn't send that — try again";
+    return {
+      error: msg && msg !== "Failed to fetch" ? msg : "Couldn't send that — try again",
+    };
   }
 }
 

@@ -8,13 +8,13 @@ import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { checkDignity, normalizeTag } from "@/lib/dignity";
 import { GLOBAL_SEED_POSTS } from "@/lib/seed-posts";
 import { notifyFollowersOfPost } from "@/lib/activity";
-import { dailyPrompt, todayKey } from "@/lib/daily-prompt";
+import { dailyPromptForDay, promptDayKeyUTC } from "@/lib/daily-prompt";
 import { LIKE_REACTION, buildLikedBy } from "@/lib/likes";
+import { assertCanPost, contentFingerprint } from "@/lib/anti-abuse";
 
 const MEDIA_TYPES = new Set(["audio", "video", "text"]);
 const FEELING_IDS = new Set(FEELINGS.map((f) => f.id));
 const MAX_CONTENT_LENGTH = 2800;
-const COOLDOWN_MS = 15_000;
 const IP_POST_LIMIT = 20;
 const IP_POST_WINDOW_MS = 10 * 60_000;
 
@@ -38,6 +38,9 @@ interface PostDoc {
   integrity_label?: string | null;
   transcript?: unknown;
   boosts?: number;
+  content_fp?: string;
+  author_joined_at?: string | null;
+  abuse_flags?: string[];
   created_at: Date;
   seed_id?: string;
   prompt_day?: string;
@@ -79,12 +82,22 @@ async function ensureSamplePosts(
       language: p.language,
       language_label: p.language_label,
       integrity_hash: hash(`${p.seed_id}:${p.handle}:${p.content}`),
-      integrity_verified: true,
-      integrity_label: "Verified · Unmodified",
+      integrity_verified: false,
+      integrity_label: "Sample voice",
+      is_seed: true,
       created_at: new Date(Date.now() - p.hours * 3600e3),
       user_id: new ObjectId().toString(),
       boosts: 0,
     }))
+  );
+
+  // Relabel any legacy seed rows that still look “Verified”.
+  await db.collection("posts").updateMany(
+    {
+      $or: [{ seed_id: { $exists: true, $ne: null } }, { is_seed: true }],
+      integrity_label: { $ne: "Sample voice" },
+    },
+    { $set: { integrity_verified: false, integrity_label: "Sample voice", is_seed: true } }
   );
 
   // Drop the original untagged 3 demos if they still sit beside seeded copies
@@ -138,6 +151,10 @@ export async function GET(request: NextRequest) {
       if (r.handle) allHandles.add(r.handle.trim().toLowerCase().replace(/^@/, ""));
     }
 
+    for (const p of posts) {
+      if (p.handle) allHandles.add(String(p.handle).trim().toLowerCase().replace(/^@/, ""));
+    }
+
     const nameByHandle = new Map<string, string>();
     if (allHandles.size > 0) {
       const handleVariants = [...allHandles].flatMap((h) => [h, `@${h}`]);
@@ -182,10 +199,15 @@ export async function GET(request: NextRequest) {
         me &&
           heartRows.some((r) => r.handle?.trim().toLowerCase().replace(/^@/, "") === me)
       );
+      const authorKey = String(p.handle || "")
+        .trim()
+        .toLowerCase()
+        .replace(/^@/, "");
+      const liveAuthor = nameByHandle.get(authorKey);
       return {
         id,
         handle: p.handle,
-        author: p.author || p.handle.replace(/^@/, ""),
+        author: liveAuthor || p.author || p.handle.replace(/^@/, ""),
         content: p.content,
         media_type: p.media_type,
         feeling: p.feeling ?? null,
@@ -209,6 +231,7 @@ export async function GET(request: NextRequest) {
         like_count: unique.size,
         liked_by_me: likedByMe,
         reply_count: messageCounts.get(id) ?? 0,
+        author_joined_at: p.author_joined_at ?? null,
       };
     });
 
@@ -270,20 +293,38 @@ export async function POST(request: NextRequest) {
 
     const { db } = await connectToDatabase();
 
-    const lastPost = await db
-      .collection<PostDoc>("posts")
-      .find({ user_id: session.id })
-      .sort({ created_at: -1 })
-      .limit(1)
-      .toArray();
-    if (lastPost[0]) {
-      const elapsed = Date.now() - new Date(lastPost[0].created_at).getTime();
-      if (elapsed < COOLDOWN_MS) {
+    let createdAt: string | null = null;
+    try {
+      const userDoc = await db.collection("users").findOne({
+        _id: new ObjectId(session.id),
+      });
+      const raw =
+        (userDoc as { createdAt?: string; created_at?: string | Date } | null)?.createdAt ??
+        (userDoc as { created_at?: string | Date } | null)?.created_at ??
+        null;
+      createdAt =
+        raw instanceof Date ? raw.toISOString() : typeof raw === "string" ? raw : null;
+    } catch {
+      createdAt = null;
+    }
+
+    const abuse = await assertCanPost(db, {
+      userId: session.id,
+      handle: session.handle,
+      content,
+      createdAt,
+    });
+    if (!abuse.ok) {
+      if (abuse.code === "cooldown") {
         return NextResponse.json(
-          { error: "cooldown", retry_in_sec: Math.ceil((COOLDOWN_MS - elapsed) / 1000) },
+          {
+            error: "cooldown",
+            retry_in_sec: abuse.retryInSec ?? 60,
+          },
           { status: 429 }
         );
       }
+      return NextResponse.json({ error: abuse.reason, code: abuse.code }, { status: 400 });
     }
 
     const fromDaily =
@@ -292,12 +333,12 @@ export async function POST(request: NextRequest) {
     const promptDay = fromDaily
       ? typeof body.prompt_day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.prompt_day)
         ? body.prompt_day
-        : todayKey()
+        : promptDayKeyUTC()
       : undefined;
     const promptText = promptDay
       ? typeof body.prompt_text === "string" && body.prompt_text.trim()
         ? body.prompt_text.trim().slice(0, 280)
-        : dailyPrompt()
+        : dailyPromptForDay(promptDay)
       : undefined;
 
     const doc: PostDoc = {
@@ -319,6 +360,9 @@ export async function POST(request: NextRequest) {
       integrity_label: typeof body.integrity_label === "string" ? body.integrity_label : null,
       transcript: null,
       boosts: 0,
+      content_fp: contentFingerprint(content),
+      author_joined_at: createdAt,
+      abuse_flags: abuse.flags ?? [],
       created_at: new Date(),
       ...(promptDay ? { prompt_day: promptDay, prompt_text: promptText } : {}),
     };

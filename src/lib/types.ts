@@ -6,7 +6,9 @@ export type PublishResult =
   | { ok: false; reason: "cooldown"; retryInSec: number }
   | { ok: false; reason: "empty" }
   | { ok: false; reason: "too_long"; max: number }
-  | { ok: false; reason: "failed" };
+  | { ok: false; reason: "auth" }
+  | { ok: false; reason: "blocked"; message: string }
+  | { ok: false; reason: "failed"; message?: string };
 
 export type VerificationStatus = "verified" | "simulated";
 
@@ -90,6 +92,8 @@ export interface Thought {
   likedByMe?: boolean;
   /** Prefetched reply/comment count. */
   replyCount?: number;
+  /** ISO when the author account was created (for “New” badge). */
+  authorJoinedAt?: string;
   /** Human relative time label like "2m" */
   timeLabel: string;
   integrity: Integrity;

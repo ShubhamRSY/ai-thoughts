@@ -23,6 +23,14 @@ export async function ensureCoreIndexes(db: Db): Promise<void> {
       { handle: 1, created_at: -1 },
       { name: "posts_handle_created" }
     ),
+    db.collection("posts").createIndex(
+      { user_id: 1, created_at: -1 },
+      { name: "posts_user_created" }
+    ),
+    db.collection("users").createIndex(
+      { handle: 1 },
+      { name: "users_handle" }
+    ),
     db.collection("push_subscriptions").createIndex(
       { endpoint: 1 },
       { unique: true, name: "push_endpoint_unique" }
@@ -38,6 +46,10 @@ export async function ensureCoreIndexes(db: Db): Promise<void> {
     db.collection("notifications").createIndex(
       { recipient_handle: 1, created_at: -1 },
       { name: "notifications_recipient_created" }
+    ),
+    db.collection("reactions").createIndex(
+      { post_id: 1, handle_norm: 1, reaction: 1 },
+      { unique: true, sparse: true, name: "reactions_post_handle_reaction" }
     ),
   ];
 

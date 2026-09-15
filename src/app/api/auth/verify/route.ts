@@ -8,6 +8,9 @@ import {
 } from "@/lib/auth";
 import { verifyAndConsumeOtp } from "@/lib/otp";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { getSiteSettings } from "@/lib/admin";
+import { connectToDatabase } from "@/lib/mongodb";
+import { hashEmail } from "@/lib/secure";
 
 const VERIFY_LIMIT = 20;
 const VERIFY_WINDOW_MS = 10 * 60_000;
@@ -55,11 +58,44 @@ export async function POST(request: Request) {
     }
 
     const normalized = email.toLowerCase().trim();
-    const user = await findOrCreateUser(normalized, result.displayName);
+
+    // invitesOpen gates brand-new accounts; returning members can still finish OTP.
+    const settings = await getSiteSettings();
+    if (!settings.invitesOpen) {
+      try {
+        const { db } = await connectToDatabase();
+        const found = await db.collection("users").findOne({
+          $or: [{ emailHash: hashEmail(normalized) }, { email: normalized }],
+        });
+        if (!found) {
+          return NextResponse.json(
+            {
+              error: "New sign-ups are paused right now. Try again later.",
+              code: "invites_closed",
+            },
+            { status: 403 }
+          );
+        }
+      } catch {
+        return NextResponse.json(
+          {
+            error: "New sign-ups are paused right now. Try again later.",
+            code: "invites_closed",
+          },
+          { status: 403 }
+        );
+      }
+    }
+
+    let user;
+    try {
+      user = await findOrCreateUser(normalized, result.displayName);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Could not create account";
+      return NextResponse.json({ error: msg }, { status: 400 });
+    }
     const token = await createSession(user);
 
-    // Set cookie on the response itself — cookies() alone can drop Set-Cookie
-    // when returning NextResponse.json() from a route handler.
     const res = NextResponse.json({
       ok: true,
       user: {

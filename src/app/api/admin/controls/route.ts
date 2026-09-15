@@ -197,12 +197,17 @@ export async function POST(request: NextRequest) {
           language: p.language,
           language_label: p.language_label,
           integrity_hash: hash(`${p.seed_id}:${p.handle}:${p.content}`),
-          integrity_verified: true,
-          integrity_label: "Verified · Unmodified",
+          integrity_verified: false,
+          integrity_label: "Sample voice",
+          is_seed: true,
           created_at: new Date(Date.now() - p.hours * 3600e3),
           user_id: new ObjectId().toString(),
         }));
         if (docs.length > 0) await db.collection("posts").insertMany(docs);
+        await db.collection("posts").updateMany(
+          { $or: [{ seed_id: { $exists: true, $ne: null } }, { is_seed: true }] },
+          { $set: { integrity_verified: false, integrity_label: "Sample voice", is_seed: true } }
+        );
         const total = await db.collection("posts").countDocuments();
         return NextResponse.json({
           ok: true,

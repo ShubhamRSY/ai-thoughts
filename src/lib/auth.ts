@@ -7,6 +7,11 @@ import {
   hashEmail,
   timingSafeEqualStr,
 } from "@/lib/secure";
+import {
+  allocateSafeHandle,
+  checkDisposableEmail,
+  checkDisplayNameAllowed,
+} from "@/lib/anti-abuse";
 
 export const SESSION_COOKIE = "aithoughts.session";
 /** Stay signed in across app closes — 90 days, refreshed on each visit. */
@@ -191,6 +196,15 @@ export async function findOrCreateUser(
   email: string,
   displayName: string
 ): Promise<UserRecord> {
+  const disposable = checkDisposableEmail(email);
+  if (!disposable.ok) {
+    throw new Error(disposable.reason);
+  }
+  const nameCheck = checkDisplayNameAllowed(displayName || "");
+  if (!nameCheck.ok) {
+    throw new Error(nameCheck.reason);
+  }
+
   const { db } = await connectToDatabase();
   const users = db.collection<UserRecord>("users");
 
@@ -221,14 +235,21 @@ export async function findOrCreateUser(
     delete user.email;
     if (displayName.trim()) user.displayName = displayName.trim();
   } else {
-    const base =
-      normalizedEmail.split("@")[0].replace(/[^a-z0-9]/gi, "").slice(0, 12) || "user";
-    const handle = `@${base}${Math.floor(Math.random() * 9000 + 1000)}`;
+    const local = normalizedEmail.split("@")[0] || "user";
+    let handle = allocateSafeHandle(local);
+    // Extremely unlikely collision — retry a few times
+    for (let i = 0; i < 5; i++) {
+      const taken = await users.findOne({
+        handle: { $in: [handle, handle.toLowerCase()] },
+      });
+      if (!taken) break;
+      handle = allocateSafeHandle(`${local}${i}`);
+    }
     const newUser: UserRecord = {
       emailHash,
       emailEnc,
       handle,
-      displayName: displayName.trim() || base,
+      displayName: displayName.trim() || local.replace(/[^a-z0-9]/gi, "").slice(0, 12) || "friend",
       createdAt: new Date().toISOString(),
       lastLoginAt: new Date().toISOString(),
     };

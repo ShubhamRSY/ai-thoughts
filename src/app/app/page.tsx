@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { HeartHandshake } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -46,12 +47,15 @@ import { todayKey as promptTodayKey } from "@/lib/daily-prompt";
 type MediaFilter = "all" | MediaType;
 
 export default function Home() {
+  const router = useRouter();
   const { profile, save } = useLocalProfile();
   const { user } = useAuth();
   const identityHandle = user?.handle || profile.handle;
   const identityAuthor = user?.displayName || profile.author;
   const { streak, bump } = useFeelingStreak();
   const [thoughts, setThoughts] = useState<Thought[]>([]);
+  const [feedStatus, setFeedStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [focusPostId, setFocusPostId] = useState<string | null>(null);
   const [mine, setMine] = useState<Thought[]>([]);
   const [media, setMedia] = useState<MediaFilter>("all");
   const [feeling, setFeeling] = useState<FeelingFilter>("all");
@@ -135,33 +139,78 @@ export default function Home() {
     return thoughts.filter((t) => t.promptDay === day).length;
   }, [thoughts]);
 
+  useEffect(() => {
+    if (!focusPostId || feedStatus !== "ready") return;
+    const t = window.setTimeout(() => {
+      document.getElementById(`post-${focusPostId}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 120);
+    return () => window.clearTimeout(t);
+  }, [focusPostId, feedStatus, filtered.length]);
+
   const onFeelWith = useCallback(
     async (handle: string, next: boolean = true) => {
       if (!user) return;
       const norm = handle.trim().toLowerCase().replace(/^@/, "");
-      setFollowing((prev) => {
-        const without = prev.filter((h) => h.trim().toLowerCase().replace(/^@/, "") !== norm);
+      const prev = following;
+      setFollowing((p) => {
+        const without = p.filter((h) => h.trim().toLowerCase().replace(/^@/, "") !== norm);
         return next ? [`@${norm}`, ...without] : without;
       });
       try {
-        await fetch("/api/follows", {
+        const res = await fetch("/api/follows", {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ handle, action: next ? "follow" : "unfollow" }),
         });
+        if (!res.ok) setFollowing(prev);
       } catch {
-        /* ignore */
+        setFollowing(prev);
       }
     },
-    [user]
+    [user, following]
   );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const id = new URLSearchParams(window.location.search).get("post");
+    if (id) {
+      setFocusPostId(id);
+      setTab("home");
+      setRoom(null);
+      setRegionScope("world");
+      setMedia("all");
+      setFeeling("all");
+    }
+  }, []);
+
+  const openActivityPost = useCallback((postId: string) => {
+    setActivityOpen(false);
+    setFocusPostId(postId);
+    setTab("home");
+    setRoom(null);
+    setRegionScope("world");
+    setMedia("all");
+    setFeeling("all");
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("post", postId);
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, []);
 
   const openShare = (
     tabPref: MediaType = "video",
     presetFeeling?: FeelingId,
     fromDaily = false
   ) => {
+    if (!user) {
+      router.push("/sign-in?next=/app");
+      return;
+    }
     if (maintenance) {
       window.alert(maintenanceMessage || "Voices is pausing briefly — check back soon.");
       return;
@@ -234,11 +283,12 @@ export default function Home() {
 
   const publish = useCallback(
     async (data: SharePayload, clip?: CapturedClip): Promise<PublishResult> => {
+      if (!user) return { ok: false, reason: "auth" };
       const guard = checkPublishGuard(data.content);
       if (!guard.ok) return guard;
 
       const userHandle = data.handle.startsWith("@") ? data.handle : `@${data.handle}`;
-      if (!user && profile.handle !== userHandle) save({ ...profile, handle: userHandle });
+      if (profile.handle !== userHandle) save({ ...profile, handle: userHandle });
 
       let integrity = data.integrity;
       if (clip?.blob) {
@@ -254,11 +304,24 @@ export default function Home() {
 
       if (isLive()) {
         const posted = await publishPost(refined, clip?.blob ?? null);
-        if (!posted) return { ok: false, reason: "failed" };
+        if ("error" in posted) {
+          if (posted.retryInSec) {
+            return { ok: false, reason: "cooldown", retryInSec: posted.retryInSec };
+          }
+          if (posted.error.toLowerCase().includes("sign in")) {
+            return { ok: false, reason: "auth" };
+          }
+          return { ok: false, reason: "blocked", message: posted.error };
+        }
         markPublished();
-        setThoughts((prev) => [posted, ...prev]);
-        setMine((prev) => [posted, ...prev]);
-        setUndoId(posted.id);
+        setRegionScope("world");
+        setMedia("all");
+        setFeeling("all");
+        setRoom(null);
+        setThoughts((prev) => [posted.thought, ...prev.filter((t) => t.id !== posted.thought.id)]);
+        setMine((prev) => [posted.thought, ...prev.filter((t) => t.id !== posted.thought.id)]);
+        setUndoId(posted.thought.id);
+        setFocusPostId(posted.thought.id);
         bump(data.feeling);
         return { ok: true };
       }
@@ -283,22 +346,29 @@ export default function Home() {
     [profile, save, bump, user]
   );
 
-  const onReact = useCallback((thoughtId: string, reaction: Reaction) => {
-    if (isLive()) void addReaction(thoughtId, reaction);
+  const onReact = useCallback(async (thoughtId: string, reaction: Reaction) => {
+    if (!isLive()) return true;
+    return addReaction(thoughtId, reaction);
   }, []);
 
   useEffect(() => {
-    if (!isLive()) return;
+    if (!isLive()) {
+      setFeedStatus("ready");
+      return;
+    }
     let cancelled = false;
+    setFeedStatus("loading");
     fetchPulsePosts().then((posts) => {
       if (cancelled) return;
       if (!posts) {
         setThoughts([]);
         setMine([]);
+        setFeedStatus("error");
         return;
       }
       setThoughts(posts);
       setMine(posts.filter((t) => sameAuthor(t.handle, identityHandle)));
+      setFeedStatus("ready");
     });
     return () => {
       cancelled = true;
@@ -420,18 +490,22 @@ export default function Home() {
                     onFeelWith={user ? onFeelWith : undefined}
                     followingHandles={followingSet}
                     othersMap={othersMap}
+                    loading={feedStatus === "loading"}
+                    focusPostId={focusPostId}
                     emptyHint={
-                      regionScope === "today"
-                        ? "No answers to today’s prompt yet — share yours."
-                        : regionScope === "circle"
-                          ? following.length
-                            ? "No takes from people you feel with yet."
-                            : "Feel with someone on a take to build your circle."
-                          : regionScope === "near"
-                            ? "Nothing nearby yet — try Worldwide, or share first."
-                            : media !== "all"
-                              ? "No takes in this format — try All."
-                              : "Be the first to share how AI makes you feel."
+                      feedStatus === "error"
+                        ? "Couldn’t load Voices — check your connection and try again."
+                        : regionScope === "today"
+                          ? "No answers to today’s prompt yet — share yours."
+                          : regionScope === "circle"
+                            ? following.length
+                              ? "No takes from people you feel with yet."
+                              : "Feel with someone on a take to build your circle."
+                            : regionScope === "near"
+                              ? "Nothing nearby yet — try Worldwide, or share first."
+                              : media !== "all"
+                                ? "No takes in this format — try All."
+                                : "Be the first to share how AI makes you feel."
                     }
                   />
                 </div>
@@ -492,6 +566,7 @@ export default function Home() {
         items={activityItems}
         unread={activityUnread}
         onMarkAllRead={() => void markAllRead()}
+        onSelectPost={openActivityPost}
       />
 
       {undoId && (

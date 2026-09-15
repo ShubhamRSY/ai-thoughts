@@ -12,7 +12,7 @@ export const BRAND = {
   shareCta: "Share your feeling",
   shareTitle: "Share your feeling",
   shareSuccess: "Your feeling is live.",
-  shareSuccessSub: "Others can feel with you, reply, and share their own.",
+  shareSuccessSub: "It’s in Worldwide — open Voices to see it with replies and reactions.",
   joinCta: "Start expressing",
   openCta: "Open Voices",
   homeNav: "Voices",

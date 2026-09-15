@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ObjectId } from "mongodb";
 import { connectToDatabase } from "@/lib/mongodb";
-import { getSession } from "@/lib/auth";
+import {
+  createSession,
+  getSession,
+  SESSION_COOKIE,
+  sessionCookieOptions,
+} from "@/lib/auth";
+import { checkDisplayNameAllowed } from "@/lib/anti-abuse";
 
 export async function GET(request: NextRequest) {
   try {
@@ -36,6 +43,10 @@ export async function PUT(request: NextRequest) {
     }
     const author =
       typeof body.author === "string" ? body.author.slice(0, 80) : session.displayName;
+    const nameCheck = checkDisplayNameAllowed(author);
+    if (!nameCheck.ok) {
+      return NextResponse.json({ error: nameCheck.reason }, { status: 400 });
+    }
     const bio = typeof body.bio === "string" ? body.bio.trim().slice(0, 160) : "";
     const avatarUrl =
       typeof body.avatarUrl === "string" && body.avatarUrl.startsWith("https://")
@@ -56,7 +67,37 @@ export async function PUT(request: NextRequest) {
       },
       { upsert: true }
     );
-    return NextResponse.json({ ok: true });
+
+    // Keep users, session, and existing takes in sync with the updated name.
+    try {
+      await db.collection("users").updateOne(
+        { _id: new ObjectId(session.id) },
+        { $set: { displayName: author } }
+      );
+      await db.collection("posts").updateMany(
+        { user_id: session.id },
+        { $set: { author } }
+      );
+    } catch {
+      /* ignore */
+    }
+
+    const token = await createSession({
+      id: session.id,
+      handle: session.handle,
+      displayName: author,
+    });
+
+    const res = NextResponse.json({
+      ok: true,
+      user: {
+        id: session.id,
+        handle: session.handle,
+        displayName: author,
+      },
+    });
+    res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
+    return res;
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });

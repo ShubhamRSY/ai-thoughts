@@ -5,7 +5,10 @@ import { getSession } from "@/lib/auth";
 const VALID_REASONS = new Set([
   "Hate or harassment",
   "Unsafe or explicit",
-  "Spam or fake",
+  "Spam or coordinated accounts",
+  "Misleading or fake story",
+  "Sounds AI-generated",
+  "Impersonation",
   "Harms someone",
 ]);
 

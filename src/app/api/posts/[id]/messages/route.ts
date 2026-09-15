@@ -55,6 +55,18 @@ export async function POST(
     }
 
     const { db } = await connectToDatabase();
+    let objectId: ObjectId;
+    try {
+      objectId = new ObjectId(id);
+    } catch {
+      return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+    }
+    const post = await db.collection("posts").findOne(
+      { _id: objectId },
+      { projection: { handle: 1 } }
+    );
+    if (!post) return NextResponse.json({ error: "Post not found" }, { status: 404 });
+
     const preview = trimmed.slice(0, 600);
     const result = await db.collection("messages").insertOne({
       post_id: id,
@@ -65,16 +77,7 @@ export async function POST(
     });
 
     const mentioned = extractMentions(preview);
-    let postHandle: string | null = null;
-    try {
-      const post = await db.collection("posts").findOne(
-        { _id: new ObjectId(id) },
-        { projection: { handle: 1 } }
-      );
-      postHandle = post?.handle ? String(post.handle) : null;
-    } catch {
-      /* ignore */
-    }
+    const postHandle = post.handle ? String(post.handle) : null;
 
     const ownerMentioned =
       Boolean(postHandle) &&

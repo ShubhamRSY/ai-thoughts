@@ -5,7 +5,7 @@ import FeedCard, { type ReportReason } from "@/components/Feed/FeedCard";
 
 interface FeedGridProps {
   thoughts: Thought[];
-  onReact?: (thoughtId: string, reaction: Reaction) => void;
+  onReact?: (thoughtId: string, reaction: Reaction) => void | Promise<boolean>;
   onReport?: (thoughtId: string, reason: ReportReason) => void;
   onDelete?: (thoughtId: string) => void;
   onOpenRoom?: (id: FeelingId) => void;
@@ -15,6 +15,8 @@ interface FeedGridProps {
   currentAuthor?: string | null;
   othersMap?: Record<string, number>;
   emptyHint?: string;
+  loading?: boolean;
+  focusPostId?: string | null;
 }
 
 function norm(h: string) {
@@ -33,6 +35,8 @@ export default function FeedGrid({
   currentAuthor,
   othersMap,
   emptyHint,
+  loading,
+  focusPostId,
 }: FeedGridProps) {
   const following = new Set(
     (Array.isArray(followingHandles)
@@ -42,6 +46,14 @@ export default function FeedGrid({
         : []
     ).map(norm)
   );
+
+  if (loading) {
+    return (
+      <div className="px-1 py-16 text-center">
+        <p className="text-sm text-[var(--muted)]">Loading voices…</p>
+      </div>
+    );
+  }
 
   if (thoughts.length === 0) {
     return (
@@ -57,19 +69,21 @@ export default function FeedGrid({
   return (
     <div className="feed-grid">
       {thoughts.map((t) => (
-        <FeedCard
-          key={t.id}
-          thought={t}
-          onReact={onReact}
-          onReport={onReport}
-          onDelete={onDelete}
-          onOpenRoom={onOpenRoom}
-          onFeelWith={onFeelWith}
-          feelingWith={following.has(norm(t.handle))}
-          currentHandle={currentHandle}
-          currentAuthor={currentAuthor}
-          others={t.feeling ? othersMap?.[t.feeling] : undefined}
-        />
+        <div key={t.id} id={`post-${t.id}`}>
+          <FeedCard
+            thought={t}
+            onReact={onReact}
+            onReport={onReport}
+            onDelete={onDelete}
+            onOpenRoom={onOpenRoom}
+            onFeelWith={onFeelWith}
+            feelingWith={following.has(norm(t.handle))}
+            currentHandle={currentHandle}
+            currentAuthor={currentAuthor}
+            others={t.feeling ? othersMap?.[t.feeling] : undefined}
+            forceChatOpen={focusPostId === t.id}
+          />
+        </div>
       ))}
     </div>
   );

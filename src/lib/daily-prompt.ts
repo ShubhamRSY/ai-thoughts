@@ -36,7 +36,7 @@ const PROMPTS = [
   "What would make you open AI·Thoughts again tomorrow?",
 ];
 
-/** Local calendar day key YYYY-MM-DD */
+/** Local calendar day key YYYY-MM-DD (browser / user-facing). */
 export function promptDayKey(date = new Date()): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -44,11 +44,22 @@ export function promptDayKey(date = new Date()): string {
   return `${y}-${m}-${d}`;
 }
 
+/** UTC day key — use on the server so prompt buckets don’t depend on Vercel region. */
+export function promptDayKeyUTC(date = new Date()): string {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 export function shiftDayKey(dayKey: string, deltaDays: number): string {
   const [y, m, d] = dayKey.split("-").map(Number);
-  const dt = new Date(y!, m! - 1, d!);
-  dt.setDate(dt.getDate() + deltaDays);
-  return promptDayKey(dt);
+  const dt = new Date(Date.UTC(y!, m! - 1, d!));
+  dt.setUTCDate(dt.getUTCDate() + deltaDays);
+  const yy = dt.getUTCFullYear();
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(dt.getUTCDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
 }
 
 export function yesterdayKey(date = new Date()): string {
@@ -59,20 +70,32 @@ export function todayKey(date = new Date()): string {
   return promptDayKey(date);
 }
 
-function dayOfYear(date: Date): number {
+function dayOfYearUTC(date: Date): number {
+  const start = Date.UTC(date.getUTCFullYear(), 0, 0);
+  const now = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+  return Math.floor((now - start) / 864e5);
+}
+
+function dayOfYearLocal(date: Date): number {
   const start = Date.UTC(date.getFullYear(), 0, 0);
   const now = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
   return Math.floor((now - start) / 864e5);
 }
 
+/** Client-facing prompt — follows the user’s local calendar day. */
 export function dailyPrompt(date = new Date()): string {
-  return PROMPTS[dayOfYear(date) % PROMPTS.length]!;
+  return PROMPTS[dayOfYearLocal(date) % PROMPTS.length]!;
 }
 
-/** Prompt text for a YYYY-MM-DD key (uses local calendar parse). */
+/** Server fallback when the client didn’t send prompt text — UTC day. */
+export function dailyPromptUTC(date = new Date()): string {
+  return PROMPTS[dayOfYearUTC(date) % PROMPTS.length]!;
+}
+
+/** Prompt text for a YYYY-MM-DD key (calendar date, not timezone-shifted). */
 export function dailyPromptForDay(dayKey: string): string {
   const [y, m, d] = dayKey.split("-").map(Number);
-  return dailyPrompt(new Date(y!, m! - 1, d!));
+  return dailyPromptUTC(new Date(Date.UTC(y!, m! - 1, d!)));
 }
 
 export { PROMPTS };

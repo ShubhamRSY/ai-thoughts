@@ -24,11 +24,20 @@ export default function GuidelinesPage() {
             <li>Slurs and dehumanizing language</li>
             <li>Doxxing or posting others&apos; private info</li>
             <li>Spam, impersonation, or coordinated fake content</li>
+            <li>Misleading “personal stories” posted as fact, or mass AI-generated essay spam</li>
             <li>Content that endangers a person, especially young people</li>
           </ul>
           <p className="mt-2">
             You can still say you hate how AI is used at work, fear deepfakes, or love a tool —
             strong opinions are welcome when they stay respectful.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">Feelings, not facts</h2>
+          <p>
+            Voices is for how AI makes you feel — not verified news. Takes are personal
+            expression. If something looks fake, copied, or AI spam, report it.
           </p>
         </section>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Camera, Check, PencilLine, Trash2 } from "lucide-react";
 import { upload } from "@vercel/blob/client";
 import type { Thought } from "@/lib/types";
@@ -25,8 +26,9 @@ function initials(name: string) {
 }
 
 export default function ProfileView({ myThoughts, onCreate, onDelete }: ProfileViewProps) {
+  const router = useRouter();
   const { profile, save } = useLocalProfile();
-  const { user, signOut } = useAuth();
+  const { user, signOut, refresh } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState(false);
   const [handle, setHandle] = useState(profile.handle || "");
@@ -70,15 +72,22 @@ export default function ProfileView({ myThoughts, onCreate, onDelete }: ProfileV
     await saveProfile(user?.id || "local", handleValue, authorValue, {
       bio: bioValue,
       avatarUrl: avatarValue,
+    }).then((err) => {
+      if (err) throw new Error(err.replace(/^Error:\s*/, "") || "Couldn’t save profile.");
     });
   };
 
   const commit = async () => {
     setError(null);
-    await persist({});
-    setEditing(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1500);
+    try {
+      await persist({});
+      await refresh();
+      setEditing(false);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1500);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn’t save profile.");
+    }
   };
 
   const onPickAvatar = async (file: File | null) => {
@@ -347,7 +356,7 @@ export default function ProfileView({ myThoughts, onCreate, onDelete }: ProfileV
                     return;
                   }
                   await signOut();
-                  window.location.href = "/";
+                  router.replace("/");
                 } catch {
                   setError("Couldn’t delete account. Try again.");
                 } finally {

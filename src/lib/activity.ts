@@ -37,6 +37,7 @@ async function writeActivity(
     pushTitle: string;
     pushBody: string;
     pushTag: string;
+    pushUrl?: string;
   }
 ): Promise<void> {
   if (normHandle(opts.recipientHandle) === normHandle(opts.actorHandle)) return;
@@ -56,7 +57,7 @@ async function writeActivity(
   await sendPushToHandle(db, opts.recipientHandle, {
     title: opts.pushTitle,
     body: opts.pushBody,
-    url: "/app",
+    url: opts.pushUrl || `/app?post=${opts.postId}`,
     tag: opts.pushTag,
   });
 }
@@ -131,6 +132,7 @@ export async function notifyPostOwner(
     pushTitle: title,
     pushBody: body,
     pushTag: `post-${opts.postId}-${opts.kind}`,
+    pushUrl: `/app?post=${opts.postId}`,
   });
 }
 

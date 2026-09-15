@@ -50,7 +50,7 @@ export default function SignInForm({ total }: { total: number }) {
   );
 }
 
-function SignInFormInner({ total }: { total: number }) {
+function SignInFormInner({}: { total: number }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { requestCode, verifyCode, user, loading } = useAuth();
@@ -63,7 +63,7 @@ function SignInFormInner({ total }: { total: number }) {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const from = searchParams.get("from") ?? "/app";
+  const from = searchParams.get("next") ?? searchParams.get("from") ?? "/app";
   const dest = from.startsWith("/") && !from.startsWith("//") ? from : "/app";
 
   useEffect(() => {

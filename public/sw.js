@@ -1,6 +1,6 @@
 // AI·Thoughts service worker — shell only; never cache the feed.
-const CACHE = "aithoughts-v6";
-const CORE = ["/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"];
+const CACHE = "aithoughts-v7";
+const CORE = ["/offline.html", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -71,12 +71,20 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== location.origin) return;
 
-  if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/app")) return;
+  // Never cache API or live feed — always network.
+  if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/app")) {
+    if (request.mode === "navigate") {
+      event.respondWith(
+        fetch(request).catch(() => caches.match("/offline.html").then((r) => r || Response.error()))
+      );
+    }
+    return;
+  }
 
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request).catch(() =>
-        caches.match("/").then((r) => r || Response.error())
+        caches.match("/offline.html").then((r) => r || caches.match("/").then((h) => h || Response.error()))
       )
     );
     return;
@@ -86,13 +94,15 @@ self.addEventListener("fetch", (event) => {
     caches.match(request).then(
       (cached) =>
         cached ||
-        fetch(request).then((res) => {
-          if (res.ok && (url.pathname.startsWith("/icons/") || url.pathname.endsWith(".png"))) {
-            const copy = res.clone();
-            caches.open(CACHE).then((c) => c.put(request, copy));
-          }
-          return res;
-        })
+        fetch(request)
+          .then((res) => {
+            if (res.ok && (url.pathname.startsWith("/icons/") || url.pathname.endsWith(".png"))) {
+              const copy = res.clone();
+              caches.open(CACHE).then((c) => c.put(request, copy));
+            }
+            return res;
+          })
+          .catch(() => caches.match("/offline.html").then((r) => r || Response.error()))
     )
   );
 });
