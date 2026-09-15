@@ -149,13 +149,26 @@ describe("P1 prompt day / midnight", () => {
   });
 
   it("UTC and local keys can differ near midnight", () => {
-    // 11pm EDT = 03:00 next day UTC
-    const lateEd = new Date("2026-09-15T23:00:00-04:00");
-    const local = promptDayKey(lateEd);
-    const utc = promptDayKeyUTC(lateEd);
-    // Document the mismatch the product must handle: client sends local day.
-    assert.equal(local, "2026-09-15");
+    // Fixed absolute instant: 2026-09-15 23:00 in America/New_York = 2026-09-16 03:00 UTC.
+    const instant = new Date("2026-09-15T23:00:00-04:00");
+    const local = promptDayKey(instant);
+    const utc = promptDayKeyUTC(instant);
+
+    // UTC day is absolute — must not depend on the runner’s timezone.
     assert.equal(utc, "2026-09-16");
+
+    // Local day follows the host calendar (CI is usually UTC → same as utc).
+    const expectedLocal = [
+      instant.getFullYear(),
+      String(instant.getMonth() + 1).padStart(2, "0"),
+      String(instant.getDate()).padStart(2, "0"),
+    ].join("-");
+    assert.equal(local, expectedLocal);
+
+    // On non-UTC hosts (e.g. US evening), local and UTC diverge — the product bug we guard.
+    if (instant.getTimezoneOffset() !== 0) {
+      assert.notEqual(local, utc);
+    }
   });
 
   it("dailyPromptForDay is stable for a YYYY-MM-DD key", () => {
