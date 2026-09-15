@@ -1,7 +1,6 @@
 import Link from "next/link";
 import Footer from "@/components/Footer";
 import BrandMark from "@/components/BrandMark";
-import { FEELINGS, feelingOf } from "@/lib/feelings";
 import { getPulseStats } from "@/lib/pulse-stats";
 import { getSession } from "@/lib/auth";
 import { BRAND } from "@/lib/brand";
@@ -9,7 +8,7 @@ import { BRAND } from "@/lib/brand";
 export const dynamic = "force-dynamic";
 
 export default async function LandingPage() {
-  const [{ total, samples }, session] = await Promise.all([
+  const [{ total }, session] = await Promise.all([
     getPulseStats(),
     getSession(),
   ]);
@@ -70,49 +69,6 @@ export default async function LandingPage() {
               </li>
             ))}
           </ol>
-        </section>
-
-        <section className="mt-10">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
-            Feelings you can name
-          </p>
-          <div className="mt-3 flex flex-col gap-2">
-            {FEELINGS.map((f) => (
-              <div
-                key={f.id}
-                className="rounded-xl border border-[var(--border-base)] bg-[var(--surface)] px-3.5 py-2.5"
-              >
-                <p className="text-sm font-semibold text-[var(--foreground)]">{f.short}</p>
-                <p className="text-xs text-[var(--muted)]">{f.label}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="mt-10 border-t border-[var(--border-base)] pt-2">
-          <p className="pt-6 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
-            Voices already speaking
-          </p>
-          <div className="mt-2 space-y-0">
-            {samples.map((s) => {
-              const meta = feelingOf(s.feeling ?? undefined);
-              return (
-                <blockquote key={s.id} className="border-b border-[var(--border-base)] py-5">
-                  {meta && (
-                    <p className="mb-1.5 text-xs font-medium text-[var(--accent)]">{meta.label}</p>
-                  )}
-                  <p className="font-display text-base leading-relaxed text-[var(--foreground)]">
-                    “{s.content}”
-                  </p>
-                  <footer className="mt-2 text-xs text-[var(--muted)]">
-                    {s.author}
-                    {meta ? ` · ${meta.short}` : ""}
-                    {s.timeLabel ? ` · ${s.timeLabel}` : ""}
-                  </footer>
-                </blockquote>
-              );
-            })}
-          </div>
         </section>
 
         {!session && (

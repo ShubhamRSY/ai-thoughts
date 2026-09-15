@@ -218,4 +218,14 @@ Format: **Decision → Why → Alternatives considered → Libraries / stack**.
 
 ---
 
-*Last updated: 2026-09-15 (session covering P0–P2 trust pack, UI simplify, report/media/chat stress fixes).*
+## Landing page (public launch cleanup)
+
+### Remove feelings list + sample voices from `/`
+- **Decision:** Drop “Feelings you can name” and “Voices already speaking” from `src/app/page.tsx`. Keep hero, CTA, and “What you do here”.
+- **Why:** Owner asked to remove those blocks from the front end before public launch — less clutter, less seed-looking content on the first page.
+- **Alternatives:** Keep samples for social proof — rejected; owner wants them gone.
+- **Stack:** Landing stays a Server Component; still uses `getPulseStats()` for the people count only.
+
+---
+
+*Last updated: 2026-09-15 (landing: remove feelings catalog + sample voices).*
