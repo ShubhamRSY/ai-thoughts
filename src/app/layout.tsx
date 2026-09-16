@@ -77,9 +77,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <AuthProvider>
           <ViewportSync />
           {children}
+          <PWAInstall />
         </AuthProvider>
         <PwaRegister />
-        <PWAInstall />
       </body>
     </html>
   );

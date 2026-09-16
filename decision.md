@@ -244,6 +244,12 @@ Format: **Decision → Why → Alternatives considered → Libraries / stack**.
 - **Alternatives:** Rename product entirely to AiTo — rejected; full name stays formal.
 - **Stack:** `src/lib/brand.ts` single source.
 
+### Install app → already logged in
+- **Decision:** Only show the PWA install banner when the user is signed in; `/install` requires sign-in before showing Add to Home Screen steps. Session cookie (httpOnly, 90d, SameSite=Lax, path=/) carries into the installed same-origin PWA so `/app` opens without a new OTP.
+- **Why:** Owner: if user downloads/installs the app, it should automatically be logged in.
+- **Alternatives:** Deep-link install token in `start_url` — riskier; cookie reuse is the standard PWA approach.
+- **Stack:** `useAuth` + existing `aithoughts.session`; moved `PWAInstall` inside `AuthProvider`.
+
 ---
 
-*Last updated: 2026-09-15 (short name AiTo).*
+*Last updated: 2026-09-16 (install while signed in → auto login).*

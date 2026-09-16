@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { X, Download } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { BRAND } from "@/lib/brand";
 
 const DISMISS_KEY = "pwa-install-dismissed";
 
@@ -15,16 +17,21 @@ function isStandalone(): boolean {
 
 function isIOS(): boolean {
   if (typeof navigator === "undefined") return false;
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
 }
 
 export default function PWAInstall() {
+  const { user, loading } = useAuth();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [show, setShow] = useState(false);
   const [isIos] = useState(() => isIOS());
 
   useEffect(() => {
-    if (isStandalone()) return;
+    // Only offer install while signed in so the home-screen app opens already logged in.
+    if (loading || !user || isStandalone()) return;
     if (localStorage.getItem(DISMISS_KEY)) return;
 
     const timer = setTimeout(() => {
@@ -44,7 +51,11 @@ export default function PWAInstall() {
       clearTimeout(timer);
       window.removeEventListener("beforeinstallprompt", handler as EventListener);
     };
-  }, []);
+  }, [loading, user]);
+
+  useEffect(() => {
+    if (!user) setShow(false);
+  }, [user]);
 
   useEffect(() => {
     if (show) document.documentElement.dataset.pwaBanner = "1";
@@ -54,7 +65,7 @@ export default function PWAInstall() {
     };
   }, [show]);
 
-  if (!show || isStandalone()) return null;
+  if (loading || !user || !show || isStandalone()) return null;
 
   function dismiss() {
     setShow(false);
@@ -78,15 +89,16 @@ export default function PWAInstall() {
             </div>
             <div className="min-w-0 flex-1">
               <p className="font-display text-sm font-semibold text-[var(--foreground)]">
-                Install AI·Thoughts
+                Install {BRAND.shortName}
               </p>
               <p className="mt-0.5 text-xs leading-relaxed text-[var(--muted)]">
                 {isIos || (!deferredPrompt && isIOS())
-                  ? "Tap Share in Safari, then “Add to Home Screen”"
-                  : "Add to your home screen — one tap back to Voices"}
+                  ? "Add to Home Screen while signed in — open straight into Voices"
+                  : "Install while signed in — you’ll stay logged in on your home screen"}
               </p>
               {!isIos && deferredPrompt && (
                 <button
+                  type="button"
                   onClick={install}
                   className="mt-2 rounded-lg bg-[var(--accent)] px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-[var(--accent-2)] active:scale-[0.98]"
                 >
@@ -95,6 +107,7 @@ export default function PWAInstall() {
               )}
             </div>
             <button
+              type="button"
               onClick={dismiss}
               aria-label="Dismiss"
               className="mt-0.5 shrink-0 rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
