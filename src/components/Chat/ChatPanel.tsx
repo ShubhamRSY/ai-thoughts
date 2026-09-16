@@ -314,13 +314,13 @@ export default function ChatPanel({
   return (
     <div className="mt-4 border-t border-[var(--border-base)] pt-3">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-xs font-medium text-[var(--muted)]">{commentLabel}</p>
+        <p className="text-[13px] font-medium text-[var(--foreground)]/70">{commentLabel}</p>
         <div className="flex items-center gap-2">
           {signedIn && authorPerson && me !== normHandle(authorPerson.handle) && (
             <button
               type="button"
               onClick={() => insertMention(authorPerson)}
-              className="text-xs font-semibold text-[var(--accent)] hover:underline"
+              className="text-[13px] font-semibold text-[var(--accent)] hover:underline"
             >
               @{normHandle(authorPerson.handle)}
             </button>
@@ -328,7 +328,7 @@ export default function ChatPanel({
           <button
             type="button"
             onClick={onClose}
-            className="text-xs font-medium text-[var(--muted)] hover:text-[var(--foreground)]"
+            className="text-[13px] font-medium text-[var(--foreground)]/70 hover:text-[var(--foreground)]"
           >
             Close
           </button>
@@ -340,7 +340,7 @@ export default function ChatPanel({
         className="max-h-64 space-y-3 overflow-y-auto overscroll-contain pb-1"
       >
         {loaded && messages.length === 0 && (
-          <p className="text-sm text-[var(--muted)]">
+          <p className="text-[15px] text-[var(--foreground)]/70">
             Be the first to reply.
           </p>
         )}
@@ -351,12 +351,12 @@ export default function ChatPanel({
               {(m.author || m.handle).slice(0, 1).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm leading-snug text-[var(--foreground)]">
+              <p className="text-[15px] leading-snug text-[var(--foreground)]">
                 <span className="font-semibold">{m.handle}</span>{" "}
                 <CommentBody body={m.body} />
               </p>
               <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                <span className="text-[11px] text-[var(--muted)]">{timeLabel(m.created_at)}</span>
+                <span className="text-[13px] text-[var(--foreground)]/70">{timeLabel(m.created_at)}</span>
               </div>
             </div>
           </div>

@@ -84,7 +84,6 @@ export default function FeedCard({
   feelingWith,
   currentHandle,
   currentAuthor,
-  others,
   forceChatOpen,
 }: FeedCardProps) {
   const [reactions, setReactions] = useState(thought.reactions);
@@ -239,19 +238,21 @@ export default function FeedCard({
               {thought.author}
             </span>
             {thought.handle && (
-              <span className="truncate text-xs text-[var(--muted)]">
+              <span className="truncate text-[13px] text-[var(--foreground)]/70">
                 {thought.handle.startsWith("@") ? thought.handle : `@${thought.handle}`}
               </span>
             )}
             {authorIsNew && (
               <span
-                className="shrink-0 text-[11px] text-[var(--muted)]"
+                className="shrink-0 text-[13px] text-[var(--foreground)]/70"
                 title="Joined in the last week"
               >
                 · new
               </span>
             )}
-            <span className="shrink-0 text-xs text-[var(--muted)]">· {thought.timeLabel}</span>
+            <span className="shrink-0 text-[13px] text-[var(--foreground)]/70">
+              · {thought.timeLabel}
+            </span>
             <div className="relative ml-auto shrink-0">
               <button
                 type="button"
@@ -324,7 +325,7 @@ export default function FeedCard({
               )}
             </div>
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--muted)]">
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-[var(--foreground)]/70">
             {thought.feeling && (
               <FeelingBadge
                 feeling={thought.feeling}
@@ -337,12 +338,14 @@ export default function FeedCard({
               />
             )}
             {thought.integrity.statusLabel === "Sample voice" && (
-              <span className="text-[11px] text-[var(--muted)]">Sample</span>
+              <span className="text-[13px] text-[var(--foreground)]/70">Sample</span>
             )}
             {thought.languageLabel &&
               thought.language &&
               !thought.language.toLowerCase().startsWith("en") && (
-                <span className="text-[11px]">{thought.languageLabel}</span>
+                <span className="text-[13px] text-[var(--foreground)]/70">
+                  {thought.languageLabel}
+                </span>
               )}
           </div>
         </div>
@@ -386,7 +389,7 @@ export default function FeedCard({
         <p
           lang={thought.language}
           dir="auto"
-          className="whitespace-pre-wrap text-[15px] leading-relaxed text-[var(--foreground)]"
+          className="whitespace-pre-wrap text-[16px] leading-relaxed text-[var(--foreground)]"
         >
           {thought.content}
         </p>
@@ -394,7 +397,7 @@ export default function FeedCard({
           <TranslateToEnglish text={thought.content} sourceLang={thought.language} />
         )}
         {thought.tags.length > 0 && (
-          <p className="flex flex-wrap gap-x-2 gap-y-0.5 text-[13px] text-[var(--accent)]">
+          <p className="flex flex-wrap gap-x-2 gap-y-0.5 text-[14px] text-[var(--accent)]">
             {thought.tags.map((t) => {
               const tag = t.replace(/^#/, "");
               return (
@@ -405,28 +408,28 @@ export default function FeedCard({
         )}
       </div>
 
-      <div className="relative z-0 mt-4 flex items-center gap-4 text-[var(--muted)]">
+      <div className="relative z-0 mt-4 flex items-center gap-4 text-[var(--foreground)]/65">
         <button
           type="button"
           onClick={() => void like()}
           disabled={!currentHandle}
           aria-label={liked ? "Unlike" : "Like"}
           title={!currentHandle ? "Sign in to like" : undefined}
-          className={`flex items-center gap-1.5 text-xs font-medium transition disabled:opacity-50 ${
+          className={`flex items-center gap-1.5 text-[13px] font-medium transition disabled:opacity-50 ${
             liked ? "text-[var(--accent)]" : "hover:text-[var(--foreground)]"
           }`}
         >
-          <Heart className="h-4 w-4" fill={liked ? "currentColor" : "none"} strokeWidth={2} />
+          <Heart className="h-[18px] w-[18px]" fill={liked ? "currentColor" : "none"} strokeWidth={2} />
           {likes > 0 ? likes : null}
         </button>
         <button
           type="button"
           onClick={() => setChatOpen((v) => !v)}
-          className={`flex items-center gap-1.5 text-xs font-medium transition ${
+          className={`flex items-center gap-1.5 text-[13px] font-medium transition ${
             chatOpen ? "text-[var(--foreground)]" : "hover:text-[var(--foreground)]"
           }`}
         >
-          <MessageCircle className="h-4 w-4" strokeWidth={2} />
+          <MessageCircle className="h-[18px] w-[18px]" strokeWidth={2} />
           {commentCount != null && commentCount > 0 ? commentCount : "Reply"}
         </button>
         <button
@@ -435,20 +438,20 @@ export default function FeedCard({
           disabled={!currentHandle}
           aria-label={showReact ? "Close reactions" : "Add reaction"}
           title={!currentHandle ? "Sign in to react" : undefined}
-          className={`flex items-center gap-1 text-xs font-medium transition disabled:opacity-50 ${
+          className={`flex items-center gap-1 text-[13px] font-medium transition disabled:opacity-50 ${
             showReact ? "text-[var(--foreground)]" : "hover:text-[var(--foreground)]"
           }`}
         >
-          <SmilePlus className="h-4 w-4" strokeWidth={2} />
+          <SmilePlus className="h-[18px] w-[18px]" strokeWidth={2} />
         </button>
       </div>
 
       {actionError && (
-        <p className="relative z-0 mt-2 text-[11px] text-rose-700">{actionError}</p>
+        <p className="relative z-0 mt-2 text-[13px] text-rose-700">{actionError}</p>
       )}
 
       {likes > 0 && (
-        <p className="relative z-0 mt-1.5 text-[13px] text-[var(--muted)]">
+        <p className="relative z-0 mt-1.5 text-[14px] text-[var(--foreground)]/70">
           {formatLikedBy(likedBy, likes, currentHandle)}
         </p>
       )}
@@ -477,15 +480,6 @@ export default function FeedCard({
             );
           })}
         </div>
-      )}
-
-      {thought.feeling && others && others > 1 && onOpenRoom && (
-        <button
-          onClick={() => onOpenRoom(thought.feeling!)}
-          className="mt-2.5 text-left text-[13px] text-[var(--muted)] hover:text-[var(--accent)] hover:underline"
-        >
-          {others} others feel this way
-        </button>
       )}
 
       {mounted &&

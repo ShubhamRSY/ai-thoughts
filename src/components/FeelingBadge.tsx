@@ -28,7 +28,7 @@ export default function FeelingBadge({
 
   const className =
     size === "sm"
-      ? `inline-flex max-w-full items-center gap-1 text-[12px] text-[var(--muted)] transition ${
+      ? `inline-flex max-w-full items-center gap-1 text-[13px] text-[var(--foreground)]/70 transition ${
           onClick ? "cursor-pointer hover:text-[var(--foreground)]" : ""
         }`
       : `inline-flex max-w-full items-center gap-1.5 rounded-full border font-medium transition ${f.chip} ${pad} ${
