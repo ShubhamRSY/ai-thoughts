@@ -13,6 +13,7 @@ import type { FeelingId, MediaType, Thought, PublishResult } from "@/lib/types";
 import MediaRecorderView, { type CapturedClip } from "@/components/Submit/MediaRecorderView";
 import TextForm from "@/components/Submit/TextForm";
 import FeelWithPeers from "@/components/FeelWithPeers";
+import SharedSpectrum from "@/components/SharedSpectrum";
 
 type Tab = MediaType;
 
@@ -241,6 +242,9 @@ export default function SubmitModal({
               {BRAND.shareSuccess}
             </h3>
             <p className="text-sm text-[var(--muted)]">{BRAND.shareSuccessSub}</p>
+            <div className="w-full max-w-sm text-left">
+              <SharedSpectrum />
+            </div>
             <button
               type="button"
               onClick={onClose}

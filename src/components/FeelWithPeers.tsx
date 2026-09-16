@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { HeartHandshake } from "lucide-react";
+import SharedSpectrum from "@/components/SharedSpectrum";
 
 export interface PromptPeer {
   handle: string;
@@ -74,6 +75,9 @@ export default function FeelWithPeers({
             Today: {prompt}
           </p>
         )}
+        <div className="mt-3 text-left">
+          <SharedSpectrum />
+        </div>
       </div>
 
       <div className="mx-auto mt-6 w-full max-w-md flex-1 space-y-2">
