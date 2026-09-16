@@ -47,7 +47,7 @@
           ]
         }
       ],
-      "artifactName": "AiTo-Setup-${version}.${ext}"
+      "artifactName": "AiTo-${version}.${ext}"
     },
     "appx": {
       "applicationId": "AiTo",
@@ -65,7 +65,8 @@
       "allowToChangeInstallationDirectory": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "AiTo"
+      "shortcutName": "AiTo",
+      "artifactName": "AiTo-Setup-${version}.${ext}"
     },
     "mac": {
       "target": [

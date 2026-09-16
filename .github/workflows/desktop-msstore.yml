@@ -1,0 +1,41 @@
+name: Desktop Microsoft Store APPX
+
+# Builds the .appx Partner Center expects (NOT package.json).
+on:
+  workflow_dispatch:
+
+jobs:
+  appx:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - name: Install desktop deps
+        run: npm ci
+
+      - name: Build APPX for Partner Center
+        run: npx electron-builder --win appx --x64 --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: List dist output
+        run: Get-ChildItem -Recurse dist | Select-Object FullName, Length
+
+      - name: Upload APPX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AiTo-Microsoft-Store-APPX
+          path: |
+            desktop/dist/*.appx
+            desktop/dist/*.msix
+          if-no-files-found: error
+          retention-days: 14
