@@ -368,7 +368,7 @@ export default function SubmitModal({
               {tab !== "text" && (
                 <input
                   value={content}
-                  onChange={(e) => setContent(e.target.value)}
+                  onChange={(e) => setContent(e.target.value.slice(0, 500))}
                   placeholder="Add a caption…"
                   dir="auto"
                   className="w-full rounded-lg border border-[var(--border-base)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"

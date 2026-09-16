@@ -2,7 +2,7 @@
 
 import { PenLine } from "lucide-react";
 
-const MAX_CHARS = 280;
+const MAX_CHARS = 500;
 
 interface TextFormProps {
   value: string;

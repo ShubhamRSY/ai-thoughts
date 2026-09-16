@@ -398,7 +398,7 @@ export type PublishGuard = PublishResult;
 
 const COOLDOWN_MS = 15000;
 const COOLDOWN_KEY = "pulse_last_publish";
-const MAX_CONTENT = 2800;
+const MAX_CONTENT = 500;
 
 export function checkPublishGuard(content: string): PublishGuard {
   const trimmed = content.trim();

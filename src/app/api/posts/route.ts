@@ -14,7 +14,7 @@ import { assertCanPost, contentFingerprint } from "@/lib/anti-abuse";
 
 const MEDIA_TYPES = new Set(["audio", "video", "text"]);
 const FEELING_IDS = new Set(FEELINGS.map((f) => f.id));
-const MAX_CONTENT_LENGTH = 2800;
+const MAX_CONTENT_LENGTH = 500;
 const IP_POST_LIMIT = 20;
 const IP_POST_WINDOW_MS = 10 * 60_000;
 
