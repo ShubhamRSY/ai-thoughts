@@ -15,6 +15,8 @@ const eslintConfig = defineConfig([
     // Native Capacitor projects — not part of the Next.js/TS source tree.
     "android/**",
     "ios/**",
+    // Electron desktop shell (CommonJS) — separate package.
+    "desktop/**",
   ]),
   {
     rules: {
