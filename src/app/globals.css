@@ -415,6 +415,46 @@ html[data-pwa-banner="1"] .pb-nav {
   color: var(--muted);
 }
 
+.landing-pc-notice {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: color-mix(in srgb, #1a1a1a 45%, transparent);
+}
+
+.landing-pc-notice-card {
+  width: min(100%, 24rem);
+  border-radius: 1.25rem;
+  border: 1px solid var(--border-base);
+  background: var(--surface);
+  padding: 1.35rem 1.35rem 1.2rem;
+  box-shadow: 0 18px 50px color-mix(in srgb, #000 22%, transparent);
+}
+
+.landing-pc-notice-title {
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.landing-pc-notice-body {
+  margin-top: 0.65rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.landing-pc-notice-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-top: 1.15rem;
+}
+
 .landing-visual {
   position: relative;
   display: grid;

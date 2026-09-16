@@ -286,6 +286,12 @@ Format: **Decision → Why → Alternatives considered → Libraries / stack**.
 - **Alternatives:** Keep phone-column shell everywhere — weak on desktop.
 - **Stack:** CSS grid + clamp (no new UI library).
 
+### Install on phone blocked on PC/laptop
+- **Decision:** On desktop, “Install on phone” opens a notice (“Phone only — not for PC/laptop”) with optional Windows download link instead of `/install`.
+- **Why:** Owner: clicking install on PC must say not applicable for PC/laptop.
+- **Alternatives:** Hide the button on desktop — less clear; still offer Windows path.
+- **Stack:** Client `LandingCTAs` + UA/pointer heuristics.
+
 ---
 
-*Last updated: 2026-09-16 (responsive landing).*
+*Last updated: 2026-09-16 (PC install notice).*

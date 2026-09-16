@@ -1,6 +1,6 @@
-import Link from "next/link";
 import Footer from "@/components/Footer";
 import BrandMark from "@/components/BrandMark";
+import LandingCTAs from "@/components/LandingCTAs";
 import { getPulseStats } from "@/lib/pulse-stats";
 import { getSession } from "@/lib/auth";
 import { BRAND } from "@/lib/brand";
@@ -40,17 +40,12 @@ export default async function LandingPage() {
             <p className="landing-support">{BRAND.promise}</p>
             <p className="landing-crowd">{crowdLine}</p>
 
-            <div className="landing-ctas">
-              <Link href={ctaHref} className="landing-btn landing-btn-primary">
-                {ctaLabel}
-              </Link>
-              <Link href={installHref} className="landing-btn landing-btn-ghost">
-                Install on phone
-              </Link>
-            </div>
-            {!session && (
-              <p className="landing-note">Email code · no password</p>
-            )}
+            <LandingCTAs
+              ctaHref={ctaHref}
+              ctaLabel={ctaLabel}
+              installHref={installHref}
+              showEmailNote={!session}
+            />
           </div>
 
           <div className="landing-visual" aria-hidden>
