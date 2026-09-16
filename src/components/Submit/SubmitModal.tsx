@@ -171,7 +171,14 @@ export default function SubmitModal({
         : {}),
     };
 
-    const result = await onPublish(payload, tab !== "text" ? (captured ?? undefined) : undefined);
+    let result: PublishResult;
+    try {
+      result = await onPublish(payload, tab !== "text" ? (captured ?? undefined) : undefined);
+    } catch (e) {
+      console.error("publish failed:", e);
+      setPublishError(e instanceof Error ? e.message : "Couldn’t share right now. Try again.");
+      return;
+    }
     if (!result.ok) {
       if (result.reason === "cooldown") {
         setPublishError(
