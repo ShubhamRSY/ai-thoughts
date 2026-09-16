@@ -35,7 +35,6 @@
   );
   --pad-x: var(--pad);
   --pad-r: var(--pad);
-  --nav-h: 4rem;
   --header-h: 3.75rem;
 
   /* Back-compat aliases used by older classNames */
@@ -205,11 +204,11 @@ html.is-app-shell body {
 }
 
 .pb-nav {
-  padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 1.5rem);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1.5rem);
 }
 
 html[data-pwa-banner="1"] .pb-nav {
-  padding-bottom: calc(var(--nav-h) + 6.5rem + env(safe-area-inset-bottom, 0px) + 1.5rem);
+  padding-bottom: calc(6.5rem + env(safe-area-inset-bottom, 0px) + 1.5rem);
 }
 
 .feed-grid {

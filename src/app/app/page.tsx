@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { HeartHandshake } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import MobileNav, { type TabId } from "@/components/MobileNav";
+import NavRail, { type TabId } from "@/components/NavRail";
 import FilterBar, { type FeelingFilter } from "@/components/Feed/FilterBar";
 import FeedGrid from "@/components/Feed/FeedGrid";
 import ProfileView from "@/components/ProfileView";
@@ -461,7 +461,17 @@ export default function Home() {
   }, [thoughts]);
 
   return (
-    <div className="app-frame">
+    <div className="flex min-h-dvh">
+      <NavRail
+        active={tab}
+        onTab={(t) => {
+          setTab(t);
+          if (t === "activity") void refreshActivity();
+        }}
+        onCreate={() => openShare("video")}
+        activityCount={activityUnread}
+      />
+      <div className="app-frame flex-1">
       <MaintenanceBanner />
       <Header onShare={() => openShare("video")} />
 
@@ -654,19 +664,10 @@ export default function Home() {
           </div>
         )}
       </main>
-
-      <MobileNav
-        active={tab}
-        onTab={(t) => {
-          setTab(t);
-          if (t === "activity") void refreshActivity();
-        }}
-        onCreate={() => openShare("video")}
-        activityCount={activityUnread}
-      />
+      </div>
 
       {undoId && (
-        <div className="app-rail pointer-events-none fixed inset-x-0 bottom-20 z-40 flex justify-center px-4 sm:bottom-6">
+        <div className="app-rail pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center px-4">
           <div className="pointer-events-auto flex max-w-md items-center gap-3 rounded-full border border-[var(--border-base)] bg-[var(--foreground)] px-4 py-2.5 text-sm text-[var(--surface)] shadow-lg">
             <span>Take shared</span>
             <button
