@@ -14,27 +14,19 @@ Phone users can also **Add to Home Screen** at aito.social ($0).
 
 ## Windows — Microsoft Store (primary)
 
+**Full step-by-step:** see [`MSSTORE.md`](./MSSTORE.md) (Partner Center identity, build APPX, upload, privacy URL).
+
 Users should **not** go to GitHub. They install from the Microsoft Store.
 
-### What you do
+You do **not** need Visual Studio. Build with Electron (`npm run pack:msstore` in `/desktop`), then upload the `.appx` in Partner Center. Use the same Microsoft account that owns your developer enrollment. Copy **Product identity** values into `desktop/package.json` → `build.appx` before building, or upload will fail.
 
-1. Create a [Microsoft Partner Center](https://partner.microsoft.com/dashboard) developer account (~$19 one-time).
-2. Create a new app reservation named **AiTo**.
-3. On a Windows PC (or CI), build the Store package:
-   ```bash
-   cd desktop
-   npm install
-   npm run pack:msstore
-   ```
-   Output: `desktop/dist/*.appx` (or `.msix`).
-4. In Partner Center, set `appx.identityName` / `publisher` in `desktop/package.json` to match the values Partner Center shows, then rebuild.
-5. Upload the package, submit for certification.
-6. When the listing is live, copy the Store URL (e.g. `https://apps.microsoft.com/detail/...`).
-7. In **Vercel → Environment Variables** (Production):
-   ```
-   NEXT_PUBLIC_MS_STORE_URL=https://apps.microsoft.com/detail/YOUR_ID
-   ```
-8. Redeploy. `/install` and the PC notice will show **Get it on Microsoft Store**.
+### Short path
+
+1. [Partner Center](https://partner.microsoft.com/dashboard) → reserve **AiTo** (MSIX/PWA product).
+2. Paste Product identity → `desktop/package.json` `appx` fields.
+3. On Windows: `cd desktop && npm install && npm run pack:msstore`
+4. Upload `desktop/dist/*.appx` → submission → privacy `https://aito.social/privacy`
+5. When live, set `NEXT_PUBLIC_MS_STORE_URL` on Vercel and redeploy.
 
 Until that env var is set, the site shows **Coming soon on Microsoft Store** (no GitHub link).
 
