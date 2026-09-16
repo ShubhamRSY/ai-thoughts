@@ -262,6 +262,12 @@ Format: **Decision → Why → Alternatives considered → Libraries / stack**.
 - **Alternatives:** Only live-URL content updates — rejected by owner; paid update servers — unnecessary while GitHub Releases is free.
 - **Stack:** `electron-updater` + electron-builder `publish.provider = github` (`ShubhamRSY/ai-thoughts`).
 
+### Custom domain branding
+- **Decision:** Production brand domain is **`aito.social`** (bought on Namecheap). Wire Vercel Domains + Resend; set `NEXT_PUBLIC_SITE_URL=https://aito.social`. Native shells (Capacitor / Electron) default to that URL.
+- **Why:** Owner purchased `aito.social` for public branding.
+- **Alternatives:** Stay on `*.vercel.app` — weaker for email/trust.
+- **Stack:** Namecheap DNS → Vercel + Resend custom domain.
+
 ---
 
-*Last updated: 2026-09-16 (Windows electron-updater auto-update).*
+*Last updated: 2026-09-16 (domain: aito.social).*

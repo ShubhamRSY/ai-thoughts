@@ -16,7 +16,7 @@ export function getSiteUrl(): string {
 
 /** Public contact address (safe to expose in the client). */
 export const CONTACT_EMAIL =
-  process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim() || "keepers@ai-thoughts.app";
+  process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim() || "keepers@aito.social";
 
 /** Fixed legal "last updated" date — do not use `new Date()` at render time. */
 export const LEGAL_UPDATED = "September 12, 2026";

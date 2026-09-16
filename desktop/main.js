@@ -5,7 +5,7 @@
 const { app, BrowserWindow, shell, session, dialog } = require("electron");
 const path = require("path");
 
-const SITE_URL = process.env.AITO_SITE_URL || "https://ai-thoughts-mu.vercel.app";
+const SITE_URL = process.env.AITO_SITE_URL || "https://aito.social";
 const START_PATH = "/app";
 
 /** @type {BrowserWindow | null} */

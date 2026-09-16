@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'public',
   // Same live site as web / PWA — one responsive UI for every screen.
   server: {
-    url: 'https://ai-thoughts-mu.vercel.app',
+    url: 'https://aito.social',
     cleartext: false,
   },
   backgroundColor: '#f2f0eb',

@@ -4,7 +4,7 @@
 
 A mobile-first PWA where people of all ages share voice, video, and text takes about how AI makes them feel, right now. Built around feelings (not just opinions): every take opens with *"Right now, AI makes me feel…"*, and the feed surfaces the live mood of the pulse — the dominant feeling, per-feeling "rooms", and a safety-first, all-ages space to speak honestly.
 
-Live: [https://ai-thoughts-mu.vercel.app](https://ai-thoughts-mu.vercel.app)
+Live: [https://aito.social](https://aito.social) (also on Vercel until DNS is live)
 
 ---
 

@@ -1,6 +1,6 @@
 # AiTo native apps (iOS + Windows)
 
-Same live site as the web app (`https://ai-thoughts-mu.vercel.app`) wrapped in native shells.
+Same live site as the web app (`https://aito.social`) wrapped in native shells.
 
 | Platform | Shell | Output | How users get it |
 |----------|--------|--------|------------------|

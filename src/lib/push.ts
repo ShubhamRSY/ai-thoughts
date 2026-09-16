@@ -20,7 +20,7 @@ export function getVapidPublicKey(): string | null {
 function configureWebPush() {
   if (!vapidConfigured()) return false;
   const subject =
-    process.env.VAPID_SUBJECT?.trim() || "mailto:keepers@ai-thoughts.app";
+    process.env.VAPID_SUBJECT?.trim() || "mailto:keepers@aito.social";
   webpush.setVapidDetails(
     subject,
     process.env.VAPID_PUBLIC_KEY!.trim(),
