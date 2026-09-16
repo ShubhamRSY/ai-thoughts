@@ -271,7 +271,7 @@ export default function FeedCard({
                         className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-[var(--surface-2)]"
                       >
                         <HeartHandshake className="h-3.5 w-3.5" />
-                        {feelingActive ? "Unfollow feelings" : "Feel with them"}
+                        {feelingActive ? "Unfollow" : "Follow"}
                       </button>
                     )}
                     {!isAuthor && (

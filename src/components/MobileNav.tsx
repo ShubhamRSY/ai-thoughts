@@ -1,15 +1,14 @@
 "use client";
 
-import { Home, Plus, User, Bell } from "lucide-react";
+import { Home, Plus, User, Bell, Users } from "lucide-react";
 import { BRAND } from "@/lib/brand";
 
-export type TabId = "home" | "you";
+export type TabId = "home" | "circles" | "activity" | "you";
 
 interface MobileNavProps {
   active: TabId;
   onTab: (t: TabId) => void;
   onCreate: () => void;
-  onActivity?: () => void;
   activityCount?: number;
 }
 
@@ -17,13 +16,12 @@ export default function MobileNav({
   active,
   onTab,
   onCreate,
-  onActivity,
   activityCount = 0,
 }: MobileNavProps) {
   return (
     <nav className="safe-bottom fixed inset-x-0 bottom-0 z-40">
       <div className="app-rail border-t border-[var(--border-base)] bg-[var(--surface)]">
-        <div className="grid h-16 grid-cols-4 items-center">
+        <div className="grid h-16 grid-cols-5 items-center">
           <button
             type="button"
             onClick={() => onTab("home")}
@@ -37,6 +35,17 @@ export default function MobileNav({
 
           <button
             type="button"
+            onClick={() => onTab("circles")}
+            className={`flex flex-col items-center gap-0.5 text-[10px] font-medium ${
+              active === "circles" ? "text-[var(--foreground)]" : "text-[var(--muted)]"
+            }`}
+          >
+            <Users className="h-5 w-5" strokeWidth={active === "circles" ? 2.4 : 1.8} />
+            Circles
+          </button>
+
+          <button
+            type="button"
             onClick={onCreate}
             aria-label={BRAND.shareCta}
             className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--surface)] transition hover:bg-[var(--accent-2)]"
@@ -46,10 +55,12 @@ export default function MobileNav({
 
           <button
             type="button"
-            onClick={() => onActivity?.()}
-            className="relative flex flex-col items-center gap-0.5 text-[10px] font-medium text-[var(--muted)] hover:text-[var(--foreground)]"
+            onClick={() => onTab("activity")}
+            className={`relative flex flex-col items-center gap-0.5 text-[10px] font-medium ${
+              active === "activity" ? "text-[var(--foreground)]" : "text-[var(--muted)]"
+            }`}
           >
-            <Bell className="h-5 w-5" strokeWidth={1.8} />
+            <Bell className="h-5 w-5" strokeWidth={active === "activity" ? 2.4 : 1.8} />
             Activity
             {activityCount > 0 && (
               <span className="absolute right-[18%] top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[9px] font-bold text-[var(--surface)]">

@@ -72,7 +72,7 @@ export default function FilterBar({
 
       {regionScope === "circle" && (
         <p className="text-[11px] text-[var(--muted)]">
-          Takes from people you feel with. Tap Feel with on any voice to add them.
+          Takes from people you follow. Use ··· on a take → Follow.
         </p>
       )}
 

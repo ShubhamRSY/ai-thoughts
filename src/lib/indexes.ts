@@ -47,6 +47,14 @@ export async function ensureCoreIndexes(db: Db): Promise<void> {
       { recipient_handle: 1, created_at: -1 },
       { name: "notifications_recipient_created" }
     ),
+    db.collection("communities").createIndex(
+      { slug: 1 },
+      { unique: true, name: "communities_slug_unique" }
+    ),
+    db.collection("community_messages").createIndex(
+      { community_slug: 1, created_at: -1 },
+      { name: "community_messages_slug_created" }
+    ),
     db.collection("reactions").createIndex(
       { post_id: 1, handle_norm: 1, reaction: 1 },
       { unique: true, sparse: true, name: "reactions_post_handle_reaction" }

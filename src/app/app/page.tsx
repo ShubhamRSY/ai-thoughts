@@ -16,7 +16,9 @@ import StreakCard from "@/components/StreakCard";
 import DailyCheckIn from "@/components/DailyCheckIn";
 import DailyHabits from "@/components/DailyHabits";
 import MissedYesterday from "@/components/MissedYesterday";
-import ActivityPanel, { useActivity } from "@/components/ActivityPanel";
+import { useActivity } from "@/components/ActivityPanel";
+import ActivityView from "@/components/ActivityView";
+import CirclesView from "@/components/CirclesView";
 import MaintenanceBanner, { useSiteFlags } from "@/components/MaintenanceBanner";
 import { digestBytes } from "@/lib/integrity";
 import { useLocalProfile } from "@/hooks/useLocalProfile";
@@ -60,9 +62,9 @@ export default function Home() {
   const [shareFeeling, setShareFeeling] = useState<FeelingId | undefined>(undefined);
   const [regionScope, setRegionScope] = useState<RegionScope>("world");
   const [undoId, setUndoId] = useState<string | null>(null);
-  const [activityOpen, setActivityOpen] = useState(false);
   const [following, setFollowing] = useState<string[]>([]);
   const [shareFromDaily, setShareFromDaily] = useState(false);
+  const [circleSlug, setCircleSlug] = useState<string | null>(null);
   const { items: activityItems, unread: activityUnread, markAllRead, refresh: refreshActivity } =
     useActivity(!!user);
   const { maintenance, message: maintenanceMessage } = useSiteFlags();
@@ -171,7 +173,6 @@ export default function Home() {
   }, []);
 
   const openActivityPost = useCallback((postId: string) => {
-    setActivityOpen(false);
     setFocusPostId(postId);
     setTab("home");
     setRoom(null);
@@ -182,6 +183,34 @@ export default function Home() {
       const url = new URL(window.location.href);
       url.searchParams.set("post", postId);
       window.history.replaceState({}, "", url.toString());
+    }
+  }, []);
+
+  const invitePeople = useCallback(async () => {
+    const url = typeof window !== "undefined" ? window.location.origin : "";
+    const text = `I’m on AiTo saying how AI makes me feel. Join me: ${url}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "AiTo", text, url });
+        return;
+      }
+    } catch {
+      /* fall through */
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const circle = params.get("circle");
+    if (circle) {
+      setCircleSlug(circle);
+      setTab("circles");
     }
   }, []);
 
@@ -517,8 +546,8 @@ export default function Home() {
                           ? "No answers to today’s prompt yet — share yours."
                           : regionScope === "circle"
                             ? following.length
-                              ? "No takes from people you feel with yet."
-                              : "Feel with someone on a take to build your circle."
+                              ? "No takes from people you follow yet."
+                              : "Follow someone on a take to build your circle."
                             : media !== "all"
                               ? "No takes in this format — try All."
                               : "Be the first to share how AI makes you feel."
@@ -537,6 +566,28 @@ export default function Home() {
               </>
             )}
           </>
+        )}
+
+        {tab === "activity" && (
+          <ActivityView
+            items={activityItems}
+            unread={activityUnread}
+            signedIn={!!user}
+            following={following}
+            onMarkAllRead={() => void markAllRead()}
+            onSelectPost={openActivityPost}
+            onUnfollow={(handle) => void onFeelWith(handle, false)}
+            onInvite={() => void invitePeople()}
+            onOpenCircles={() => setTab("circles")}
+          />
+        )}
+
+        {tab === "circles" && (
+          <CirclesView
+            signedIn={!!user}
+            initialSlug={circleSlug}
+            onNeedSignIn={() => router.push("/sign-in?next=/app?circle=" + (circleSlug || ""))}
+          />
         )}
 
         {tab === "you" && (
@@ -563,26 +614,13 @@ export default function Home() {
 
       <MobileNav
         active={tab}
-        onTab={setTab}
-        onCreate={() => openShare("video")}
-        onActivity={() => {
-          if (!user) {
-            setTab("you");
-            return;
-          }
-          setActivityOpen(true);
-          void refreshActivity();
+        onTab={(t) => {
+          setTab(t);
+          if (t === "activity") void refreshActivity();
+          if (t !== "circles") setCircleSlug(null);
         }}
+        onCreate={() => openShare("video")}
         activityCount={activityUnread}
-      />
-
-      <ActivityPanel
-        open={activityOpen}
-        onClose={() => setActivityOpen(false)}
-        items={activityItems}
-        unread={activityUnread}
-        onMarkAllRead={() => void markAllRead()}
-        onSelectPost={openActivityPost}
       />
 
       {undoId && (
