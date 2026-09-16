@@ -1,7 +1,7 @@
 "use client";
 
 import { Flame, Heart } from "lucide-react";
-import { dailyPrompt } from "@/lib/daily-prompt";
+import { dailyPrompt, weeklyTheme } from "@/lib/daily-prompt";
 import { BRAND } from "@/lib/brand";
 
 interface DailyCheckInProps {
@@ -20,6 +20,7 @@ export default function DailyCheckIn({
   onBrowseToday,
 }: DailyCheckInProps) {
   const prompt = dailyPrompt();
+  const theme = weeklyTheme();
 
   return (
     <section className="app-pad mt-4">
@@ -35,7 +36,8 @@ export default function DailyCheckIn({
               {streakCount || 0}
             </span>
           </div>
-          <h2 className="mt-2 font-display text-xl font-medium leading-snug text-[var(--foreground)]">
+          <p className="mt-2 text-xs font-medium text-[var(--accent)]">This week: {theme}</p>
+          <h2 className="mt-1 font-display text-xl font-medium leading-snug text-[var(--foreground)]">
             {prompt}
           </h2>
           <p className="mt-1.5 text-xs text-[var(--muted)]">

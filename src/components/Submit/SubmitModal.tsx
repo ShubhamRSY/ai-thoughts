@@ -8,7 +8,7 @@ import { checkDignity, normalizeTag } from "@/lib/dignity";
 import { checkContentQuality } from "@/lib/anti-abuse";
 import { fakeHash } from "@/lib/integrity";
 import { FEELINGS } from "@/lib/feelings";
-import { dailyPrompt, todayKey } from "@/lib/daily-prompt";
+import { dailyPrompt, todayKey, weeklyTheme } from "@/lib/daily-prompt";
 import type { FeelingId, MediaType, Thought, PublishResult } from "@/lib/types";
 import MediaRecorderView, { type CapturedClip } from "@/components/Submit/MediaRecorderView";
 import TextForm from "@/components/Submit/TextForm";
@@ -255,6 +255,7 @@ export default function SubmitModal({
           <div className="app-rail flex flex-1 flex-col overflow-y-auto">
             {fromDailyPrompt && (
               <p className="border-b border-[var(--border-base)] bg-[var(--accent-soft)]/40 px-4 py-2 text-xs leading-relaxed text-[var(--accent-2)]">
+                <span className="font-semibold">{weeklyTheme()} · </span>
                 {dailyPrompt()}
               </p>
             )}

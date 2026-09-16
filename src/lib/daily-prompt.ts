@@ -36,6 +36,21 @@ const PROMPTS = [
   "What would make you open AI·Thoughts again tomorrow?",
 ];
 
+/**
+ * Weekly themes — a light frame over the daily prompts so returning
+ * feels like there's a fresh angle, not just the same rotating list.
+ */
+const THEMES = [
+  "AI at work",
+  "AI and creativity",
+  "AI and relationships",
+  "AI and trust",
+  "AI and kids",
+  "AI and identity",
+  "AI and the future",
+  "AI and everyday life",
+];
+
 /** Local calendar day key YYYY-MM-DD (browser / user-facing). */
 export function promptDayKey(date = new Date()): string {
   const y = date.getFullYear();
@@ -98,4 +113,9 @@ export function dailyPromptForDay(dayKey: string): string {
   return dailyPromptUTC(new Date(Date.UTC(y!, m! - 1, d!)));
 }
 
-export { PROMPTS };
+/** This calendar week's theme — follows the user's local week. */
+export function weeklyTheme(date = new Date()): string {
+  return THEMES[Math.floor(dayOfYearLocal(date) / 7) % THEMES.length]!;
+}
+
+export { PROMPTS, THEMES };
