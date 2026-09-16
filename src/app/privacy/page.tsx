@@ -1,83 +1,251 @@
+import type { Metadata } from "next";
 import Link from "next/link";
-import { CONTACT_EMAIL, LEGAL_UPDATED } from "@/lib/site";
+import { BRAND } from "@/lib/brand";
+import { CONTACT_EMAIL, LEGAL_UPDATED, getSiteUrl } from "@/lib/site";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy",
+  description: `How ${BRAND.shortName} (${BRAND.name}) collects, uses, and shares your information.`,
+  alternates: {
+    canonical: "/privacy",
+  },
+};
 
 export default function PrivacyPage() {
+  const site = getSiteUrl();
+
   return (
     <div className="app-rail min-h-dvh py-8">
-      <h1 className="font-display text-2xl font-bold text-[var(--foreground)]">Privacy</h1>
+      <h1 className="font-display text-2xl font-bold text-[var(--foreground)]">
+        Privacy Policy
+      </h1>
       <p className="mt-1 text-xs text-[var(--muted)]">Last updated: {LEGAL_UPDATED}</p>
+      <p className="mt-2 text-sm text-[var(--muted)]">
+        This policy explains how {BRAND.shortName} ({BRAND.name}) handles your information when you
+        use {site.replace(/^https?:\/\//, "")} and related apps (web, PWA, phone, and Windows).
+      </p>
 
-      <div className="mt-6 space-y-5 text-sm leading-relaxed text-[var(--foreground)]">
+      <div className="mt-6 space-y-5 text-sm leading-relaxed text-[var(--muted)]">
         <section>
-          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">What we collect</h2>
-          <p className="text-[var(--muted)]">
-            When you share a take, we store the media, text, your chosen handle/display name, the
-            feeling, language, tags, and a content fingerprint for integrity. If you sign in, we
-            store your email encrypted at rest (linked to a profile) and send one-time sign-in
-            codes to that address.
-            Optional features may also store: push-notification subscriptions, email-digest
-            preferences, “feel with” (follow) relationships, and in-app activity about replies or
-            reactions on your takes. Region ranking uses your browser timezone/language on your
-            device and is not stored as a precise location.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">What&apos;s public</h2>
-          <p className="text-[var(--muted)]">
-            Your published takes, handle, display name, and reactions are public — that&apos;s what
-            makes Voices live. Your email, push endpoints, digest settings, and reports you file are
-            private.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">How media is handled</h2>
-          <p className="text-[var(--muted)]">
-            Voice and video clips are uploaded to cloud storage with a public URL so others can
-            play them in the feed. We compute a SHA-256 fingerprint to detect tampering.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">Notifications &amp; email</h2>
-          <p className="text-[var(--muted)]">
-            If you enable Web Push or email digests, we use them only for activity on your takes,
-            people you feel with, daily nudges you opted into, and the optional weekly Voices
-            digest. You can turn these off anytime in You → Daily habits.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">Kids &amp; all ages</h2>
-          <p className="text-[var(--muted)]">
-            Voices is for all ages. We encourage adults to help children understand that what they
-            post is public. Never post identifying details about yourself or others.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">Your rights</h2>
-          <p className="text-[var(--muted)]">
-            You can delete your own takes from the app while signed in. You can download a copy of
-            your data or wipe your account from You → Your data / Delete account. For help, use the{" "}
+          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">1. Who we are</h2>
+          <p>
+            {BRAND.name} (“{BRAND.shortName},” “we,” “us”) is a public community where people share how
+            AI makes them feel — in words, voice, or video. Contact:{" "}
+            <a
+              href={`mailto:${CONTACT_EMAIL}`}
+              className="text-[var(--accent)] underline-offset-2 hover:underline"
+            >
+              {CONTACT_EMAIL}
+            </a>{" "}
+            or the{" "}
             <Link href="/contact" className="text-[var(--accent)] underline-offset-2 hover:underline">
               contact form
-            </Link>{" "}
-            or email{" "}
+            </Link>
+            .
+          </p>
+        </section>
+
+        <section>
+          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">
+            2. Information we collect
+          </h2>
+          <ul className="ml-4 list-disc space-y-1.5">
+            <li>
+              <span className="font-medium text-[var(--foreground)]">Account.</span> Email address
+              (encrypted at rest), display name, handle, and when you joined. Sign-in uses a
+              one-time code emailed to you — we do not store passwords.
+            </li>
+            <li>
+              <span className="font-medium text-[var(--foreground)]">Content you share.</span> Text,
+              voice/video files, feeling, language, tags, replies, likes, and a content fingerprint
+              used for integrity and abuse prevention.
+            </li>
+            <li>
+              <span className="font-medium text-[var(--foreground)]">Activity.</span> Reports you
+              file, “feel with” relationships, optional push-notification subscriptions, and
+              optional email-digest preferences.
+            </li>
+            <li>
+              <span className="font-medium text-[var(--foreground)]">Technical.</span> A signed
+              session cookie after you sign in, plus basic request logs (e.g. approximate IP for
+              rate limits and security). On your device we may use local storage for profile
+              preferences and draft state. Browser timezone/language may be used on-device for
+              regional ranking and are not stored as precise GPS location.
+            </li>
+            <li>
+              <span className="font-medium text-[var(--foreground)]">Optional translation.</span> If
+              you choose “Translate,” the text you ask to translate is sent to our translation
+              provider to return an English version.
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">3. How we use it</h2>
+          <ul className="ml-4 list-disc space-y-1.5">
+            <li>Run the service: accounts, publishing, feed, replies, and likes</li>
+            <li>Send sign-in codes and (only if you opt in) digests or push alerts</li>
+            <li>Keep the community safe: dignity checks, reports, rate limits, and integrity</li>
+            <li>Improve reliability and fix bugs</li>
+            <li>Respond to privacy or removal requests</li>
+          </ul>
+          <p className="mt-2">
+            We do not sell your personal information. We do not use your content to train public AI
+            models.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">4. What&apos;s public</h2>
+          <p>
+            Published takes, your handle, display name, likes, and replies are{" "}
+            <span className="font-medium text-[var(--foreground)]">public</span> — anyone can see
+            them. Your email, push endpoints, digest settings, session cookie, and reports you file
+            are private.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">
+            5. How media is handled
+          </h2>
+          <p>
+            Voice and video you upload are stored in cloud object storage and served with a public
+            URL so others can play them in the feed. We may compute a SHA-256 fingerprint of media
+            or text to help detect tampering or duplicates.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">
+            6. Cookies and similar tech
+          </h2>
+          <p>
+            We use an essential session cookie so you stay signed in. We are not a tracking-ad
+            product: we do not run third-party advertising cookies for cross-site ads. You can clear
+            cookies and local storage in your browser or app settings; that will sign you out.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">
+            7. Service providers
+          </h2>
+          <p>
+            We use trusted processors to host and operate {BRAND.shortName}, including hosting and
+            serverless compute, database storage, media storage, transactional email (sign-in codes
+            and digests), and optional on-demand translation. They process data only to provide
+            those services to us, under their own terms and security practices.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">
+            8. Retention and your choices
+          </h2>
+          <p>
+            Public posts stay until you delete them or we remove them for safety. Session data lasts
+            while you stay signed in. OTP codes expire quickly. You can:
+          </p>
+          <ul className="ml-4 mt-2 list-disc space-y-1.5">
+            <li>Delete your own takes while signed in</li>
+            <li>Download a copy of your data or delete your account from You → Your data</li>
+            <li>Turn off push or email digests in You → Daily habits</li>
+            <li>
+              Ask for help via{" "}
+              <Link href="/contact" className="text-[var(--accent)] underline-offset-2 hover:underline">
+                contact
+              </Link>{" "}
+              or{" "}
+              <a
+                href={`mailto:${CONTACT_EMAIL}`}
+                className="text-[var(--accent)] underline-offset-2 hover:underline"
+              >
+                {CONTACT_EMAIL}
+              </a>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">
+            9. Children and families
+          </h2>
+          <p>
+            {BRAND.shortName} is meant for a broad audience. If you are under the age where you can
+            agree to online services in your country, ask a parent or guardian before using the app.
+            Do not post names, addresses, school details, phone numbers, or other identifying info
+            about yourself or others. Parents can contact us to request removal of a child&apos;s
+            account or content.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">
+            10. International users
+          </h2>
+          <p>
+            We may process and store information in the United States and other countries where our
+            providers operate. If you use {BRAND.shortName} from elsewhere, you understand that your
+            information may be transferred to those locations.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">11. Security</h2>
+          <p>
+            We use encryption in transit (HTTPS), encrypt emails at rest where designed, hash
+            sensitive identifiers, and limit access to operational data. No method of transmission
+            or storage is 100% secure — please use a strong email account and never share sign-in
+            codes.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">12. Changes</h2>
+          <p>
+            We may update this Privacy Policy. We will change the “Last updated” date above. Continued
+            use after an update means you accept the revised policy. Material changes may also be
+            noted in the app or by email when appropriate.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">13. Contact</h2>
+          <p>
+            Privacy and data requests:{" "}
             <a
               href={`mailto:${CONTACT_EMAIL}`}
               className="text-[var(--accent)] underline-offset-2 hover:underline"
             >
               {CONTACT_EMAIL}
             </a>
-            . We retain minimal data needed to keep Voices safe.
+            . Or use{" "}
+            <Link href="/contact" className="text-[var(--accent)] underline-offset-2 hover:underline">
+              {site}/contact
+            </Link>
+            .
+          </p>
+          <p className="mt-2">
+            Canonical policy URL:{" "}
+            <a
+              href={`${site}/privacy`}
+              className="break-all text-[var(--accent)] underline-offset-2 hover:underline"
+            >
+              {site}/privacy
+            </a>
           </p>
         </section>
       </div>
 
-      <div className="mt-8">
-        <Link href="/" className="text-xs text-[var(--muted)] hover:text-[var(--foreground)]">
+      <div className="mt-8 flex flex-wrap gap-4 text-xs text-[var(--muted)]">
+        <Link href="/terms" className="hover:text-[var(--foreground)]">
+          Terms of Use
+        </Link>
+        <Link href="/guidelines" className="hover:text-[var(--foreground)]">
+          Guidelines
+        </Link>
+        <Link href="/" className="hover:text-[var(--foreground)]">
           ← Back home
         </Link>
       </div>
