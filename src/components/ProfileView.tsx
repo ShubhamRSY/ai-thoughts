@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Camera, Check, Download, PencilLine, Trash2 } from "lucide-react";
@@ -15,6 +15,12 @@ interface ProfileViewProps {
   myThoughts: Thought[];
   onCreate: () => void;
   onDelete?: (thoughtId: string) => void;
+}
+
+interface ConnectionProfile {
+  handle: string;
+  author: string;
+  avatarUrl: string;
 }
 
 function initials(name: string) {
@@ -41,10 +47,32 @@ export default function ProfileView({ myThoughts, onCreate, onDelete }: ProfileV
   const [error, setError] = useState<string | null>(null);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [followers, setFollowers] = useState<ConnectionProfile[]>([]);
+  const [followingList, setFollowingList] = useState<ConnectionProfile[]>([]);
 
   const name = user?.displayName || profile.author || profile.handle.replace(/^@/, "") || "You";
   const displayHandle = user?.handle || profile.handle || "@you";
   const tagCount = new Set(myThoughts.flatMap((t) => t.tags ?? [])).size;
+
+  useEffect(() => {
+    if (!user) {
+      setFollowers([]);
+      setFollowingList([]);
+      return;
+    }
+    let cancelled = false;
+    fetch("/api/follows", { credentials: "include", cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        setFollowers(data.followers ?? []);
+        setFollowingList(data.followingProfiles ?? []);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   const persist = async (next: {
     handle?: string;
@@ -271,6 +299,13 @@ export default function ProfileView({ myThoughts, onCreate, onDelete }: ProfileV
         </div>
       </div>
 
+      {user && (followers.length > 0 || followingList.length > 0) && (
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <ConnectionList title="Followers" people={followers} />
+          <ConnectionList title="Following" people={followingList} />
+        </div>
+      )}
+
       <div className="mt-6 rounded-2xl border border-[var(--border-base)] bg-[var(--surface)] p-4">
         <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
           <Download className="h-3.5 w-3.5 text-[var(--accent)]" /> Get the app
@@ -444,6 +479,42 @@ export default function ProfileView({ myThoughts, onCreate, onDelete }: ProfileV
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function ConnectionList({ title, people }: { title: string; people: ConnectionProfile[] }) {
+  return (
+    <div className="rounded-2xl border border-[var(--border-base)] bg-[var(--surface)] p-4">
+      <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+        {title} ({people.length})
+      </p>
+      {people.length === 0 ? (
+        <p className="mt-2 text-xs text-[var(--muted)]">Nobody yet.</p>
+      ) : (
+        <div className="mt-2 flex flex-col gap-2">
+          {people.map((p) => (
+            <div key={p.handle} className="flex items-center gap-2.5">
+              {p.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={p.avatarUrl}
+                  alt=""
+                  className="h-7 w-7 shrink-0 rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[10px] font-semibold text-[var(--surface)]">
+                  {initials(p.author)}
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-[var(--foreground)]">{p.author}</p>
+                <p className="truncate text-xs text-[var(--muted)]">{p.handle}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
