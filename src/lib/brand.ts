@@ -18,6 +18,8 @@ export const BRAND = {
   joinCta: "Start expressing",
   openCta: "Open Voices",
   homeNav: "Voices",
+  /** Windows installer — GitHub Releases (auto-update via electron-updater) */
+  windowsDownloadUrl: "https://github.com/ShubhamRSY/ai-thoughts/releases/latest",
   dignityNote:
     "Be honest about how AI feels — love it or critique it. Personal attacks, hate speech, and sexual content don’t belong here.",
   /** Three things you do here — keep short */

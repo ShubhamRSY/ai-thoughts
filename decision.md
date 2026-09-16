@@ -274,6 +274,12 @@ Format: **Decision → Why → Alternatives considered → Libraries / stack**.
 - **Alternatives:** Push App Store first — blocked by Apple fee + review time.
 - **Stack:** Existing PWA (manifest + SW) — $0.
 
+### Windows build via GitHub Actions
+- **Decision:** Add `.github/workflows/desktop-windows.yml` (windows-latest) — build NSIS installer on `desktop-v*` tags and publish GitHub Release. `/install` links to `releases/latest`.
+- **Why:** Owner asked to go further after phone PWA; local Mac `publish:win` was awkward without GH_TOKEN/path issues.
+- **Alternatives:** Only local electron-builder — harder for owner; paid CI — unnecessary.
+- **Stack:** electron-builder + `softprops/action-gh-release`.
+
 ---
 
-*Last updated: 2026-09-16 (phone PWA install first).*
+*Last updated: 2026-09-16 (Windows CI release pipeline).*

@@ -10,42 +10,31 @@ Same live site as the web app (`https://aito.social`) wrapped in native shells.
 
 ---
 
-## Windows auto-update (what you asked for)
+## Windows — build via GitHub Actions (recommended)
 
-Installed apps use **`electron-updater`**:
+1. Push a tag:
+   ```bash
+   git tag desktop-v0.1.0
+   git push origin desktop-v0.1.0
+   ```
+2. GitHub Actions → **Desktop Windows** builds `AiTo-Setup-0.1.0.exe`
+3. A GitHub Release is created automatically
+4. Users download from https://github.com/ShubhamRSY/ai-thoughts/releases/latest  
+   (also linked on `/install` → **Download for Windows**)
 
-1. You bump `desktop/package.json` `"version"` (e.g. `0.1.0` → `0.1.1`)
-2. You publish a new GitHub Release with the built installer
-3. Users’ AiTo checks GitHub on launch (and every 6 hours)
-4. New version downloads in the background
-5. Dialog: **Restart now** → installs and relaunches
+Or run the workflow manually: **Actions → Desktop Windows → Run workflow** (uploads an artifact; tag push creates the public Release).
 
-Users do **not** manually re-download from the website.
-
-### Publish a new Windows version
-
-```bash
-cd desktop
-# 1) bump "version" in package.json
-npm install
-# 2) needs a GitHub token with repo release permission:
-#    export GH_TOKEN=ghp_...
-npm run publish:win
-```
-
-That builds `AiTo-Setup-x.x.x.exe` and uploads it to a GitHub Release on `ShubhamRSY/ai-thoughts`.
-
-First-time users still download once from the Release page (or your `/install` link).
-
-> Building Windows from macOS often works; if not, use a Windows PC or GitHub Actions (`windows-latest`).
-
-### Local try (no auto-update)
+### Local build (optional)
 
 ```bash
 cd desktop
 npm install
-npm start   # auto-update is disabled in unpackaged mode
+npm run pack:win   # → desktop/dist/AiTo-Setup-0.1.0.exe
 ```
+
+### Auto-update after v0.1.0
+
+Bump `desktop/package.json` `"version"`, tag `desktop-v0.1.1`, push. Installed apps detect the new Release and offer **Restart now**.
 
 ---
 

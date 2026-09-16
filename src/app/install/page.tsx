@@ -175,6 +175,27 @@ export default function InstallPage() {
               Open Voices in browser
             </Link>
           )}
+
+          <section className="rounded-2xl border border-[var(--border-base)] bg-white p-5 shadow-sm shadow-slate-900/5">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
+              <Download className="h-4 w-4 text-[var(--accent)]" /> Windows PC
+            </h2>
+            <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
+              Download the AiTo installer for Windows. After the first install, updates download
+              automatically.
+            </p>
+            <a
+              href={BRAND.windowsDownloadUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 flex w-full items-center justify-center rounded-xl bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-2)] active:scale-95"
+            >
+              Download for Windows
+            </a>
+            <p className="mt-2 text-center text-[11px] text-[var(--muted)]">
+              Opens GitHub Releases — grab <span className="text-[var(--foreground)]">AiTo-Setup.exe</span>
+            </p>
+          </section>
         </div>
       )}
 
@@ -185,15 +206,16 @@ export default function InstallPage() {
         <ul className="mt-3 flex flex-col gap-2.5 text-xs leading-relaxed text-[var(--muted)]">
           <li className="flex gap-2">
             <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
-            No App Store fee — it’s a home-screen web app for <span className="text-[var(--foreground)]">aito.social</span>
+            Phone: home-screen web app for{" "}
+            <span className="text-[var(--foreground)]">aito.social</span> — no App Store fee
           </li>
           <li className="flex gap-2">
             <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
-            Looks like a normal app icon. Opens full-screen into Voices.
+            Windows: installer from our GitHub Releases (auto-updates later)
           </li>
           <li className="flex gap-2">
-            <Download className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--accent)]" />
-            Windows .exe and App Store come later — phone install works today.
+            <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
+            Sign in once — the app opens logged in
           </li>
         </ul>
       </section>

@@ -1,8 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Camera, Check, PencilLine, Trash2 } from "lucide-react";
+import { Camera, Check, Download, PencilLine, Trash2 } from "lucide-react";
 import { upload } from "@vercel/blob/client";
 import type { Thought } from "@/lib/types";
 import { useLocalProfile } from "@/hooks/useLocalProfile";
@@ -267,6 +268,21 @@ export default function ProfileView({ myThoughts, onCreate, onDelete }: ProfileV
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="mt-6 rounded-2xl border border-[var(--border-base)] bg-[var(--surface)] p-4">
+        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+          <Download className="h-3.5 w-3.5 text-[var(--accent)]" /> Get the app
+        </p>
+        <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">
+          Install {BRAND.shortName} on your phone home screen, or download for Windows.
+        </p>
+        <Link
+          href="/install"
+          className="mt-3 inline-flex rounded-full bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-[var(--surface)] transition hover:bg-[var(--accent-2)]"
+        >
+          Install {BRAND.shortName}
+        </Link>
       </div>
 
       {user && (
