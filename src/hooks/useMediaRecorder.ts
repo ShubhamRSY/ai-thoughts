@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-type RecorderStatus = "idle" | "requesting" | "recording" | "stopped" | "error";
+type RecorderStatus = "idle" | "requesting" | "previewing" | "recording" | "stopped" | "error";
 
 interface UseMediaRecorderReturn {
   status: RecorderStatus;
@@ -12,6 +12,7 @@ interface UseMediaRecorderReturn {
   previewUrl: string | null;
   stream: MediaStream | null;
   start: () => Promise<void>;
+  record: () => void;
   stop: () => void;
   reset: () => void;
 }
@@ -186,17 +187,10 @@ export function useMediaRecorder(kind: "audio" | "video"): UseMediaRecorderRetur
         setStatus("stopped");
       };
       mediaRecorderRef.current = recorder;
-      // timeslice keeps Safari/iOS from returning an empty blob on stop
-      recorder.start(1000);
 
-      setDuration(0);
-      setStatus("recording");
-      const startTime = Date.now();
-      timerRef.current = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - startTime) / 1000);
-        setDuration(elapsed);
-        if (elapsed >= MAX_DURATION_SEC) stop();
-      }, 250);
+      // Camera/mic are live now, but capture hasn't started — let the
+      // person see themselves before committing to a take.
+      setStatus("previewing");
     } catch (e) {
       stopTracks();
       setError(
@@ -210,7 +204,23 @@ export function useMediaRecorder(kind: "audio" | "video"): UseMediaRecorderRetur
       );
       setStatus("error");
     }
-  }, [kind, stopTracks, releasePreview, stop, clearTimer]);
+  }, [kind, stopTracks, releasePreview, clearTimer]);
+
+  const record = useCallback(() => {
+    const rec = mediaRecorderRef.current;
+    if (!rec || rec.state !== "inactive") return;
+    // timeslice keeps Safari/iOS from returning an empty blob on stop
+    rec.start(1000);
+
+    setDuration(0);
+    setStatus("recording");
+    const startTime = Date.now();
+    timerRef.current = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      setDuration(elapsed);
+      if (elapsed >= MAX_DURATION_SEC) stop();
+    }, 250);
+  }, [stop]);
 
   useEffect(() => {
     return () => {
@@ -226,5 +236,5 @@ export function useMediaRecorder(kind: "audio" | "video"): UseMediaRecorderRetur
     };
   }, [releasePreview]);
 
-  return { status, error, duration, blob, previewUrl, stream, start, stop, reset };
+  return { status, error, duration, blob, previewUrl, stream, start, record, stop, reset };
 }

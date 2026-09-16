@@ -35,8 +35,8 @@ interface SubmitModalProps {
 }
 
 const TABS: { id: Tab; label: string; icon: typeof AudioLines }[] = [
-  { id: "audio", label: "Audio", icon: AudioLines },
   { id: "text", label: "Text", icon: Type },
+  { id: "audio", label: "Audio", icon: AudioLines },
   { id: "video", label: "Video", icon: Video },
 ];
 
@@ -258,39 +258,40 @@ export default function SubmitModal({
                 {dailyPrompt()}
               </p>
             )}
-            <div className="grid grid-cols-3 border-b border-[var(--border-base)] bg-[var(--surface)]">
-              {TABS.map(({ id, label, icon: Icon }) => {
-                const active = tab === id;
-                return (
-                  <button
-                    key={id}
-                    onClick={() => switchTab(id)}
-                    className={`relative flex items-center justify-center gap-1.5 py-3 text-sm font-medium transition ${
-                      active ? "text-[var(--accent)]" : "text-[var(--muted)] hover:text-[var(--foreground)]"
-                    }`}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {label}
-                    {active && (
-                      <span className="absolute inset-x-4 bottom-0 h-0.5 rounded-full bg-[var(--accent)]" />
-                    )}
-                  </button>
-                );
-              })}
+            <div className="pt-3">
+              <div className="relative grid grid-cols-3 rounded-full bg-[var(--surface-2)] p-1">
+                <span
+                  aria-hidden
+                  className="absolute inset-y-1 left-1 rounded-full bg-[var(--surface)] shadow-sm transition-transform duration-200 ease-out"
+                  style={{
+                    width: "calc((100% - 0.5rem) / 3)",
+                    transform: `translateX(${TABS.findIndex((t) => t.id === tab) * 100}%)`,
+                  }}
+                />
+                {TABS.map(({ id, label, icon: Icon }) => {
+                  const active = tab === id;
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => switchTab(id)}
+                      className={`relative z-10 flex items-center justify-center gap-1.5 rounded-full py-2 text-sm font-medium transition ${
+                        active ? "text-[var(--foreground)]" : "text-[var(--muted)] hover:text-[var(--foreground)]"
+                      }`}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            <div className="flex-1 space-y-4 bg-[var(--background)] px-4 py-4">
+            <div className="flex-1 space-y-4 bg-[var(--background)] py-4">
               {tab === "audio" && <MediaRecorderView kind="audio" onCaptured={setCaptured} />}
               {tab === "video" && <MediaRecorderView kind="video" onCaptured={setCaptured} />}
               {tab === "text" && <TextForm value={content} onChange={setContent} />}
 
               <div>
-                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-                  How does this feel?
-                </label>
-                <p className="mb-2 text-xs text-[var(--muted)]">
-                  Every take carries a feeling — that&apos;s what Voices is for.
-                </p>
                 <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1">
                   {FEELINGS.map((f) => {
                     const active = feeling === f.id;
@@ -335,7 +336,7 @@ export default function SubmitModal({
               ) : (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
-                    <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+                    <label className="mb-1 block text-xs font-medium text-[var(--muted)]">
                       Handle
                     </label>
                     <input
@@ -346,8 +347,8 @@ export default function SubmitModal({
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-                      Display name <span className="normal-case opacity-70">(optional)</span>
+                    <label className="mb-1 block text-xs font-medium text-[var(--muted)]">
+                      Display name <span className="opacity-70">(optional)</span>
                     </label>
                     <input
                       value={author}
@@ -360,100 +361,93 @@ export default function SubmitModal({
               )}
 
               {tab !== "text" && (
-                <div>
-                  <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-                    Caption <span className="normal-case opacity-70">(optional)</span>
-                  </label>
-                  <input
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    placeholder="A short line about this take…"
-                    dir="auto"
-                    className="w-full rounded-lg border border-[var(--border-base)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
-                  />
-                </div>
+                <input
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="Add a caption…"
+                  dir="auto"
+                  className="w-full rounded-lg border border-[var(--border-base)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
+                />
               )}
 
-              <div>
-                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-                  Language
-                </label>
-                <div className="relative">
-                  <Globe className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
-                  <select
-                    value={language}
-                    onChange={(e) => setLanguage(e.target.value)}
-                    className="w-full cursor-pointer appearance-none rounded-lg border border-[var(--border-base)] bg-white py-2 pl-9 pr-9 text-sm outline-none focus:border-[var(--accent)]"
-                  >
-                    {LANGS.map((l) => (
-                      <option key={l.code} value={l.code}>
-                        {l.flag ? `${l.flag} ${l.label}` : l.label}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
-                </div>
-              </div>
+              <details className="group rounded-xl border border-[var(--border-base)] bg-white open:pb-3">
+                <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2.5 text-sm font-medium text-[var(--foreground)] [&::-webkit-details-marker]:hidden">
+                  More options
+                  <ChevronDown className="h-4 w-4 text-[var(--muted)] transition-transform group-open:rotate-180" />
+                </summary>
+                <div className="space-y-3 px-3 pt-1">
+                  <div className="relative">
+                    <Globe className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
+                    <select
+                      value={language}
+                      onChange={(e) => setLanguage(e.target.value)}
+                      className="w-full cursor-pointer appearance-none rounded-lg border border-[var(--border-base)] bg-white py-2 pl-9 pr-9 text-sm outline-none focus:border-[var(--accent)]"
+                    >
+                      {LANGS.map((l) => (
+                        <option key={l.code} value={l.code}>
+                          {l.flag ? `${l.flag} ${l.label}` : l.label}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
+                  </div>
 
-              <div>
-                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-                  Tags
-                </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {SUGGESTED_TAGS.map((t) => {
-                    const active = tags.includes(t);
-                    return (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => toggleTag(t)}
-                        className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${
-                          active
-                            ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-2)]"
-                            : "border-[var(--border-base)] bg-white text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--foreground)]"
-                        }`}
-                      >
-                        {t}
-                      </button>
-                    );
-                  })}
-                  {tags
-                    .filter((t) => !(SUGGESTED_TAGS as readonly string[]).includes(t))
-                    .map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => toggleTag(t)}
-                        className="rounded-full border border-[var(--accent)] bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-medium text-[var(--accent-2)]"
-                      >
-                        {t} ×
-                      </button>
-                    ))}
+                  <div className="flex flex-wrap gap-1.5">
+                    {SUGGESTED_TAGS.map((t) => {
+                      const active = tags.includes(t);
+                      return (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => toggleTag(t)}
+                          className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${
+                            active
+                              ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-2)]"
+                              : "border-[var(--border-base)] bg-white text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--foreground)]"
+                          }`}
+                        >
+                          {t}
+                        </button>
+                      );
+                    })}
+                    {tags
+                      .filter((t) => !(SUGGESTED_TAGS as readonly string[]).includes(t))
+                      .map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => toggleTag(t)}
+                          className="rounded-full border border-[var(--accent)] bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-medium text-[var(--accent-2)]"
+                        >
+                          {t} ×
+                        </button>
+                      ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      value={customTag}
+                      onChange={(e) => setCustomTag(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addCustomTag();
+                        }
+                      }}
+                      placeholder="Add your own tag…"
+                      className="min-w-0 flex-1 rounded-lg border border-[var(--border-base)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
+                    />
+                    <button
+                      type="button"
+                      onClick={addCustomTag}
+                      className="shrink-0 rounded-lg border border-[var(--border-base)] px-3 text-xs font-semibold text-[var(--foreground)] hover:bg-[var(--surface-2)]"
+                    >
+                      Add
+                    </button>
+                  </div>
                 </div>
-                <div className="mt-2 flex gap-2">
-                  <input
-                    value={customTag}
-                    onChange={(e) => setCustomTag(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addCustomTag();
-                      }
-                    }}
-                    placeholder="Add your own tag…"
-                    className="min-w-0 flex-1 rounded-lg border border-[var(--border-base)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
-                  />
-                  <button
-                    type="button"
-                    onClick={addCustomTag}
-                    className="shrink-0 rounded-lg border border-[var(--border-base)] px-3 text-xs font-semibold text-[var(--foreground)] hover:bg-[var(--surface-2)]"
-                  >
-                    Add
-                  </button>
-                </div>
-              </div>
+              </details>
 
-              <p className="rounded-xl border border-[var(--border-base)] bg-[var(--surface)] px-3 py-2 text-[11px] leading-relaxed text-[var(--muted)]">
+              <p className="text-[11px] leading-relaxed text-[var(--muted)]">
                 {BRAND.dignityNote}
               </p>
             </div>
@@ -467,7 +461,7 @@ export default function SubmitModal({
               <button
                 onClick={submit}
                 disabled={!canSubmit}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-2)] disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex w-full items-center justify-center gap-2 rounded-full bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-2)] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Send className="h-4 w-4" />
                 {BRAND.shareCta}

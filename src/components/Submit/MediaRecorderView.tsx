@@ -26,10 +26,11 @@ function formatBytes(b: number) {
 }
 
 export default function MediaRecorderView({ kind, onCaptured }: MediaRecorderViewProps) {
-  const { status, error, duration, blob, previewUrl, stream, start, stop, reset } =
+  const { status, error, duration, blob, previewUrl, stream, start, record, stop, reset } =
     useMediaRecorder(kind);
   const Icon = kind === "audio" ? Mic : Video;
   const isRecording = status === "recording";
+  const isLive = status === "recording" || status === "previewing";
   const isVideo = kind === "video";
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewRef = useRef<HTMLVideoElement | HTMLAudioElement>(null);
@@ -59,37 +60,53 @@ export default function MediaRecorderView({ kind, onCaptured }: MediaRecorderVie
 
   return (
     <div
-      className={`relative overflow-hidden rounded-xl border ${
+      className={`relative overflow-hidden rounded-2xl border shadow-sm ${
         isRecording ? "border-red-400" : "border-[var(--border-base)]"
       } bg-white`}
     >
       {/* Capture / preview area */}
-      {status === "recording" && isVideo ? (
+      {isLive && isVideo ? (
         <div className="relative aspect-video w-full bg-black">
           <video ref={videoRef} muted playsInline className="h-full w-full object-cover" />
-          <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-red-500/90 px-2 py-0.5 text-[11px] font-semibold text-white">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+          {isRecording ? (
+            <>
+              <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-red-500/90 px-2 py-0.5 text-[11px] font-semibold text-white">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+                </span>
+                REC
+              </span>
+              <span className="absolute right-3 top-3 rounded-full bg-slate-900/80 px-2.5 py-1 font-mono text-xs text-amber-200 tabular-nums">
+                {formatDur(duration)}
+              </span>
+            </>
+          ) : (
+            <span className="absolute left-3 top-3 rounded-full bg-slate-900/80 px-2.5 py-0.5 text-[11px] font-semibold text-white">
+              Preview
             </span>
-            REC
-          </span>
-          <span className="absolute right-3 top-3 rounded-full bg-slate-900/80 px-2.5 py-1 font-mono text-xs text-amber-200 tabular-nums">
-            {formatDur(duration)}
-          </span>
+          )}
         </div>
-      ) : status === "recording" ? (
+      ) : isLive ? (
         <div className="relative flex aspect-video flex-col items-center justify-center gap-3 bg-[var(--surface-2)]">
-          <span className="inline-flex h-16 w-16 animate-pulse items-center justify-center rounded-full bg-red-100">
-            <Mic className="h-8 w-8 text-red-500" />
+          <span
+            className={`inline-flex h-16 w-16 items-center justify-center rounded-full ${
+              isRecording ? "animate-pulse bg-red-100" : "bg-white border border-[var(--border-base)]"
+            }`}
+          >
+            <Mic className={`h-8 w-8 ${isRecording ? "text-red-500" : "text-[var(--muted)]"}`} />
           </span>
-          <span className="flex items-center gap-2 text-xs font-medium text-red-600">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+          {isRecording ? (
+            <span className="flex items-center gap-2 text-xs font-medium text-red-600">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+              </span>
+              REC {formatDur(duration)}
             </span>
-            REC {formatDur(duration)}
-          </span>
+          ) : (
+            <span className="text-xs font-medium text-[var(--muted)]">Mic ready</span>
+          )}
         </div>
       ) : previewUrl ? (
         <div className="relative">
@@ -192,6 +209,11 @@ export default function MediaRecorderView({ kind, onCaptured }: MediaRecorderVie
               Asking for {isVideo ? "camera + mic" : "mic"} access…
             </span>
           )}
+          {status === "previewing" && (
+            <span className="text-[var(--foreground)]">
+              {isVideo ? "Looking good. Tap Record when ready." : "Mic's live. Tap Record when ready."}
+            </span>
+          )}
           {status === "recording" && (
             <span className="text-[var(--foreground)]">
               {isVideo ? "Recording — look alive." : "Recording — say your piece."}
@@ -212,13 +234,29 @@ export default function MediaRecorderView({ kind, onCaptured }: MediaRecorderVie
               onClick={() => start()}
               className="flex items-center gap-2 rounded-lg bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--accent-2)]"
             >
-              <span className="h-2.5 w-2.5 rounded-full bg-white" />
-              Start{isVideo ? " Recording" : " Recording"}
+              <Icon className="h-4 w-4" />
+              {isVideo ? "Turn on camera" : "Turn on mic"}
             </button>
           ) : status === "requesting" ? (
             <button disabled className="cursor-not-allowed rounded-lg bg-[var(--surface-2)] px-5 py-2.5 text-sm font-semibold text-[var(--muted)]">
               Waiting…
             </button>
+          ) : status === "previewing" ? (
+            <>
+              <button
+                onClick={reset}
+                className="flex items-center gap-2 rounded-lg border border-[var(--border-base)] px-5 py-2.5 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-2)]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={record}
+                className="flex items-center gap-2 rounded-lg bg-red-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-600"
+              >
+                <span className="h-2.5 w-2.5 rounded-full bg-white" />
+                Record
+              </button>
+            </>
           ) : status === "recording" ? (
             <button
               onClick={stop}
