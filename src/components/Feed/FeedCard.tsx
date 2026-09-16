@@ -10,10 +10,8 @@ import {
   ShieldCheck,
   Trash2,
   HeartHandshake,
-  SmilePlus,
 } from "lucide-react";
 import type { Thought, Reaction, FeelingId, LikedByPerson } from "@/lib/types";
-import { REACTION_TYPES } from "@/lib/mock-data";
 import { LIKE_REACTION, formatLikedBy } from "@/lib/likes";
 import AudioPlayer from "@/components/Player/AudioPlayer";
 import VideoPlayer from "@/components/Player/VideoPlayer";
@@ -86,8 +84,6 @@ export default function FeedCard({
   currentAuthor,
   forceChatOpen,
 }: FeedCardProps) {
-  const [reactions, setReactions] = useState(thought.reactions);
-  const [mine, setMine] = useState<Reaction | null>(null);
   const [liked, setLiked] = useState(Boolean(thought.likedByMe));
   const [likes, setLikes] = useState(
     typeof thought.likeCount === "number"
@@ -107,7 +103,6 @@ export default function FeedCard({
   const [commentCount, setCommentCount] = useState<number | null>(
     typeof thought.replyCount === "number" ? thought.replyCount : null
   );
-  const [showReact, setShowReact] = useState(false);
   const [feeling, setFeeling] = useState(Boolean(feelingWith));
 
   useEffect(() => {
@@ -156,34 +151,6 @@ export default function FeedCard({
     (thought.mediaType === "audio" || thought.mediaType === "video") && thought.transcript?.length
   );
   const mediaSrc = thought.streamReady && thought.streamUrl ? thought.streamUrl : thought.mediaUrl;
-
-  const react = async (r: Reaction) => {
-    if (!currentHandle) return;
-    setActionError(null);
-    const prevReactions = reactions;
-    const prevMine = mine;
-    if (mine === r) {
-      setReactions((prev) =>
-        prev.map((e) => (e.type === r ? { ...e, count: Math.max(0, e.count - 1) } : e))
-      );
-      setMine(null);
-    } else {
-      setReactions((prev) =>
-        prev.map((e) => {
-          if (e.type === r) return { ...e, count: e.count + 1 };
-          if (mine && e.type === mine) return { ...e, count: Math.max(0, e.count - 1) };
-          return e;
-        })
-      );
-      setMine(r);
-    }
-    const ok = onReact ? await Promise.resolve(onReact(thought.id, r)) : true;
-    if (ok === false) {
-      setReactions(prevReactions);
-      setMine(prevMine);
-      setActionError("Couldn’t save that reaction — try again.");
-    }
-  };
 
   const like = async () => {
     if (!currentHandle) return;
@@ -432,18 +399,6 @@ export default function FeedCard({
           <MessageCircle className="h-[18px] w-[18px]" strokeWidth={2} />
           {commentCount != null && commentCount > 0 ? commentCount : "Reply"}
         </button>
-        <button
-          type="button"
-          onClick={() => setShowReact((v) => !v)}
-          disabled={!currentHandle}
-          aria-label={showReact ? "Close reactions" : "Add reaction"}
-          title={!currentHandle ? "Sign in to react" : undefined}
-          className={`flex items-center gap-1 text-[13px] font-medium transition disabled:opacity-50 ${
-            showReact ? "text-[var(--foreground)]" : "hover:text-[var(--foreground)]"
-          }`}
-        >
-          <SmilePlus className="h-[18px] w-[18px]" strokeWidth={2} />
-        </button>
       </div>
 
       {actionError && (
@@ -454,32 +409,6 @@ export default function FeedCard({
         <p className="relative z-0 mt-1.5 text-[14px] text-[var(--foreground)]/70">
           {formatLikedBy(likedBy, likes, currentHandle)}
         </p>
-      )}
-
-      {(showReact || reactions.some((e) => e.count > 0)) && (
-        <div className="mt-2.5 flex flex-wrap gap-1.5">
-          {REACTION_TYPES.map((r) => {
-            const count = reactions.find((e) => e.type === r)?.count ?? 0;
-            const isMine = mine === r;
-            if (!showReact && count === 0) return null;
-            return (
-              <button
-                key={r}
-                type="button"
-                disabled={!currentHandle}
-                onClick={() => void react(r)}
-                className={`rounded-full px-2 py-0.5 text-sm transition disabled:opacity-50 ${
-                  isMine
-                    ? "bg-[var(--accent-soft)] text-[var(--accent-2)]"
-                    : "bg-[var(--surface-2)] text-[var(--foreground)] hover:bg-[var(--accent-soft)]"
-                }`}
-              >
-                {r}
-                {count > 0 ? ` ${count}` : ""}
-              </button>
-            );
-          })}
-        </div>
       )}
 
       {mounted &&
