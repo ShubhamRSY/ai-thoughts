@@ -19,6 +19,7 @@ import TranscriptPanel from "@/components/Feed/TranscriptPanel";
 import FeelingBadge from "@/components/FeelingBadge";
 import ChatPanel from "@/components/Chat/ChatPanel";
 import TranslateToEnglish from "@/components/TranslateToEnglish";
+import ShareCardButton from "@/components/ShareCardButton";
 import { shouldOfferTranslate } from "@/lib/lang";
 import { isNewAccount } from "@/lib/anti-abuse";
 
@@ -399,6 +400,7 @@ export default function FeedCard({
           <MessageCircle className="h-[18px] w-[18px]" strokeWidth={2} />
           {commentCount != null && commentCount > 0 ? commentCount : "Reply"}
         </button>
+        <ShareCardButton thought={thought} />
       </div>
 
       {actionError && (
