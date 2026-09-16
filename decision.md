@@ -298,6 +298,12 @@ Format: **Decision → Why → Alternatives considered → Libraries / stack**.
 - **Alternatives:** WebSocket live feed — heavier than needed; pull-to-refresh only — weaker UX.
 - **Stack:** Existing `fetchPulsePosts` + browser visibility APIs.
 
+### Soft crowd count (30+ not 38)
+- **Decision:** Landing social proof uses floored tens with `+` via `crowdCountLabel` (38 → “30+ people…”, 45 → “40+…”). Under 25 keeps “Be one of the first…”.
+- **Why:** Owner doesn’t want an exact headcount; wants a soft 30+-style line that steps up as users grow.
+- **Alternatives:** Exact count — rejected; fake inflated numbers — rejected earlier.
+- **Stack:** `src/lib/pulse-stats.ts`.
+
 ---
 
-*Last updated: 2026-09-16 (feed refresh on reopen).*
+*Last updated: 2026-09-16 (soft crowd count).*

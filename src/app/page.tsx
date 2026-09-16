@@ -1,7 +1,7 @@
 import Footer from "@/components/Footer";
 import BrandMark from "@/components/BrandMark";
 import LandingCTAs from "@/components/LandingCTAs";
-import { getPulseStats } from "@/lib/pulse-stats";
+import { getPulseStats, crowdCountLabel } from "@/lib/pulse-stats";
 import { getSession } from "@/lib/auth";
 import { BRAND } from "@/lib/brand";
 
@@ -18,9 +18,7 @@ export default async function LandingPage() {
   const installHref = session ? "/install" : "/sign-in?next=/install";
   const crowdLine = session
     ? `Welcome back${session.displayName ? `, ${session.displayName}` : ""}.`
-    : total < 25
-      ? "Be one of the first to say how AI feels."
-      : `${total.toLocaleString()} people already expressing themselves.`;
+    : crowdCountLabel(total);
 
   return (
     <div className="landing">

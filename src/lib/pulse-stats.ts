@@ -41,6 +41,13 @@ const FALLBACK_SAMPLES: PulseSample[] = INITIAL_THOUGHTS.slice(0, 3).map((t) => 
 
 const FALLBACK_STATS: PulseStats = { total: INITIAL_THOUGHTS.length, samples: FALLBACK_SAMPLES };
 
+/** Soft social proof — 38 → "30+", 41 → "40+", never an exact headcount. */
+export function crowdCountLabel(total: number): string {
+  if (total < 25) return "Be one of the first to say how AI feels.";
+  const bucket = Math.floor(total / 10) * 10;
+  return `${bucket.toLocaleString()}+ people already expressing themselves.`;
+}
+
 export async function getPulseStats(): Promise<PulseStats> {
   if (!isMongoConfigured()) return FALLBACK_STATS;
 
