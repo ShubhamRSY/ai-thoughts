@@ -292,6 +292,12 @@ Format: **Decision → Why → Alternatives considered → Libraries / stack**.
 - **Alternatives:** Hide the button on desktop — less clear; still offer Windows path.
 - **Stack:** Client `LandingCTAs` + UA/pointer heuristics.
 
+### Refresh feed when returning to the app
+- **Decision:** On `visibilitychange` (visible), `pageshow` (bfcache), and `window` focus, silently re-fetch posts (and activity if signed in). Throttle to once per 12s so focus spam doesn’t hammer the API. Don’t flash the full loading empty state on background refresh.
+- **Why:** Owner wants users to see new posts/shares when they reopen or come back without a manual refresh.
+- **Alternatives:** WebSocket live feed — heavier than needed; pull-to-refresh only — weaker UX.
+- **Stack:** Existing `fetchPulsePosts` + browser visibility APIs.
+
 ---
 
-*Last updated: 2026-09-16 (PC install notice).*
+*Last updated: 2026-09-16 (feed refresh on reopen).*

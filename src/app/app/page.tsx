@@ -334,29 +334,68 @@ export default function Home() {
     return addReaction(thoughtId, reaction);
   }, []);
 
-  useEffect(() => {
-    if (!isLive()) {
-      setFeedStatus("ready");
-      return;
-    }
-    let cancelled = false;
-    setFeedStatus("loading");
-    fetchPulsePosts().then((posts) => {
-      if (cancelled) return;
+  const reloadFeed = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!isLive()) {
+        setFeedStatus("ready");
+        return;
+      }
+      const silent = Boolean(opts?.silent);
+      if (!silent) setFeedStatus("loading");
+      const posts = await fetchPulsePosts();
       if (!posts) {
-        setThoughts([]);
-        setMine([]);
-        setFeedStatus("error");
+        if (!silent) {
+          setThoughts([]);
+          setMine([]);
+          setFeedStatus("error");
+        }
         return;
       }
       setThoughts(posts);
       setMine(posts.filter((t) => sameAuthor(t.handle, identityHandle)));
       setFeedStatus("ready");
-    });
-    return () => {
-      cancelled = true;
+    },
+    [identityHandle]
+  );
+
+  // First load + when signed-in identity changes
+  useEffect(() => {
+    void reloadFeed({ silent: false });
+  }, [reloadFeed]);
+
+  // When user returns to the app (background → foreground), refresh feed quietly
+  useEffect(() => {
+    if (!isLive()) return;
+
+    let lastRefresh = 0;
+    const MIN_GAP_MS = 12_000;
+
+    const refreshIfStale = () => {
+      const now = Date.now();
+      if (now - lastRefresh < MIN_GAP_MS) return;
+      lastRefresh = now;
+      void reloadFeed({ silent: true });
+      if (user) void refreshActivity();
     };
-  }, [identityHandle]);
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refreshIfStale();
+    };
+    const onPageShow = (e: PageTransitionEvent) => {
+      // bfcache restore (common on mobile back / home-screen PWA)
+      if (e.persisted) refreshIfStale();
+    };
+
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("pageshow", onPageShow);
+    window.addEventListener("focus", refreshIfStale);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("pageshow", onPageShow);
+      window.removeEventListener("focus", refreshIfStale);
+    };
+  }, [reloadFeed, refreshActivity, user]);
 
   // Merge today's prompt lane posts so the filter has enough answers.
   useEffect(() => {
