@@ -304,6 +304,12 @@ Format: **Decision → Why → Alternatives considered → Libraries / stack**.
 - **Alternatives:** Exact count — rejected; fake inflated numbers — rejected earlier.
 - **Stack:** `src/lib/pulse-stats.ts`.
 
+### Windows via Microsoft Store (not GitHub)
+- **Decision:** Public Windows CTA goes to Microsoft Store (`NEXT_PUBLIC_MS_STORE_URL`). Until set, show “Coming soon on Microsoft Store” — no GitHub Releases link in the UI. Add `npm run pack:msstore` (APPX) for Partner Center upload.
+- **Why:** Owner doesn’t want Windows download opening GitHub; wants Store install.
+- **Alternatives:** Direct .exe on aito.social — possible later; GitHub — rejected for public UX.
+- **Stack:** Electron APPX + Partner Center; Store handles updates.
+
 ---
 
-*Last updated: 2026-09-16 (soft crowd count).*
+*Last updated: 2026-09-16 (Microsoft Store for Windows).*

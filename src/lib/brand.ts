@@ -18,8 +18,13 @@ export const BRAND = {
   joinCta: "Start expressing",
   openCta: "Open Voices",
   homeNav: "Voices",
-  /** Windows installer — GitHub Releases (auto-update via electron-updater) */
-  windowsDownloadUrl: "https://github.com/ShubhamRSY/ai-thoughts/releases/latest",
+  /**
+   * Microsoft Store listing for Windows.
+   * Set NEXT_PUBLIC_MS_STORE_URL after Partner Center publishes the app.
+   * Empty = show “Coming soon on Microsoft Store” (no GitHub).
+   */
+  windowsStoreUrl: (process.env.NEXT_PUBLIC_MS_STORE_URL || "").trim(),
+  windowsStoreLabel: "Get it on Microsoft Store",
   dignityNote:
     "Be honest about how AI feels — love it or critique it. Personal attacks, hate speech, and sexual content don’t belong here.",
   /** Three things you do here — keep short */

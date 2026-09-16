@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Share, Smartphone, ShieldCheck, Download, CheckCircle2, MoreVertical } from "lucide-react";
 import BrandMark from "@/components/BrandMark";
+import WindowsStoreCta from "@/components/WindowsStoreCta";
 import { useAuth } from "@/hooks/useAuth";
 import { BRAND } from "@/lib/brand";
 
@@ -181,20 +182,12 @@ export default function InstallPage() {
               <Download className="h-4 w-4 text-[var(--accent)]" /> Windows PC
             </h2>
             <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
-              Download the AiTo installer for Windows. After the first install, updates download
-              automatically.
+              Get AiTo from the <span className="text-[var(--foreground)]">Microsoft Store</span> —
+              install like any Windows app, updates through the Store.
             </p>
-            <a
-              href={BRAND.windowsDownloadUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-4 flex w-full items-center justify-center rounded-xl bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-2)] active:scale-95"
-            >
-              Download for Windows
-            </a>
-            <p className="mt-2 text-center text-[11px] text-[var(--muted)]">
-              Opens GitHub Releases — grab <span className="text-[var(--foreground)]">AiTo-Setup.exe</span>
-            </p>
+            <div className="mt-4">
+              <WindowsStoreCta buttonClassName="flex w-full items-center justify-center rounded-xl bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-2)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-70" />
+            </div>
           </section>
         </div>
       )}
@@ -211,7 +204,7 @@ export default function InstallPage() {
           </li>
           <li className="flex gap-2">
             <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
-            Windows: installer from our GitHub Releases (auto-updates later)
+            Windows: Microsoft Store (updates via the Store)
           </li>
           <li className="flex gap-2">
             <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />

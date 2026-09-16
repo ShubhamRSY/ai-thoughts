@@ -13,6 +13,7 @@
   "scripts": {
     "start": "electron .",
     "pack:win": "electron-builder --win nsis --x64",
+    "pack:msstore": "electron-builder --win appx --x64",
     "publish:win": "electron-builder --win nsis --x64 --publish always",
     "pack:mac": "electron-builder --mac dir",
     "pack": "electron-builder --win nsis --x64"
@@ -47,6 +48,16 @@
         }
       ],
       "artifactName": "AiTo-Setup-${version}.${ext}"
+    },
+    "appx": {
+      "applicationId": "AiTo",
+      "identityName": "AiTo.AiThoughts",
+      "publisher": "CN=AiTo",
+      "publisherDisplayName": "AiTo",
+      "displayName": "AiTo",
+      "languages": [
+        "en-US"
+      ]
     },
     "nsis": {
       "oneClick": true,

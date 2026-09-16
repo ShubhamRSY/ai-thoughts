@@ -4,37 +4,54 @@ Same live site as the web app (`https://aito.social`) wrapped in native shells.
 
 | Platform | Shell | Output | How users get it |
 |----------|--------|--------|------------------|
-| **iOS** | Capacitor (already in `/ios`) | `.ipa` / TestFlight / App Store | Apple Developer account required |
-| **Windows** | Electron (`/desktop`) | `AiTo-Setup-x.x.x.exe` | GitHub Releases + **auto-update** |
-| Android | Capacitor (`/android`) | `.apk` / Play Store | Optional — already scaffolded |
+| **iOS** | Capacitor (`/ios`) | `.ipa` / TestFlight / App Store | Apple Developer ~$99/yr |
+| **Windows** | Electron (`/desktop`) | **Microsoft Store** (APPX) | Microsoft Partner Center ~$19 once |
+| Android | Capacitor (`/android`) | `.apk` / Play Store | Optional |
+
+Phone users can also **Add to Home Screen** at aito.social ($0).
 
 ---
 
-## Windows — build via GitHub Actions (recommended)
+## Windows — Microsoft Store (primary)
 
-1. Push a tag:
+Users should **not** go to GitHub. They install from the Microsoft Store.
+
+### What you do
+
+1. Create a [Microsoft Partner Center](https://partner.microsoft.com/dashboard) developer account (~$19 one-time).
+2. Create a new app reservation named **AiTo**.
+3. On a Windows PC (or CI), build the Store package:
    ```bash
-   git tag desktop-v0.1.0
-   git push origin desktop-v0.1.0
+   cd desktop
+   npm install
+   npm run pack:msstore
    ```
-2. GitHub Actions → **Desktop Windows** builds `AiTo-Setup-0.1.0.exe`
-3. A GitHub Release is created automatically
-4. Users download from https://github.com/ShubhamRSY/ai-thoughts/releases/latest  
-   (also linked on `/install` → **Download for Windows**)
+   Output: `desktop/dist/*.appx` (or `.msix`).
+4. In Partner Center, set `appx.identityName` / `publisher` in `desktop/package.json` to match the values Partner Center shows, then rebuild.
+5. Upload the package, submit for certification.
+6. When the listing is live, copy the Store URL (e.g. `https://apps.microsoft.com/detail/...`).
+7. In **Vercel → Environment Variables** (Production):
+   ```
+   NEXT_PUBLIC_MS_STORE_URL=https://apps.microsoft.com/detail/YOUR_ID
+   ```
+8. Redeploy. `/install` and the PC notice will show **Get it on Microsoft Store**.
 
-Or run the workflow manually: **Actions → Desktop Windows → Run workflow** (uploads an artifact; tag push creates the public Release).
+Until that env var is set, the site shows **Coming soon on Microsoft Store** (no GitHub link).
 
-### Local build (optional)
+### Updates
+
+Store installs update through the **Microsoft Store** automatically — you don’t need GitHub auto-update for Store users.
+
+---
+
+## Optional: local .exe (dev / sideload only)
+
+Not linked on the public site:
 
 ```bash
 cd desktop
-npm install
-npm run pack:win   # → desktop/dist/AiTo-Setup-0.1.0.exe
+npm run pack:win   # NSIS installer for testing
 ```
-
-### Auto-update after v0.1.0
-
-Bump `desktop/package.json` `"version"`, tag `desktop-v0.1.1`, push. Installed apps detect the new Release and offer **Restart now**.
 
 ---
 

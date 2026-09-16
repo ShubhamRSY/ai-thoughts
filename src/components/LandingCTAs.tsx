@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { BRAND } from "@/lib/brand";
+import WindowsStoreCta from "@/components/WindowsStoreCta";
 
 function isDesktopDevice(): boolean {
   if (typeof navigator === "undefined" || typeof window === "undefined") return false;
@@ -10,7 +10,6 @@ function isDesktopDevice(): boolean {
   const mobileUa = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
   const coarse = window.matchMedia("(pointer: coarse)").matches;
   const narrow = window.matchMedia("(max-width: 820px)").matches;
-  // Treat as phone/tablet if mobile UA, or coarse pointer on a smaller screen
   if (mobileUa) return false;
   if (coarse && narrow) return false;
   return true;
@@ -75,14 +74,7 @@ export default function LandingCTAs({
               your home screen.
             </p>
             <div className="landing-pc-notice-actions">
-              <a
-                href={BRAND.windowsDownloadUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="landing-btn landing-btn-primary"
-              >
-                Windows download instead
-              </a>
+              <WindowsStoreCta buttonClassName="landing-btn landing-btn-primary w-full" />
               <button
                 type="button"
                 className="landing-btn landing-btn-ghost"
