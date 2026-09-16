@@ -15,70 +15,78 @@ export default async function LandingPage() {
 
   const ctaHref = session ? "/app" : "/sign-in";
   const ctaLabel = session ? BRAND.openCta : BRAND.joinCta;
+  const installHref = session ? "/install" : "/sign-in?next=/install";
+  const crowdLine = session
+    ? `Welcome back${session.displayName ? `, ${session.displayName}` : ""}.`
+    : total < 25
+      ? "Be one of the first to say how AI feels."
+      : `${total.toLocaleString()} people already expressing themselves.`;
 
   return (
-    <div className="app-frame">
-      <main className="app-pad flex flex-1 flex-col pb-12 pt-14">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent)]">
-            <BrandMark className="h-8 w-8" />
-          </div>
-          <h1 className="font-display text-4xl font-medium leading-none tracking-tight text-[var(--foreground)] sm:text-5xl">
-            {BRAND.shortName}
-          </h1>
-        </div>
-        <p className="mt-8 max-w-[22ch] text-xl font-medium leading-snug text-[var(--foreground)] sm:max-w-[28ch] sm:text-2xl">
-          {BRAND.tagline}
-        </p>
-        <p className="mt-3 max-w-[34ch] text-sm leading-relaxed text-[var(--muted)]">
-          {BRAND.promise}
-        </p>
-        <p className="mt-4 text-sm text-[var(--muted)]">
-          {session
-            ? `Welcome back${session.displayName ? `, ${session.displayName}` : ""}.`
-            : total < 25
-              ? "Be one of the first to say how AI feels."
-              : `${total.toLocaleString()} people already expressing themselves.`}
-        </p>
+    <div className="landing">
+      <div className="landing-glow" aria-hidden />
 
-        <section className="mt-12 border-t border-[var(--border-base)] pt-8">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
-            What you do here
-          </p>
-          <ol className="mt-4 space-y-5">
+      <main className="landing-inner">
+        <section className="landing-hero">
+          <div className="landing-copy">
+            <div className="landing-brand">
+              <div className="landing-mark">
+                <BrandMark className="h-full w-full" />
+              </div>
+              <h1 className="landing-name">{BRAND.shortName}</h1>
+            </div>
+
+            <p className="landing-headline">{BRAND.tagline}</p>
+            <p className="landing-support">{BRAND.promise}</p>
+            <p className="landing-crowd">{crowdLine}</p>
+
+            <div className="landing-ctas">
+              <Link href={ctaHref} className="landing-btn landing-btn-primary">
+                {ctaLabel}
+              </Link>
+              <Link href={installHref} className="landing-btn landing-btn-ghost">
+                Install on phone
+              </Link>
+            </div>
+            {!session && (
+              <p className="landing-note">Email code · no password</p>
+            )}
+          </div>
+
+          <div className="landing-visual" aria-hidden>
+            <div className="landing-orb landing-orb-a" />
+            <div className="landing-orb landing-orb-b" />
+            <div className="landing-orb landing-orb-c" />
+            <div className="landing-pulse">
+              <span className="landing-pulse-ring" />
+              <span className="landing-pulse-ring landing-pulse-ring-2" />
+              <span className="landing-pulse-core">
+                <BrandMark className="h-14 w-14 sm:h-16 sm:w-16 lg:h-20 lg:w-20" />
+              </span>
+            </div>
+            <p className="landing-visual-caption">Voices · feelings · live</p>
+          </div>
+        </section>
+
+        <section className="landing-steps">
+          <h2 className="landing-steps-title">What you do here</h2>
+          <ol className="landing-steps-grid">
             {BRAND.whatYouDo.map((step, i) => (
-              <li key={step.title} className="flex gap-3">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--accent-soft)] text-xs font-semibold text-[var(--accent-2)]">
-                  {i + 1}
-                </span>
+              <li key={step.title} className="landing-step">
+                <span className="landing-step-num">{i + 1}</span>
                 <div>
-                  <p className="text-sm font-semibold text-[var(--foreground)]">{step.title}</p>
-                  <p className="mt-0.5 text-sm leading-relaxed text-[var(--muted)]">{step.body}</p>
+                  <p className="landing-step-title">{step.title}</p>
+                  <p className="landing-step-body">{step.body}</p>
                 </div>
               </li>
             ))}
           </ol>
         </section>
-
-        <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <Link
-            href={ctaHref}
-            className="inline-flex w-full items-center justify-center rounded-full bg-[var(--accent)] px-6 py-3.5 text-sm font-semibold text-[var(--surface)] transition hover:bg-[var(--accent-2)] sm:w-auto"
-          >
-            {ctaLabel}
-          </Link>
-          <Link
-            href={session ? "/install" : "/sign-in?next=/install"}
-            className="inline-flex w-full items-center justify-center rounded-full border border-[var(--border-base)] bg-[var(--surface)] px-6 py-3.5 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-2)] sm:w-auto"
-          >
-            Install on phone
-          </Link>
-        </div>
-        {!session && (
-          <p className="mt-3 text-xs text-[var(--muted)]">Email code · no password</p>
-        )}
       </main>
-      <Footer />
+
+      <div className="landing-footer-wrap">
+        <Footer />
+      </div>
     </div>
   );
 }

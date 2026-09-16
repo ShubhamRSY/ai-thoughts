@@ -280,6 +280,12 @@ Format: **Decision → Why → Alternatives considered → Libraries / stack**.
 - **Alternatives:** Only local electron-builder — harder for owner; paid CI — unnecessary.
 - **Stack:** electron-builder + `softprops/action-gh-release`.
 
+### Responsive marketing landing
+- **Decision:** Replace narrow `app-frame` landing with full-bleed `.landing` shell (max 72rem). Fluid `clamp()` type/spacing; mobile stack → desktop two-column hero; steps 1-col → 3-col. Brand AiTo + one headline + CTAs + pulse visual.
+- **Why:** Owner wants a better landing that changes dynamically by screen size.
+- **Alternatives:** Keep phone-column shell everywhere — weak on desktop.
+- **Stack:** CSS grid + clamp (no new UI library).
+
 ---
 
-*Last updated: 2026-09-16 (Windows CI release pipeline).*
+*Last updated: 2026-09-16 (responsive landing).*
