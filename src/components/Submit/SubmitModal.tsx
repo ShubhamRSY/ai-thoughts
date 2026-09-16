@@ -35,9 +35,9 @@ interface SubmitModalProps {
 }
 
 const TABS: { id: Tab; label: string; icon: typeof AudioLines }[] = [
-  { id: "video", label: "Video", icon: Video },
   { id: "audio", label: "Audio", icon: AudioLines },
   { id: "text", label: "Text", icon: Type },
+  { id: "video", label: "Video", icon: Video },
 ];
 
 function detectDefaultLanguage(): string {

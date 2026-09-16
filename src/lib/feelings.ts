@@ -6,8 +6,6 @@ import type { Feeling, FeelingId } from "@/lib/types";
  */
 const CHIP_SOFT =
   "border-[var(--border-base)] bg-[var(--surface-2)] text-[var(--foreground)]";
-const CHIP_ACCENT =
-  "border-transparent bg-[var(--accent-soft)] text-[var(--accent-2)]";
 
 export const FEELINGS: Feeling[] = [
   {
@@ -23,7 +21,7 @@ export const FEELINGS: Feeling[] = [
     emoji: "",
     label: "I genuinely love it",
     short: "Love it",
-    chip: CHIP_ACCENT,
+    chip: CHIP_SOFT,
     tone: "warm",
   },
   {
