@@ -268,6 +268,12 @@ Format: **Decision → Why → Alternatives considered → Libraries / stack**.
 - **Alternatives:** Stay on `*.vercel.app` — weaker for email/trust.
 - **Stack:** Namecheap DNS → Vercel + Resend custom domain.
 
+### Phone PWA install first (Option A)
+- **Decision:** Prioritize home-screen install: clearer `/install` steps (Safari Share / Chrome Install), earlier signed-in banner (4s), landing “Install on phone” CTA, manifest/`appleWebApp` short name **AiTo**.
+- **Why:** Owner wants phone app today before Windows/.exe or App Store.
+- **Alternatives:** Push App Store first — blocked by Apple fee + review time.
+- **Stack:** Existing PWA (manifest + SW) — $0.
+
 ---
 
-*Last updated: 2026-09-16 (domain: aito.social).*
+*Last updated: 2026-09-16 (phone PWA install first).*

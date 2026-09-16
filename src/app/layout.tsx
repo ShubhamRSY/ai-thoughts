@@ -26,12 +26,12 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title,
   description,
-  applicationName: "AI·Thoughts",
+  applicationName: "AiTo",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "AI·Thoughts",
+    title: "AiTo",
   },
   icons: {
     icon: "/icons/icon-192.png",
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     url: siteUrl,
-    siteName: "AI·Thoughts",
+    siteName: "AiTo",
     title,
     description,
     images: [
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
         url: "/icons/icon-512.png",
         width: 512,
         height: 512,
-        alt: "AI·Thoughts — say how AI makes you feel",
+        alt: "AiTo — say how AI makes you feel",
       },
     ],
   },

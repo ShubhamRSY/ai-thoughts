@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { X, Download } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { BRAND } from "@/lib/brand";
@@ -38,11 +39,12 @@ export default function PWAInstall() {
       if (!isStandalone() && !localStorage.getItem(DISMISS_KEY)) {
         setShow(true);
       }
-    }, 25000);
+    }, 4000);
 
     function handler(e: Event) {
       e.preventDefault();
       setDeferredPrompt(e as unknown as BeforeInstallPromptEvent);
+      setShow(true);
     }
 
     window.addEventListener("beforeinstallprompt", handler as EventListener);
@@ -89,22 +91,34 @@ export default function PWAInstall() {
             </div>
             <div className="min-w-0 flex-1">
               <p className="font-display text-sm font-semibold text-[var(--foreground)]">
-                Install {BRAND.shortName}
+                Install {BRAND.shortName} on your phone
               </p>
               <p className="mt-0.5 text-xs leading-relaxed text-[var(--muted)]">
-                {isIos || (!deferredPrompt && isIOS())
-                  ? "Add to Home Screen while signed in — open straight into Voices"
-                  : "Install while signed in — you’ll stay logged in on your home screen"}
+                {isIos
+                  ? "Safari → Share → Add to Home Screen. Opens like an app, stays signed in."
+                  : deferredPrompt
+                    ? "One tap — home screen icon, full screen, stays signed in."
+                    : "Add to your home screen — opens like an app, stays signed in."}
               </p>
-              {!isIos && deferredPrompt && (
-                <button
-                  type="button"
-                  onClick={install}
-                  className="mt-2 rounded-lg bg-[var(--accent)] px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-[var(--accent-2)] active:scale-[0.98]"
-                >
-                  Install now
-                </button>
-              )}
+              <div className="mt-2 flex flex-wrap gap-2">
+                {!isIos && deferredPrompt ? (
+                  <button
+                    type="button"
+                    onClick={install}
+                    className="rounded-lg bg-[var(--accent)] px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-[var(--accent-2)] active:scale-[0.98]"
+                  >
+                    Install now
+                  </button>
+                ) : (
+                  <Link
+                    href="/install"
+                    onClick={dismiss}
+                    className="rounded-lg bg-[var(--accent)] px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-[var(--accent-2)] active:scale-[0.98]"
+                  >
+                    {isIos ? "Show steps" : "How to install"}
+                  </Link>
+                )}
+              </div>
             </div>
             <button
               type="button"

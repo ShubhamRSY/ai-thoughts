@@ -60,17 +60,23 @@ export default async function LandingPage() {
           </ol>
         </section>
 
-        <div className="mt-10">
+        <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
           <Link
             href={ctaHref}
             className="inline-flex w-full items-center justify-center rounded-full bg-[var(--accent)] px-6 py-3.5 text-sm font-semibold text-[var(--surface)] transition hover:bg-[var(--accent-2)] sm:w-auto"
           >
             {ctaLabel}
           </Link>
-          {!session && (
-            <p className="mt-3 text-xs text-[var(--muted)]">Email code · no password</p>
-          )}
+          <Link
+            href={session ? "/install" : "/sign-in?next=/install"}
+            className="inline-flex w-full items-center justify-center rounded-full border border-[var(--border-base)] bg-[var(--surface)] px-6 py-3.5 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-2)] sm:w-auto"
+          >
+            Install on phone
+          </Link>
         </div>
+        {!session && (
+          <p className="mt-3 text-xs text-[var(--muted)]">Email code · no password</p>
+        )}
       </main>
       <Footer />
     </div>
