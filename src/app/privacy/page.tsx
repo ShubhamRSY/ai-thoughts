@@ -47,7 +47,51 @@ export default function PrivacyPage() {
 
         <section>
           <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">
-            2. Information we collect
+            2. Privacy by design (how we protect you)
+          </h2>
+          <p className="mb-2">
+            Privacy is not only this page — it is built into how {BRAND.shortName} works:
+          </p>
+          <ul className="ml-4 list-disc space-y-1.5">
+            <li>
+              <span className="font-medium text-[var(--foreground)]">No passwords.</span> Sign-in
+              uses short-lived email codes. Codes are stored hashed and expire quickly.
+            </li>
+            <li>
+              <span className="font-medium text-[var(--foreground)]">Email encrypted at rest.</span>{" "}
+              We do not keep your email in plain text in the database. Session cookies never carry
+              your email.
+            </li>
+            <li>
+              <span className="font-medium text-[var(--foreground)]">Public vs private split.</span>{" "}
+              Only what you publish (takes, handle, display name, likes, replies) is public. Email,
+              push endpoints, digests, and reports stay private.
+            </li>
+            <li>
+              <span className="font-medium text-[var(--foreground)]">Delete means delete.</span> When
+              you remove a take or wipe your account, we remove related database records and delete
+              your voice/video/avatar files from our media storage when they are ours to delete.
+            </li>
+            <li>
+              <span className="font-medium text-[var(--foreground)]">PII scrubbing outbound.</span> If
+              you use Translate, emails, phone numbers, and IP-looking strings are stripped before
+              text leaves our servers. Report snippets for keepers are scrubbed the same way.
+            </li>
+            <li>
+              <span className="font-medium text-[var(--foreground)]">No ad tracking.</span> We do not
+              sell your data, run ad trackers, or use your posts to train public AI models.
+            </li>
+            <li>
+              <span className="font-medium text-[var(--foreground)]">Browser privacy headers.</span>{" "}
+              The site sends strict referrer, framing, and permissions policies (no geolocation;
+              camera/mic only for recording you choose).
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">
+            3. Information we collect
           </h2>
           <ul className="ml-4 list-disc space-y-1.5">
             <li>
@@ -74,14 +118,14 @@ export default function PrivacyPage() {
             </li>
             <li>
               <span className="font-medium text-[var(--foreground)]">Optional translation.</span> If
-              you choose “Translate,” the text you ask to translate is sent to our translation
-              provider to return an English version.
+              you choose “Translate,” a PII-scrubbed copy of that text is sent to our translation
+              provider (emails/phones stripped first) to return an English version.
             </li>
           </ul>
         </section>
 
         <section>
-          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">3. How we use it</h2>
+          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">4. How we use it</h2>
           <ul className="ml-4 list-disc space-y-1.5">
             <li>Run the service: accounts, publishing, feed, replies, and likes</li>
             <li>Send sign-in codes and (only if you opt in) digests or push alerts</li>
@@ -96,7 +140,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">4. What&apos;s public</h2>
+          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">5. What&apos;s public</h2>
           <p>
             Published takes, your handle, display name, likes, and replies are{" "}
             <span className="font-medium text-[var(--foreground)]">public</span> — anyone can see
@@ -107,18 +151,19 @@ export default function PrivacyPage() {
 
         <section>
           <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">
-            5. How media is handled
+            6. How media is handled
           </h2>
           <p>
             Voice and video you upload are stored in cloud object storage and served with a public
-            URL so others can play them in the feed. We may compute a SHA-256 fingerprint of media
-            or text to help detect tampering or duplicates.
+            URL so others can play them in the feed. When you delete a take or your account, we
+            delete those media files from our storage when they are hosted by us. We may compute a
+            SHA-256 fingerprint of media or text to help detect tampering or duplicates.
           </p>
         </section>
 
         <section>
           <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">
-            6. Cookies and similar tech
+            7. Cookies and similar tech
           </h2>
           <p>
             We use an essential session cookie so you stay signed in. We are not a tracking-ad
@@ -129,7 +174,7 @@ export default function PrivacyPage() {
 
         <section>
           <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">
-            7. Service providers
+            8. Service providers
           </h2>
           <p>
             We use trusted processors to host and operate {BRAND.shortName}, including hosting and
@@ -141,7 +186,7 @@ export default function PrivacyPage() {
 
         <section>
           <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">
-            8. Retention and your choices
+            9. Retention and your choices
           </h2>
           <p>
             Public posts stay until you delete them or we remove them for safety. Session data lasts
@@ -149,7 +194,7 @@ export default function PrivacyPage() {
           </p>
           <ul className="ml-4 mt-2 list-disc space-y-1.5">
             <li>Delete your own takes while signed in</li>
-            <li>Download a copy of your data or delete your account from You → Your data</li>
+            <li>Download a copy of your data or delete your account from You → Your privacy</li>
             <li>Turn off push or email digests in You → Daily habits</li>
             <li>
               Ask for help via{" "}
@@ -169,7 +214,7 @@ export default function PrivacyPage() {
 
         <section>
           <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">
-            9. Children and families
+            10. Children and families
           </h2>
           <p>
             {BRAND.shortName} is meant for a broad audience. If you are under the age where you can
@@ -182,7 +227,7 @@ export default function PrivacyPage() {
 
         <section>
           <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">
-            10. International users
+            11. International users
           </h2>
           <p>
             We may process and store information in the United States and other countries where our
@@ -192,7 +237,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">11. Security</h2>
+          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">12. Security</h2>
           <p>
             We use encryption in transit (HTTPS), encrypt emails at rest where designed, hash
             sensitive identifiers, and limit access to operational data. No method of transmission
@@ -202,7 +247,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">12. Changes</h2>
+          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">13. Changes</h2>
           <p>
             We may update this Privacy Policy. We will change the “Last updated” date above. Continued
             use after an update means you accept the revised policy. Material changes may also be
@@ -211,7 +256,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">13. Contact</h2>
+          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">14. Contact</h2>
           <p>
             Privacy and data requests:{" "}
             <a

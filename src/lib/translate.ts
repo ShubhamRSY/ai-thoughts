@@ -1,3 +1,5 @@
+import { scrubPiiForExternal } from "@/lib/privacy";
+
 /** True when the BCP-47 tag is English (en, en-US, en-GB, …). */
 export function isEnglishLang(code?: string | null): boolean {
   if (!code) return false;
@@ -9,7 +11,7 @@ export async function translateToEnglish(
   text: string,
   sourceLang?: string
 ): Promise<{ translation: string; detected?: string }> {
-  const trimmed = text.trim();
+  const trimmed = scrubPiiForExternal(text.trim());
   if (!trimmed) return { translation: "" };
   if (trimmed.length > 4500) {
     throw new Error("Text is too long to translate");

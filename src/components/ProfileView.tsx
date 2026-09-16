@@ -40,6 +40,7 @@ export default function ProfileView({ myThoughts, onCreate, onDelete }: ProfileV
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const name = user?.displayName || profile.author || profile.handle.replace(/^@/, "") || "You";
   const displayHandle = user?.handle || profile.handle || "@you";
@@ -286,13 +287,66 @@ export default function ProfileView({ myThoughts, onCreate, onDelete }: ProfileV
       </div>
 
       {user && (
-        <div className="mt-6">
+        <div className="mt-6 space-y-3">
+          <div className="rounded-2xl border border-[var(--border-base)] bg-[var(--surface)] p-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+              Your privacy
+            </p>
+            <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">
+              Download a copy of your data, or read how we protect email, media, and deletes.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={exporting}
+                onClick={() => {
+                  void (async () => {
+                    setExporting(true);
+                    setError(null);
+                    try {
+                      const res = await fetch("/api/account", { credentials: "include" });
+                      if (!res.ok) {
+                        const data = await res.json().catch(() => ({}));
+                        setError(
+                          typeof data.error === "string"
+                            ? data.error
+                            : "Couldn’t download your data"
+                        );
+                        return;
+                      }
+                      const blob = await res.blob();
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `aito-data-${Date.now()}.json`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    } catch {
+                      setError("Couldn’t download your data. Try again.");
+                    } finally {
+                      setExporting(false);
+                    }
+                  })();
+                }}
+                className="rounded-full border border-[var(--border-base)] bg-white px-4 py-2 text-xs font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)] disabled:opacity-50"
+              >
+                {exporting ? "Preparing…" : "Download my data"}
+              </button>
+              <Link
+                href="/privacy"
+                className="rounded-full border border-[var(--border-base)] px-4 py-2 text-xs font-semibold text-[var(--muted)] transition hover:text-[var(--foreground)]"
+              >
+                Privacy Policy
+              </Link>
+            </div>
+          </div>
+
           <div className="rounded-2xl border border-rose-200/80 bg-rose-50/40 p-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-rose-800/80">
             Delete account
           </p>
           <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">
-            Permanently removes your profile, takes, replies, reactions, follows, push
+            Permanently removes your profile, takes, media files, replies, likes, follows, push
             subscriptions, and digest settings. This cannot be undone.
           </p>
           <button

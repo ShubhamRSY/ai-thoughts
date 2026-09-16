@@ -264,6 +264,7 @@ export async function findOrCreateUser(
 /** Wipe account + related data for the signed-in user. */
 export async function deleteUserAccount(session: SessionUser): Promise<void> {
   const { db } = await connectToDatabase();
+  const { deleteBlobUrls, mediaUrlsFromPost } = await import("@/lib/privacy");
   const handleVariants = Array.from(
     new Set([
       session.handle,
@@ -278,9 +279,23 @@ export async function deleteUserAccount(session: SessionUser): Promise<void> {
     .find({
       $or: [{ user_id: session.id }, { handle: { $in: handleVariants } }],
     })
-    .project({ _id: 1 })
+    .project({ _id: 1, media_url: 1, stream_url: 1 })
     .toArray();
   const postIds = posts.map((p) => p._id.toString());
+
+  const profiles = await db
+    .collection("profiles")
+    .find({
+      $or: [{ userId: session.id }, { handle: { $in: handleVariants } }],
+    })
+    .project({ avatar_url: 1, avatarUrl: 1 })
+    .toArray();
+
+  const blobUrls = [
+    ...posts.flatMap((p) => mediaUrlsFromPost(p)),
+    ...profiles.flatMap((p) => mediaUrlsFromPost(p)),
+  ];
+  await deleteBlobUrls(blobUrls);
 
   if (postIds.length) {
     await db.collection("messages").deleteMany({ post_id: { $in: postIds } });
@@ -294,6 +309,12 @@ export async function deleteUserAccount(session: SessionUser): Promise<void> {
 
   await db.collection("messages").deleteMany({ handle: { $in: handleVariants } });
   await db.collection("reactions").deleteMany({ handle: { $in: handleVariants } });
+  await db.collection("reports").deleteMany({
+    $or: [
+      { reporter_handle: { $in: handleVariants } },
+      { reported_handle: { $in: handleVariants } },
+    ],
+  });
   await db.collection("notifications").deleteMany({
     $or: [
       { recipient_handle: { $in: handleVariants } },

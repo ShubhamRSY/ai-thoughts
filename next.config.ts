@@ -12,15 +12,16 @@ const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-XSS-Protection", value: "1; mode=block" },
-  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  // Don't leak path/query to third parties — origin only on HTTPS navigations.
+  { key: "Referrer-Policy", value: "strict-origin" },
   {
     // camera/microphone must allow 'self' — the share flow's own
     // MediaRecorder capture (src/hooks/useMediaRecorder.ts) needs them.
-    // An empty allowlist here disables the feature for every context,
-    // including the page's own origin, not just third-party embeds.
     key: "Permissions-Policy",
-    value: "camera=(self), microphone=(self), geolocation=(), interest-cohort=()",
+    value:
+      "camera=(self), microphone=(self), geolocation=(), interest-cohort=(), browsing-topics=()",
   },
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
   {
     key: "Strict-Transport-Security",
     value: "max-age=63072000; includeSubDomains; preload",

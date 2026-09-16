@@ -125,6 +125,10 @@ export async function DELETE(
     await db.collection("messages").deleteMany({ post_id: id });
     await db.collection("reactions").deleteMany({ post_id: id });
     await db.collection("reports").deleteMany({ post_id: id });
+
+    const { deleteBlobUrls, mediaUrlsFromPost } = await import("@/lib/privacy");
+    await deleteBlobUrls(mediaUrlsFromPost(post));
+
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error(error);

@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --experimental-strip-types --test src/lib/security.test.ts src/lib/anti-abuse.test.ts src/lib/trust.test.ts",
+    "test": "node --experimental-strip-types --test src/lib/security.test.ts src/lib/anti-abuse.test.ts src/lib/trust.test.ts src/lib/privacy.test.ts",
     "seed": "node scripts/seed-mongo.mjs",
     "cap:sync": "npx cap sync",
     "cap:ios": "npx cap sync ios && npx cap open ios",

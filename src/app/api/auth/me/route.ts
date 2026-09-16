@@ -60,7 +60,15 @@ export async function GET() {
       handle: session.handle,
       displayName: session.displayName,
     });
-    const res = NextResponse.json({ user: session });
+    // Never dump the raw session object — only fields the client needs.
+    const res = NextResponse.json({
+      user: {
+        id: session.id,
+        email: session.email,
+        handle: session.handle,
+        displayName: session.displayName,
+      },
+    });
     res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
     return res;
   }
