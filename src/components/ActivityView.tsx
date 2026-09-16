@@ -23,7 +23,7 @@ interface ActivityViewProps {
   onSelectPost?: (postId: string) => void;
   onUnfollow?: (handle: string) => void;
   onInvite?: () => void;
-  onOpenCircles?: () => void;
+  onOpenSearch?: () => void;
 }
 
 export default function ActivityView({
@@ -35,7 +35,7 @@ export default function ActivityView({
   onSelectPost,
   onUnfollow,
   onInvite,
-  onOpenCircles,
+  onOpenSearch,
 }: ActivityViewProps) {
   useEffect(() => {
     if (signedIn && unread > 0) onMarkAllRead();
@@ -90,10 +90,10 @@ export default function ActivityView({
         </button>
         <button
           type="button"
-          onClick={onOpenCircles}
+          onClick={onOpenSearch}
           className="rounded-full border border-[var(--border-base)] px-3 py-1.5 text-[12px] font-semibold text-[var(--foreground)]/70 hover:text-[var(--foreground)]"
         >
-          Circles
+          Find people
         </button>
       </div>
 

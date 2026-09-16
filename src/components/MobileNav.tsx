@@ -1,9 +1,9 @@
 "use client";
 
-import { Home, Plus, User, Bell, Users } from "lucide-react";
+import { Home, Plus, User, Bell, Search } from "lucide-react";
 import { BRAND } from "@/lib/brand";
 
-export type TabId = "home" | "circles" | "activity" | "you";
+export type TabId = "home" | "search" | "activity" | "you";
 
 interface MobileNavProps {
   active: TabId;
@@ -35,13 +35,13 @@ export default function MobileNav({
 
           <button
             type="button"
-            onClick={() => onTab("circles")}
+            onClick={() => onTab("search")}
             className={`flex flex-col items-center gap-0.5 text-[10px] font-medium ${
-              active === "circles" ? "text-[var(--foreground)]" : "text-[var(--muted)]"
+              active === "search" ? "text-[var(--foreground)]" : "text-[var(--muted)]"
             }`}
           >
-            <Users className="h-5 w-5" strokeWidth={active === "circles" ? 2.4 : 1.8} />
-            Circles
+            <Search className="h-5 w-5" strokeWidth={active === "search" ? 2.4 : 1.8} />
+            Search
           </button>
 
           <button

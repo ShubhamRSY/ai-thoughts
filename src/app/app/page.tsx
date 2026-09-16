@@ -18,7 +18,7 @@ import DailyHabits from "@/components/DailyHabits";
 import MissedYesterday from "@/components/MissedYesterday";
 import { useActivity } from "@/components/ActivityPanel";
 import ActivityView from "@/components/ActivityView";
-import CirclesView from "@/components/CirclesView";
+import PeopleSearchView from "@/components/PeopleSearchView";
 import MaintenanceBanner, { useSiteFlags } from "@/components/MaintenanceBanner";
 import { digestBytes } from "@/lib/integrity";
 import { useLocalProfile } from "@/hooks/useLocalProfile";
@@ -64,7 +64,7 @@ export default function Home() {
   const [undoId, setUndoId] = useState<string | null>(null);
   const [following, setFollowing] = useState<string[]>([]);
   const [shareFromDaily, setShareFromDaily] = useState(false);
-  const [circleSlug, setCircleSlug] = useState<string | null>(null);
+  const [personFilter, setPersonFilter] = useState<string | null>(null);
   const { items: activityItems, unread: activityUnread, markAllRead, refresh: refreshActivity } =
     useActivity(!!user);
   const { maintenance, message: maintenanceMessage } = useSiteFlags();
@@ -104,6 +104,13 @@ export default function Home() {
       return mOk && fOk;
     });
 
+    if (personFilter) {
+      const key = personFilter.trim().toLowerCase().replace(/^@/, "");
+      return base.filter(
+        (t) => t.handle.trim().toLowerCase().replace(/^@/, "") === key
+      );
+    }
+
     if (regionScope === "today") {
       const day = promptTodayKey();
       base = base.filter((t) => t.promptDay === day);
@@ -117,7 +124,7 @@ export default function Home() {
     }
 
     return base;
-  }, [thoughts, media, feeling, regionScope, followingSet]);
+  }, [thoughts, media, feeling, regionScope, followingSet, personFilter]);
 
   const todayAnswerCount = useMemo(() => {
     const day = promptTodayKey();
@@ -209,8 +216,10 @@ export default function Home() {
     const params = new URLSearchParams(window.location.search);
     const circle = params.get("circle");
     if (circle) {
-      setCircleSlug(circle);
-      setTab("circles");
+      // Circles removed — ignore legacy deep links
+      params.delete("circle");
+      const next = `${window.location.pathname}${params.toString() ? `?${params}` : ""}`;
+      window.history.replaceState({}, "", next);
     }
   }, []);
 
@@ -501,25 +510,52 @@ export default function Home() {
                   feeling={feeling}
                   onFeelingChange={setFeeling}
                   regionScope={regionScope}
-                  onRegionScopeChange={setRegionScope}
+                  onRegionScopeChange={(scope) => {
+                    setPersonFilter(null);
+                    setRegionScope(scope);
+                  }}
                   circleCount={following.length}
                   todayCount={todayAnswerCount}
                 />
+
+                {personFilter && (
+                  <div className="app-pad mt-2 flex items-center justify-between gap-2">
+                    <p className="text-[13px] text-[var(--foreground)]">
+                      Takes from{" "}
+                      <span className="font-semibold">
+                        {personFilter.startsWith("@") ? personFilter : `@${personFilter}`}
+                      </span>
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setPersonFilter(null)}
+                      className="text-[12px] font-semibold text-[var(--accent)]"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
 
                 <div className="app-pad mt-2">
                   <div className="mb-1 flex items-end justify-between border-b border-[var(--border-base)] pb-3 pt-4">
                     <div>
                       <h2 className="font-display text-lg font-medium text-[var(--foreground)]">
-                        {regionScope === "today" ? "Today’s answers" : "Latest takes"}
+                        {personFilter
+                          ? "Their takes"
+                          : regionScope === "today"
+                            ? "Today’s answers"
+                            : "Latest takes"}
                       </h2>
                       <p className="mt-0.5 text-[11px] text-[var(--muted)]">
-                        {regionScope === "today"
-                          ? "Same prompt, many voices · Follow someone who resonates"
-                          : regionScope === "circle"
-                            ? following.length
-                              ? "People you follow · Translate anytime"
-                              : "Follow someone from ··· on a take"
-                            : "Voices from everywhere · tap Translate on any language"}
+                        {personFilter
+                          ? "From Search · Follow them to keep their takes in your circle"
+                          : regionScope === "today"
+                            ? "Same prompt, many voices · Follow someone who resonates"
+                            : regionScope === "circle"
+                              ? following.length
+                                ? "People you follow · Translate anytime"
+                                : "Follow someone from ··· on a take"
+                              : "Voices from everywhere · tap Translate on any language"}
                       </p>
                     </div>
                     <span className="text-[11px] tabular-nums text-[var(--muted)]">
@@ -578,15 +614,22 @@ export default function Home() {
             onSelectPost={openActivityPost}
             onUnfollow={(handle) => void onFeelWith(handle, false)}
             onInvite={() => void invitePeople()}
-            onOpenCircles={() => setTab("circles")}
+            onOpenSearch={() => setTab("search")}
           />
         )}
 
-        {tab === "circles" && (
-          <CirclesView
+        {tab === "search" && (
+          <PeopleSearchView
             signedIn={!!user}
-            initialSlug={circleSlug}
-            onNeedSignIn={() => router.push("/sign-in?next=/app?circle=" + (circleSlug || ""))}
+            onNeedSignIn={() => router.push("/sign-in?next=/app")}
+            onFollow={(handle, next) => onFeelWith(handle, next)}
+            onOpenPerson={(handle) => {
+              setPersonFilter(handle);
+              setRoom(null);
+              setFeeling("all");
+              setMedia("all");
+              setTab("home");
+            }}
           />
         )}
 
@@ -617,7 +660,6 @@ export default function Home() {
         onTab={(t) => {
           setTab(t);
           if (t === "activity") void refreshActivity();
-          if (t !== "circles") setCircleSlug(null);
         }}
         onCreate={() => openShare("video")}
         activityCount={activityUnread}
