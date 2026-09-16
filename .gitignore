@@ -40,3 +40,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# native / desktop builds
+/desktop/node_modules
+/desktop/dist
+/android/.gradle
+/android/app/build
+/android/build
+/ios/App/Pods
+/ios/DerivedData

@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.aithoughts.app',
-  appName: 'AI Thoughts',
+  appName: 'AiTo',
   webDir: 'public',
   // Same live site as web / PWA — one responsive UI for every screen.
   server: {

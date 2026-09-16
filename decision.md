@@ -250,6 +250,18 @@ Format: **Decision → Why → Alternatives considered → Libraries / stack**.
 - **Alternatives:** Deep-link install token in `start_url` — riskier; cookie reuse is the standard PWA approach.
 - **Stack:** `useAuth` + existing `aithoughts.session`; moved `PWAInstall` inside `AuthProvider`.
 
+### Proper iOS + Windows downloadable apps
+- **Decision:** Keep Capacitor for **iOS** (existing `/ios`, rename display to AiTo). Add **Electron** shell in `/desktop` for **Windows** `.exe` installer loading the same live Vercel URL. Document build steps in `NATIVE.md`.
+- **Why:** Owner wants real downloadable apps on iOS and Windows without rewriting the product in Swift/C#.
+- **Alternatives:** Full native rewrite — too slow; Windows Store MSIX first — deferred until `.exe` works; Tauri — lighter but less familiar for this stack.
+- **Stack:** Capacitor 8 (iOS) + Electron + electron-builder (Windows NSIS).
+
+### Windows classic auto-update (not “just open the website”)
+- **Decision:** Add `electron-updater` checking **GitHub Releases**. On new version: download in background → “Restart now” dialog → `quitAndInstall`. Publish with `npm run publish:win` + `GH_TOKEN`.
+- **Why:** Owner rejected passive “site updates when you open the app”; wants real installer auto-update like normal desktop apps.
+- **Alternatives:** Only live-URL content updates — rejected by owner; paid update servers — unnecessary while GitHub Releases is free.
+- **Stack:** `electron-updater` + electron-builder `publish.provider = github` (`ShubhamRSY/ai-thoughts`).
+
 ---
 
-*Last updated: 2026-09-16 (install while signed in → auto login).*
+*Last updated: 2026-09-16 (Windows electron-updater auto-update).*

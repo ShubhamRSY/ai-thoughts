@@ -1,0 +1,73 @@
+{
+  "name": "aito-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AiTo desktop app for Windows and macOS",
+  "main": "main.js",
+  "author": "AiTo",
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ShubhamRSY/ai-thoughts.git"
+  },
+  "scripts": {
+    "start": "electron .",
+    "pack:win": "electron-builder --win nsis --x64",
+    "publish:win": "electron-builder --win nsis --x64 --publish always",
+    "pack:mac": "electron-builder --mac dir",
+    "pack": "electron-builder --win nsis --x64"
+  },
+  "build": {
+    "appId": "com.aithoughts.app",
+    "productName": "AiTo",
+    "copyright": "Copyright © AiTo",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "package.json"
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "ShubhamRSY",
+        "repo": "ai-thoughts",
+        "releaseType": "release"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "AiTo-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "AiTo"
+    },
+    "mac": {
+      "target": [
+        "dir"
+      ],
+      "category": "public.app-category.social-networking"
+    }
+  },
+  "dependencies": {
+    "electron-updater": "^6.6.2"
+  },
+  "devDependencies": {
+    "electron": "^37.2.0",
+    "electron-builder": "^26.0.12"
+  }
+}

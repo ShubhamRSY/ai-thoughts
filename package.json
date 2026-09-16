@@ -11,7 +11,13 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node --experimental-strip-types --test src/lib/security.test.ts src/lib/anti-abuse.test.ts src/lib/trust.test.ts",
-    "seed": "node scripts/seed-mongo.mjs"
+    "seed": "node scripts/seed-mongo.mjs",
+    "cap:sync": "npx cap sync",
+    "cap:ios": "npx cap sync ios && npx cap open ios",
+    "desktop:install": "npm install --prefix desktop",
+    "desktop:start": "npm start --prefix desktop",
+    "desktop:win": "npm run pack:win --prefix desktop",
+    "desktop:publish": "npm run publish:win --prefix desktop"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.1",

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Smartphone, ShieldCheck, Download, CheckCircle2 } from "lucide-react";
+import { Smartphone, ShieldCheck, Download, CheckCircle2, Monitor } from "lucide-react";
 import BrandMark from "@/components/BrandMark";
 import { useAuth } from "@/hooks/useAuth";
 import { BRAND } from "@/lib/brand";
@@ -45,22 +45,54 @@ export default function InstallPage() {
         </div>
         <div>
           <h1 className="font-display text-2xl font-bold text-[var(--foreground)]">
-            {BRAND.shortName}
+            Get {BRAND.shortName}
           </h1>
-          <p className="mt-1 text-sm text-[var(--muted)]">{BRAND.tagline}</p>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Real apps for iPhone and Windows — same Voices experience.
+          </p>
         </div>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800">
-          <ShieldCheck className="h-3.5 w-3.5" /> Safe web app — install while signed in to stay logged in
-        </span>
+      </div>
+
+      <div className="mb-4 flex flex-col gap-3">
+        <section className="rounded-2xl border border-[var(--border-base)] bg-white p-5 shadow-sm shadow-slate-900/5">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
+            <Smartphone className="h-4 w-4 text-[var(--accent)]" /> iPhone / iPad
+          </h2>
+          <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
+            Native AiTo app (Capacitor). Built in Xcode → TestFlight or App Store. Sign in once
+            inside the app and you stay logged in.
+          </p>
+          <p className="mt-3 rounded-lg bg-[var(--surface-2)] px-3 py-2 text-[11px] leading-relaxed text-[var(--muted)]">
+            Store link coming after Apple review. Until then: use{" "}
+            <strong className="text-[var(--foreground)]">Add to Home Screen</strong> below, or ask
+            for a TestFlight invite.
+          </p>
+        </section>
+
+        <section className="rounded-2xl border border-[var(--border-base)] bg-white p-5 shadow-sm shadow-slate-900/5">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
+            <Monitor className="h-4 w-4 text-[var(--accent)]" /> Windows PC
+          </h2>
+          <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
+            Downloadable{" "}
+            <span className="text-[var(--foreground)]">AiTo Setup.exe</span> desktop app. Installs
+            like a normal Windows program with a Start Menu shortcut.
+          </p>
+          <p className="mt-3 rounded-lg bg-[var(--surface-2)] px-3 py-2 text-[11px] leading-relaxed text-[var(--muted)]">
+            Build with <code className="text-[var(--foreground)]">npm run desktop:win</code> (see{" "}
+            <span className="text-[var(--foreground)]">NATIVE.md</span>). Public download link goes
+            live once the first .exe is uploaded.
+          </p>
+        </section>
       </div>
 
       {installed ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-6 py-10 text-center">
           <CheckCircle2 className="h-9 w-9 text-emerald-600" />
-          <h2 className="text-base font-bold text-[var(--foreground)]">It&apos;s installed</h2>
+          <h2 className="text-base font-bold text-[var(--foreground)]">It&apos;s on your home screen</h2>
           <p className="max-w-xs text-sm text-[var(--muted)]">
             {user
-              ? "You’re signed in. Open Voices from your home screen anytime."
+              ? "You’re signed in. Open Voices anytime."
               : "Open the app icon — sign in once and you’ll stay logged in."}
           </p>
           <Link
@@ -75,27 +107,25 @@ export default function InstallPage() {
       ) : !user ? (
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-[var(--border-base)] bg-white px-6 py-10 text-center shadow-sm">
           <Download className="h-9 w-9 text-[var(--accent)]" />
-          <h2 className="text-base font-bold text-[var(--foreground)]">Sign in first</h2>
+          <h2 className="text-base font-bold text-[var(--foreground)]">Sign in for quick install</h2>
           <p className="max-w-xs text-sm leading-relaxed text-[var(--muted)]">
-            Install after you&apos;re signed in so the home-screen app opens already logged in —
-            no extra email code.
+            For the free home-screen install, sign in first so the icon opens already logged in.
           </p>
           <Link
             href="/sign-in?next=/install"
             className="mt-1 rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--accent-2)] active:scale-95"
           >
-            Sign in to install
+            Sign in
           </Link>
         </div>
       ) : (
         <div className="flex flex-col gap-3">
           <section className="rounded-2xl border border-[var(--border-base)] bg-white p-5 shadow-sm shadow-slate-900/5">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
-              <Download className="h-4 w-4 text-[var(--accent)]" /> Add to home screen
+              <Download className="h-4 w-4 text-[var(--accent)]" /> Quick: add to home screen
             </h2>
             <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
-              You&apos;re signed in as {user.displayName}. Install now and the app icon opens
-              straight into Voices — still logged in.
+              You&apos;re signed in as {user.displayName}. Works today — no App Store wait.
             </p>
 
             <ol className="mt-4 flex flex-col gap-3">
@@ -105,7 +135,9 @@ export default function InstallPage() {
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-800">
                       1
                     </span>
-                    Stay in <span className="rounded bg-[var(--surface-2)] px-1.5 font-medium">Safari</span> while signed in
+                    Stay in{" "}
+                    <span className="rounded bg-[var(--surface-2)] px-1.5 font-medium">Safari</span>{" "}
+                    while signed in
                   </li>
                   <li className="flex items-start gap-3 text-xs text-[var(--foreground)]">
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-800">
@@ -121,7 +153,6 @@ export default function InstallPage() {
                     <span className="rounded bg-[var(--surface-2)] px-1.5 font-medium">
                       Add to Home Screen
                     </span>
-                    , then <span className="rounded bg-[var(--surface-2)] px-1.5 font-medium">Add</span>
                   </li>
                 </>
               ) : (
@@ -130,19 +161,13 @@ export default function InstallPage() {
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-800">
                       1
                     </span>
-                    Stay signed in in <span className="rounded bg-[var(--surface-2)] px-1.5 font-medium">Chrome</span>
+                    Stay signed in in Chrome
                   </li>
                   <li className="flex items-start gap-3 text-xs text-[var(--foreground)]">
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-800">
                       2
                     </span>
-                    Open the menu (<span className="rounded bg-[var(--surface-2)] px-1.5 font-medium">⋮</span> or Install)
-                  </li>
-                  <li className="flex items-start gap-3 text-xs text-[var(--foreground)]">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-800">
-                      3
-                    </span>
-                    Tap{" "}
+                    Menu →{" "}
                     <span className="rounded bg-[var(--surface-2)] px-1.5 font-medium text-[var(--accent)]">
                       Install app
                     </span>
@@ -152,20 +177,12 @@ export default function InstallPage() {
             </ol>
           </section>
 
-          <section className="rounded-2xl border border-[var(--border-base)] bg-white p-5 shadow-sm shadow-slate-900/5">
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
-              <Smartphone className="h-4 w-4 text-[var(--accent)]" /> Or keep using the browser
-            </h2>
-            <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
-              No install needed — you&apos;re already signed in here.
-            </p>
-            <Link
-              href="/app"
-              className="mt-4 flex w-full items-center justify-center rounded-xl bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-2)] active:scale-95"
-            >
-              Open Voices
-            </Link>
-          </section>
+          <Link
+            href="/app"
+            className="flex w-full items-center justify-center rounded-xl bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-2)] active:scale-95"
+          >
+            Open Voices
+          </Link>
         </div>
       )}
 
@@ -176,16 +193,11 @@ export default function InstallPage() {
         <ul className="mt-3 flex flex-col gap-2.5 text-xs leading-relaxed text-[var(--muted)]">
           <li className="flex gap-2">
             <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
-            It&apos;s a <span className="text-[var(--foreground)]">web app</span> — no installer file,
-            nothing that can carry a virus.
+            Same HTTPS site as the web — no random third-party store clone.
           </li>
           <li className="flex gap-2">
             <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
-            Your sign-in cookie stays on this site so the installed app opens logged in.
-          </li>
-          <li className="flex gap-2">
-            <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
-            HTTPS on every request. Delete the icon anytime to remove the app.
+            Sign in once; your session stays so the app opens logged in.
           </li>
         </ul>
       </section>
