@@ -176,17 +176,14 @@ export default function TranslateToEnglish({
           ? "Translating…"
           : view === "english"
             ? "Show original"
-            : "Translate to English"}
+            : "Translate"}
       </button>
 
       {error && <p className="mt-1 text-[11px] text-rose-700">{error}</p>}
 
       {view === "english" && translation && (
-        <div className="mt-2 rounded-xl border border-[var(--border-base)] bg-[var(--surface-2)] px-3 py-2.5">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-            English
-          </p>
-          <p lang="en" className="mt-1 text-sm leading-relaxed text-[var(--foreground)]">
+        <div className="mt-2">
+          <p lang="en" className="text-[15px] leading-relaxed text-[var(--foreground)]">
             {translation}
           </p>
         </div>

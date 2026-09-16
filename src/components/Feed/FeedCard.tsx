@@ -10,21 +10,19 @@ import {
   ShieldCheck,
   Trash2,
   HeartHandshake,
+  SmilePlus,
 } from "lucide-react";
 import type { Thought, Reaction, FeelingId, LikedByPerson } from "@/lib/types";
 import { REACTION_TYPES } from "@/lib/mock-data";
 import { LIKE_REACTION, formatLikedBy } from "@/lib/likes";
 import AudioPlayer from "@/components/Player/AudioPlayer";
 import VideoPlayer from "@/components/Player/VideoPlayer";
-import IntegrityBadge from "@/components/IntegrityBadge";
 import TranscriptPanel from "@/components/Feed/TranscriptPanel";
 import FeelingBadge from "@/components/FeelingBadge";
 import ChatPanel from "@/components/Chat/ChatPanel";
 import TranslateToEnglish from "@/components/TranslateToEnglish";
 import { shouldOfferTranslate } from "@/lib/lang";
-import { feelingOf, feelingWash } from "@/lib/feelings";
 import { isNewAccount } from "@/lib/anti-abuse";
-import { todayKey } from "@/lib/daily-prompt";
 
 function initials(name: string) {
   return name
@@ -54,7 +52,7 @@ interface FeedCardProps {
   feelingWith?: boolean;
   /** Signed-in handle — only this author sees Delete on their take. */
   currentHandle?: string | null;
-  /** Display name for optimistic “Liked by You”. */
+  /** Display name for optimistic “Liked by you”. */
   currentAuthor?: string | null;
   others?: number;
   /** Open comments when deep-linked from activity. */
@@ -229,26 +227,31 @@ export default function FeedCard({
 
   return (
     <article
-      className={`relative isolate border-b border-[var(--border-base)] bg-[var(--surface)] py-5 ${feelingWash(thought.feeling)}`}
+      className="relative isolate border-b border-[var(--border-base)] bg-[var(--surface)] py-4"
     >
       <div className="flex items-start gap-3">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-2)] text-[11px] font-semibold text-[var(--foreground)]">
           {initials(thought.author)}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-1.5">
             <span className="truncate text-sm font-semibold text-[var(--foreground)]">
               {thought.author}
             </span>
-            {authorIsNew && (
-              <span
-                className="shrink-0 rounded-full border border-[var(--border-base)] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]"
-                title="Account created in the last 7 days"
-              >
-                New
+            {thought.handle && (
+              <span className="truncate text-xs text-[var(--muted)]">
+                {thought.handle.startsWith("@") ? thought.handle : `@${thought.handle}`}
               </span>
             )}
-            <span className="shrink-0 text-xs text-[var(--muted)]">{thought.timeLabel}</span>
+            {authorIsNew && (
+              <span
+                className="shrink-0 text-[11px] text-[var(--muted)]"
+                title="Joined in the last week"
+              >
+                · new
+              </span>
+            )}
+            <span className="shrink-0 text-xs text-[var(--muted)]">· {thought.timeLabel}</span>
             <div className="relative ml-auto shrink-0">
               <button
                 type="button"
@@ -273,9 +276,7 @@ export default function FeedCard({
                         disabled={deleting}
                         onClick={() => {
                           if (
-                            !window.confirm(
-                              "Delete this take? It will be removed for everyone."
-                            )
+                            !window.confirm("Delete this post?")
                           ) {
                             setMenuOpen(false);
                             return;
@@ -287,7 +288,7 @@ export default function FeedCard({
                         className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-rose-700 hover:bg-[var(--surface-2)] disabled:opacity-50"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
-                        {deleting ? "Deleting…" : "Delete take"}
+                        {deleting ? "Deleting…" : "Delete"}
                       </button>
                     )}
                     {!isAuthor && currentHandle && onFeelWith && (
@@ -302,7 +303,7 @@ export default function FeedCard({
                         className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-[var(--surface-2)]"
                       >
                         <HeartHandshake className="h-3.5 w-3.5" />
-                        {feelingActive ? "Stop feeling with" : "Feel with"}
+                        {feelingActive ? "Unfollow feelings" : "Feel with them"}
                       </button>
                     )}
                     {!isAuthor && (
@@ -323,7 +324,7 @@ export default function FeedCard({
               )}
             </div>
           </div>
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs text-[var(--muted)]">
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--muted)]">
             {thought.feeling && (
               <FeelingBadge
                 feeling={thought.feeling}
@@ -335,31 +336,15 @@ export default function FeedCard({
                 }
               />
             )}
-            {thought.promptDay === todayKey() && (
-              <span className="rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[10px] font-semibold text-[var(--accent-2)]">
-                Today&apos;s prompt
-              </span>
-            )}
-            {thought.promptDay && thought.promptDay !== todayKey() && (
-              <span className="rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[10px] font-semibold text-[var(--muted)]">
-                Prompt · {thought.promptDay.slice(5)}
-              </span>
-            )}
             {thought.integrity.statusLabel === "Sample voice" && (
-              <span className="rounded-full border border-[var(--border-base)] px-2 py-0.5 text-[10px] font-semibold text-[var(--muted)]">
-                Sample
-              </span>
+              <span className="text-[11px] text-[var(--muted)]">Sample</span>
             )}
-            {thought.languageLabel && thought.language && !thought.language.toLowerCase().startsWith("en") && (
-              <span>{thought.languageLabel}</span>
-            )}
-            <IntegrityBadge integrity={thought.integrity} />
+            {thought.languageLabel &&
+              thought.language &&
+              !thought.language.toLowerCase().startsWith("en") && (
+                <span className="text-[11px]">{thought.languageLabel}</span>
+              )}
           </div>
-          {thought.feeling && feelingOf(thought.feeling) && (
-            <p className="mt-2 text-[13px] italic leading-snug text-[var(--foreground)]/80">
-              {feelingOf(thought.feeling)!.label}
-            </p>
-          )}
         </div>
       </div>
 
@@ -401,19 +386,21 @@ export default function FeedCard({
         <p
           lang={thought.language}
           dir="auto"
-          className="font-display text-[1.05rem] leading-[1.55] text-[var(--foreground)]"
+          className="whitespace-pre-wrap text-[15px] leading-relaxed text-[var(--foreground)]"
         >
           {thought.content}
-        </p>
-        <p className="text-[10px] text-[var(--muted)]">
-          Personal feeling — not a verified claim. Report if it looks fake, copied, or AI spam.
         </p>
         {shouldOfferTranslate(thought.language) && (
           <TranslateToEnglish text={thought.content} sourceLang={thought.language} />
         )}
         {thought.tags.length > 0 && (
-          <p className="text-xs text-[var(--muted)]">
-            {thought.tags.map((t) => t.replace(/^#/, "")).join(" · ")}
+          <p className="flex flex-wrap gap-x-2 gap-y-0.5 text-[13px] text-[var(--accent)]">
+            {thought.tags.map((t) => {
+              const tag = t.replace(/^#/, "");
+              return (
+                <span key={tag}>#{tag}</span>
+              );
+            })}
           </p>
         )}
       </div>
@@ -446,10 +433,13 @@ export default function FeedCard({
           type="button"
           onClick={() => setShowReact((v) => !v)}
           disabled={!currentHandle}
+          aria-label={showReact ? "Close reactions" : "Add reaction"}
           title={!currentHandle ? "Sign in to react" : undefined}
-          className="text-xs font-medium hover:text-[var(--foreground)] disabled:opacity-50"
+          className={`flex items-center gap-1 text-xs font-medium transition disabled:opacity-50 ${
+            showReact ? "text-[var(--foreground)]" : "hover:text-[var(--foreground)]"
+          }`}
         >
-          React
+          <SmilePlus className="h-4 w-4" strokeWidth={2} />
         </button>
       </div>
 
@@ -458,23 +448,24 @@ export default function FeedCard({
       )}
 
       {likes > 0 && (
-        <p className="relative z-0 mt-2 text-xs text-[var(--muted)]">
+        <p className="relative z-0 mt-1.5 text-[13px] text-[var(--muted)]">
           {formatLikedBy(likedBy, likes, currentHandle)}
         </p>
       )}
 
-      {showReact && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
+      {(showReact || reactions.some((e) => e.count > 0)) && (
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
           {REACTION_TYPES.map((r) => {
             const count = reactions.find((e) => e.type === r)?.count ?? 0;
             const isMine = mine === r;
+            if (!showReact && count === 0) return null;
             return (
               <button
                 key={r}
                 type="button"
                 disabled={!currentHandle}
                 onClick={() => void react(r)}
-                className={`rounded-full px-2.5 py-1 text-sm transition disabled:opacity-50 ${
+                className={`rounded-full px-2 py-0.5 text-sm transition disabled:opacity-50 ${
                   isMine
                     ? "bg-[var(--accent-soft)] text-[var(--accent-2)]"
                     : "bg-[var(--surface-2)] text-[var(--foreground)] hover:bg-[var(--accent-soft)]"
@@ -491,9 +482,9 @@ export default function FeedCard({
       {thought.feeling && others && others > 1 && onOpenRoom && (
         <button
           onClick={() => onOpenRoom(thought.feeling!)}
-          className="mt-3 text-left text-xs font-medium text-[var(--accent)] underline-offset-2 hover:underline"
+          className="mt-2.5 text-left text-[13px] text-[var(--muted)] hover:text-[var(--accent)] hover:underline"
         >
-          {others} others feel this too — sit with them
+          {others} others feel this way
         </button>
       )}
 
@@ -517,7 +508,7 @@ export default function FeedCard({
                 <div className="flex flex-col items-center gap-3 px-5 py-8 text-center">
                   <ShieldCheck className="h-8 w-8 text-[var(--accent)]" />
                   <p className="text-sm font-semibold">Thanks — reported</p>
-                  <p className="text-xs text-[var(--muted)]">Keepers will review this take.</p>
+                  <p className="text-xs text-[var(--muted)]">We&apos;ll take a look.</p>
                   <button
                     type="button"
                     onClick={closeReport}
@@ -530,7 +521,7 @@ export default function FeedCard({
                 <>
                   <div className="flex items-center justify-between border-b border-[var(--border-base)] px-5 py-3">
                     <h3 id="report-title" className="font-display text-base font-semibold">
-                      Report this take
+                      Report
                     </h3>
                     <button
                       type="button"
@@ -543,7 +534,7 @@ export default function FeedCard({
                   <div className="overflow-y-auto overscroll-contain px-5 py-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
                     {!currentHandle && (
                       <p className="mb-3 text-sm text-[var(--muted)]">
-                        Sign in to send a report to keepers.
+                        Sign in to send a report.
                       </p>
                     )}
                     {reportError && (

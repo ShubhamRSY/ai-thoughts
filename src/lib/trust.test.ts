@@ -103,13 +103,13 @@ describe("P1 reaction handle casing", () => {
 });
 
 describe("P0 like copy", () => {
-  it("formatLikedBy shows You for current handle regardless of casing", () => {
+  it("formatLikedBy shows you for current handle regardless of casing", () => {
     const s = formatLikedBy(
       [{ handle: "@You", author: "You Name" }],
       1,
       "@YOU"
     );
-    assert.equal(s, "Liked by You");
+    assert.equal(s, "Liked by you");
   });
 
   it("formatLikedBy never invents fake +12", () => {

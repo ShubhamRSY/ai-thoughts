@@ -50,7 +50,7 @@ export function formatLikedBy(
   if (total <= 0) return null;
 
   const label = (p: LikedByPerson) => {
-    if (currentHandle && normHandle(p.handle) === normHandle(currentHandle)) return "You";
+    if (currentHandle && normHandle(p.handle) === normHandle(currentHandle)) return "you";
     return p.author;
   };
 

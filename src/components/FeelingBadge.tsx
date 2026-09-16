@@ -21,14 +21,19 @@ export default function FeelingBadge({
 
   const pad =
     size === "sm"
-      ? "px-2 py-0.5 text-[11px]"
+      ? "text-[12px]"
       : size === "lg"
         ? "px-3.5 py-1.5 text-sm"
         : "px-2.5 py-1 text-xs";
 
-  const className = `inline-flex max-w-full items-center gap-1.5 rounded-full border font-medium transition ${f.chip} ${pad} ${
-    onClick ? "cursor-pointer hover:opacity-90" : ""
-  }`;
+  const className =
+    size === "sm"
+      ? `inline-flex max-w-full items-center gap-1 text-[12px] text-[var(--muted)] transition ${
+          onClick ? "cursor-pointer hover:text-[var(--foreground)]" : ""
+        }`
+      : `inline-flex max-w-full items-center gap-1.5 rounded-full border font-medium transition ${f.chip} ${pad} ${
+          onClick ? "cursor-pointer hover:opacity-90" : ""
+        }`;
   const label = <span className="truncate">{showLabel ? f.label : f.short}</span>;
 
   if (onClick) {

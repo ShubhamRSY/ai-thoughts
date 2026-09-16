@@ -9,7 +9,6 @@ import {
 } from "@/lib/db";
 import { useLocalProfile } from "@/hooks/useLocalProfile";
 import { useAuth } from "@/hooks/useAuth";
-import TranslateToEnglish from "@/components/TranslateToEnglish";
 import { checkDignity } from "@/lib/dignity";
 import {
   mentionQueryAt,
@@ -331,7 +330,7 @@ export default function ChatPanel({
             onClick={onClose}
             className="text-xs font-medium text-[var(--muted)] hover:text-[var(--foreground)]"
           >
-            Hide
+            Close
           </button>
         </div>
       </div>
@@ -342,7 +341,7 @@ export default function ChatPanel({
       >
         {loaded && messages.length === 0 && (
           <p className="text-sm text-[var(--muted)]">
-            Be the first to reply to {postAuthor}. Type @ to mention them.
+            Be the first to reply.
           </p>
         )}
 
@@ -358,7 +357,6 @@ export default function ChatPanel({
               </p>
               <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
                 <span className="text-[11px] text-[var(--muted)]">{timeLabel(m.created_at)}</span>
-                <TranslateToEnglish text={m.body} variant="dropdown" />
               </div>
             </div>
           </div>
@@ -376,7 +374,7 @@ export default function ChatPanel({
             <Link href="/sign-in" className="font-semibold text-[var(--accent)] hover:underline">
               Sign in
             </Link>{" "}
-            to reply or @mention someone.
+            to reply.
           </p>
         ) : (
           <>
@@ -442,7 +440,7 @@ export default function ChatPanel({
             }}
             rows={1}
             dir="auto"
-            placeholder="Add a comment… use @handle to mention"
+            placeholder="Write a reply…"
             className="max-h-24 min-h-[36px] flex-1 resize-none bg-transparent py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted)] outline-none"
           />
           <button
