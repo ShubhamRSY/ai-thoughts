@@ -514,11 +514,11 @@ export default function Home() {
                       </h2>
                       <p className="mt-0.5 text-[11px] text-[var(--muted)]">
                         {regionScope === "today"
-                          ? "Same prompt, many voices · Feel with someone who resonates"
+                          ? "Same prompt, many voices · Follow someone who resonates"
                           : regionScope === "circle"
                             ? following.length
-                              ? "People you feel with · Translate anytime"
-                              : "Feel with someone from ··· on a take"
+                              ? "People you follow · Translate anytime"
+                              : "Follow someone from ··· on a take"
                             : "Voices from everywhere · tap Translate on any language"}
                       </p>
                     </div>
