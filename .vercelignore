@@ -1,0 +1,10 @@
+# Vercel upload exclusions — web build only (Next.js on Vercel,
+# native shells build separately via Capacitor/Electron).
+node_modules
+.next
+desktop
+android
+ios
+.vercel
+.git
+*.tsbuildinfo

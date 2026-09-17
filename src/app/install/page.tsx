@@ -91,8 +91,85 @@ export default function InstallPage() {
 
           <section className="rounded-2xl border border-[var(--border-base)] bg-white p-5 shadow-sm shadow-slate-900/5">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
+              <Laptop className="h-4 w-4 text-[var(--accent)]" /> Windows
+            </h2>
+            <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
+              Get AiTo from the <span className="text-[var(--foreground)]">Microsoft Store</span> —
+              install like any Windows app, updates through the Store.
+            </p>
+            <div className="mt-4">
+              <WindowsStoreCta buttonClassName="flex w-full items-center justify-center rounded-xl bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-2)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-70" />
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-[var(--border-base)] bg-white p-5 shadow-sm shadow-slate-900/5">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
+              <Apple className="h-4 w-4 text-[var(--accent)]" /> Mac
+            </h2>
+            <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
+              Two ways to get AiTo on your Mac:
+            </p>
+            <div className="mt-4 flex flex-col gap-3">
+              <div className="rounded-xl border border-[var(--border-base)] bg-[var(--surface)] p-4">
+                <p className="text-xs font-semibold text-[var(--foreground)]">
+                  Safari — Add to Dock
+                </p>
+                <ol className="mt-2 flex flex-col gap-1.5 text-xs leading-relaxed text-[var(--muted)]">
+                  <li className="flex gap-2">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-50 text-[10px] font-semibold text-teal-800">
+                      1
+                    </span>
+                    Open <span className="text-[var(--foreground)]">aito.social</span> in Safari
+                    (macOS 14+)
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-50 text-[10px] font-semibold text-teal-800">
+                      2
+                    </span>
+                    Menu bar → <span className="text-[var(--foreground)]">File → Add to Dock</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-50 text-[10px] font-semibold text-teal-800">
+                      3
+                    </span>
+                    AiTo opens like an app from your Dock
+                  </li>
+                </ol>
+              </div>
+              <div className="rounded-xl border border-[var(--border-base)] bg-[var(--surface)] p-4">
+                <p className="text-xs font-semibold text-[var(--foreground)]">
+                  Chrome / Edge — Install app
+                </p>
+                <ol className="mt-2 flex flex-col gap-1.5 text-xs leading-relaxed text-[var(--muted)]">
+                  <li className="flex gap-2">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-50 text-[10px] font-semibold text-teal-800">
+                      1
+                    </span>
+                    Open <span className="text-[var(--foreground)]">aito.social</span> in Chrome or
+                    Edge
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-50 text-[10px] font-semibold text-teal-800">
+                      2
+                    </span>
+                    Menu →{" "}
+                    <span className="text-[var(--foreground)]">Install AiTo…</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-50 text-[10px] font-semibold text-teal-800">
+                      3
+                    </span>
+                    Runs in its own window with a Dock icon
+                  </li>
+                </ol>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-[var(--border-base)] bg-white p-5 shadow-sm shadow-slate-900/5">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
               <Smartphone className="h-4 w-4 text-[var(--accent)]" />
-              {user ? "1." : "2."} Add to home screen
+              Add to home screen
             </h2>
             <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
               {user
@@ -176,83 +253,6 @@ export default function InstallPage() {
               Open Voices in browser
             </Link>
           )}
-
-          <section className="rounded-2xl border border-[var(--border-base)] bg-white p-5 shadow-sm shadow-slate-900/5">
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
-              <Laptop className="h-4 w-4 text-[var(--accent)]" /> Windows
-            </h2>
-            <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
-              Get AiTo from the <span className="text-[var(--foreground)]">Microsoft Store</span> —
-              install like any Windows app, updates through the Store.
-            </p>
-            <div className="mt-4">
-              <WindowsStoreCta buttonClassName="flex w-full items-center justify-center rounded-xl bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-2)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-70" />
-            </div>
-          </section>
-
-          <section className="rounded-2xl border border-[var(--border-base)] bg-white p-5 shadow-sm shadow-slate-900/5">
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
-              <Apple className="h-4 w-4 text-[var(--accent)]" /> Mac
-            </h2>
-            <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
-              Two ways to get AiTo on your Mac:
-            </p>
-            <div className="mt-4 flex flex-col gap-3">
-              <div className="rounded-xl border border-[var(--border-base)] bg-[var(--surface)] p-4">
-                <p className="text-xs font-semibold text-[var(--foreground)]">
-                  Safari — Add to Dock
-                </p>
-                <ol className="mt-2 flex flex-col gap-1.5 text-xs leading-relaxed text-[var(--muted)]">
-                  <li className="flex gap-2">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-50 text-[10px] font-semibold text-teal-800">
-                      1
-                    </span>
-                    Open <span className="text-[var(--foreground)]">aito.social</span> in Safari
-                    (macOS 14+)
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-50 text-[10px] font-semibold text-teal-800">
-                      2
-                    </span>
-                    Menu bar → <span className="text-[var(--foreground)]">File → Add to Dock</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-50 text-[10px] font-semibold text-teal-800">
-                      3
-                    </span>
-                    AiTo opens like an app from your Dock
-                  </li>
-                </ol>
-              </div>
-              <div className="rounded-xl border border-[var(--border-base)] bg-[var(--surface)] p-4">
-                <p className="text-xs font-semibold text-[var(--foreground)]">
-                  Chrome / Edge — Install app
-                </p>
-                <ol className="mt-2 flex flex-col gap-1.5 text-xs leading-relaxed text-[var(--muted)]">
-                  <li className="flex gap-2">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-50 text-[10px] font-semibold text-teal-800">
-                      1
-                    </span>
-                    Open <span className="text-[var(--foreground)]">aito.social</span> in Chrome or
-                    Edge
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-50 text-[10px] font-semibold text-teal-800">
-                      2
-                    </span>
-                    Menu →{" "}
-                    <span className="text-[var(--foreground)]">Install AiTo…</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-50 text-[10px] font-semibold text-teal-800">
-                      3
-                    </span>
-                    Runs in its own window with a Dock icon
-                  </li>
-                </ol>
-              </div>
-            </div>
-          </section>
         </div>
       )}
 
