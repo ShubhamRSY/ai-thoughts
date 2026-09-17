@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Camera, Check, Download, PencilLine, Trash2 } from "lucide-react";
+import { Bookmark, Camera, Check, Download, PencilLine, Trash2 } from "lucide-react";
 import { upload } from "@vercel/blob/client";
 import type { Thought } from "@/lib/types";
 import { useLocalProfile } from "@/hooks/useLocalProfile";
@@ -13,8 +13,11 @@ import { BRAND } from "@/lib/brand";
 
 interface ProfileViewProps {
   myThoughts: Thought[];
+  /** Bookmarked takes — private to this viewer, never shown to anyone else. */
+  savedThoughts?: Thought[];
   onCreate: () => void;
   onDelete?: (thoughtId: string) => void;
+  onUnsave?: (thoughtId: string) => void;
 }
 
 interface ConnectionProfile {
@@ -32,7 +35,13 @@ function initials(name: string) {
     .toUpperCase() || "?";
 }
 
-export default function ProfileView({ myThoughts, onCreate, onDelete }: ProfileViewProps) {
+export default function ProfileView({
+  myThoughts,
+  savedThoughts = [],
+  onCreate,
+  onDelete,
+  onUnsave,
+}: ProfileViewProps) {
   const router = useRouter();
   const { profile, save } = useLocalProfile();
   const { user, signOut, refresh } = useAuth();
@@ -479,6 +488,37 @@ export default function ProfileView({ myThoughts, onCreate, onDelete }: ProfileV
           </div>
         )}
       </div>
+
+      {savedThoughts.length > 0 && (
+        <div className="mt-6">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+            Saved
+          </p>
+          <div className="flex flex-col gap-2">
+            {savedThoughts.map((t) => (
+              <div
+                key={t.id}
+                className="flex items-center gap-3 rounded-xl border border-[var(--border-base)] bg-[var(--surface)] px-3 py-2.5"
+              >
+                <p dir="auto" className="min-w-0 flex-1 truncate text-sm text-[var(--foreground)]">
+                  {t.content}
+                </p>
+                <span className="shrink-0 text-xs tabular-nums text-[var(--muted)]">{t.timeLabel}</span>
+                {onUnsave && (
+                  <button
+                    type="button"
+                    aria-label="Remove bookmark"
+                    onClick={() => onUnsave(t.id)}
+                    className="shrink-0 rounded-md p-1.5 text-[var(--accent)] hover:bg-[var(--surface-2)]"
+                  >
+                    <Bookmark className="h-3.5 w-3.5" fill="currentColor" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

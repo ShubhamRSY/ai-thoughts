@@ -3,6 +3,7 @@ import { ObjectId } from "mongodb";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
 import { notifyPostOwner } from "@/lib/activity";
+import { shouldNotifyOwner } from "@/lib/likes";
 
 function normHandle(h: string) {
   return h.trim().toLowerCase().replace(/^@/, "");
@@ -73,13 +74,15 @@ export async function POST(
       created_at: new Date(),
     });
 
-    await notifyPostOwner(db, {
-      postId: id,
-      actorHandle: storeHandle,
-      actorAuthor: session.displayName || session.handle,
-      kind: "reaction",
-      preview: reaction,
-    });
+    if (shouldNotifyOwner(reaction)) {
+      await notifyPostOwner(db, {
+        postId: id,
+        actorHandle: storeHandle,
+        actorAuthor: session.displayName || session.handle,
+        kind: "reaction",
+        preview: reaction,
+      });
+    }
 
     return NextResponse.json({ ok: true, action: "added" });
   } catch (error) {

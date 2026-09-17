@@ -5,6 +5,9 @@ import { createPortal } from "react-dom";
 import {
   MessageCircle,
   Heart,
+  Repeat2,
+  Bookmark,
+  BarChart2,
   MoreHorizontal,
   Flag,
   ShieldCheck,
@@ -12,7 +15,8 @@ import {
   HeartHandshake,
 } from "lucide-react";
 import type { Thought, Reaction, FeelingId, LikedByPerson } from "@/lib/types";
-import { LIKE_REACTION, formatLikedBy } from "@/lib/likes";
+import { LIKE_REACTION, BOOST_REACTION, BOOKMARK_REACTION, formatLikedBy } from "@/lib/likes";
+import { markViewed } from "@/lib/db";
 import AudioPlayer from "@/components/Player/AudioPlayer";
 import VideoPlayer from "@/components/Player/VideoPlayer";
 import TranscriptPanel from "@/components/Feed/TranscriptPanel";
@@ -92,6 +96,9 @@ export default function FeedCard({
       : thought.reactions.find((e) => e.type === LIKE_REACTION)?.count ?? 0
   );
   const [likedBy, setLikedBy] = useState<LikedByPerson[]>(thought.likedBy ?? []);
+  const [boosted, setBoosted] = useState(Boolean(thought.boostedByMe));
+  const [boosts, setBoosts] = useState(thought.boostCount ?? 0);
+  const [bookmarked, setBookmarked] = useState(Boolean(thought.bookmarkedByMe));
   const [menuOpen, setMenuOpen] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [reported, setReported] = useState(false);
@@ -109,6 +116,11 @@ export default function FeedCard({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // ponytail: "mounted" ≈ "seen" — see markViewed's doc comment for the upgrade path.
+  useEffect(() => {
+    void markViewed(thought.id);
+  }, [thought.id]);
 
   useEffect(() => {
     if (forceChatOpen) setChatOpen(true);
@@ -182,6 +194,34 @@ export default function FeedCard({
       setLikes(prevLikes);
       setLikedBy(prevLikedBy);
       setActionError("Couldn’t save that like — try again.");
+    }
+  };
+
+  const boost = async () => {
+    if (!currentHandle) return;
+    setActionError(null);
+    const was = boosted;
+    const prevBoosts = boosts;
+    const next = !was;
+    setBoosted(next);
+    setBoosts(Math.max(0, boosts + (next ? 1 : -1)));
+    const ok = onReact ? await Promise.resolve(onReact(thought.id, BOOST_REACTION)) : true;
+    if (ok === false) {
+      setBoosted(was);
+      setBoosts(prevBoosts);
+      setActionError("Couldn’t save that repost — try again.");
+    }
+  };
+
+  const bookmark = async () => {
+    if (!currentHandle) return;
+    setActionError(null);
+    const was = bookmarked;
+    setBookmarked(!was);
+    const ok = onReact ? await Promise.resolve(onReact(thought.id, BOOKMARK_REACTION)) : true;
+    if (ok === false) {
+      setBookmarked(was);
+      setActionError("Couldn’t save that bookmark — try again.");
     }
   };
 
@@ -399,6 +439,19 @@ export default function FeedCard({
         </button>
         <button
           type="button"
+          onClick={() => void boost()}
+          disabled={!currentHandle}
+          aria-label={boosted ? "Undo repost" : "Repost"}
+          title={!currentHandle ? "Sign in to repost" : undefined}
+          className={`flex items-center gap-1.5 text-[13px] font-medium transition disabled:opacity-50 ${
+            boosted ? "text-[var(--accent)]" : "hover:text-[var(--foreground)]"
+          }`}
+        >
+          <Repeat2 className="h-[18px] w-[18px]" strokeWidth={2} />
+          {boosts > 0 ? boosts : null}
+        </button>
+        <button
+          type="button"
           onClick={() => setChatOpen((v) => !v)}
           className={`flex items-center gap-1.5 text-[13px] font-medium transition ${
             chatOpen ? "text-[var(--foreground)]" : "hover:text-[var(--foreground)]"
@@ -406,6 +459,24 @@ export default function FeedCard({
         >
           <MessageCircle className="h-[18px] w-[18px]" strokeWidth={2} />
           {commentCount != null && commentCount > 0 ? commentCount : "Reply"}
+        </button>
+        {typeof thought.viewCount === "number" && thought.viewCount > 0 && (
+          <span className="flex items-center gap-1.5 text-[13px] font-medium text-[var(--foreground)]/50">
+            <BarChart2 className="h-[18px] w-[18px]" strokeWidth={2} />
+            {thought.viewCount}
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={() => void bookmark()}
+          disabled={!currentHandle}
+          aria-label={bookmarked ? "Remove bookmark" : "Bookmark"}
+          title={!currentHandle ? "Sign in to bookmark" : undefined}
+          className={`flex items-center transition disabled:opacity-50 ${
+            bookmarked ? "text-[var(--accent)]" : "hover:text-[var(--foreground)]"
+          }`}
+        >
+          <Bookmark className="h-[18px] w-[18px]" fill={bookmarked ? "currentColor" : "none"} strokeWidth={2} />
         </button>
         <ShareCardButton thought={thought} />
       </div>

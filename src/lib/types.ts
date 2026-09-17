@@ -34,7 +34,20 @@ export interface Feeling {
   tone?: string;
 }
 
-export type Reaction = "❤️" | "🔥" | "😂" | "🤔" | "💯" | "🚀" | "😴" | "👏" | "🙌";
+// "🔁" (repost) and "🔖" (bookmark) reuse the reaction toggle mechanics but
+// aren't in the emoji-picker palette — see src/lib/likes.ts.
+export type Reaction =
+  | "❤️"
+  | "🔥"
+  | "😂"
+  | "🤔"
+  | "💯"
+  | "🚀"
+  | "😴"
+  | "👏"
+  | "🙌"
+  | "🔁"
+  | "🔖";
 
 export interface ReactionCount {
   type: Reaction;
@@ -92,6 +105,14 @@ export interface Thought {
   likedByMe?: boolean;
   /** Prefetched reply/comment count. */
   replyCount?: number;
+  /** How many unique people reposted/boosted. */
+  boostCount?: number;
+  /** Whether the signed-in user already reposted this take. */
+  boostedByMe?: boolean;
+  /** Whether the signed-in user has bookmarked this take (private to them). */
+  bookmarkedByMe?: boolean;
+  /** Deduped view count (one per viewer). Approximate: counted on card mount. */
+  viewCount?: number;
   /** ISO when the author account was created (for “New” badge). */
   authorJoinedAt?: string;
   /** Human relative time label like "2m" */

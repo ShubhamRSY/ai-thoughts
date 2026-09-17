@@ -64,6 +64,10 @@ interface RawPost {
   like_count?: number;
   liked_by_me?: boolean;
   reply_count?: number;
+  boost_count?: number;
+  boosted_by_me?: boolean;
+  bookmarked_by_me?: boolean;
+  view_count?: number;
   author_joined_at?: string | null;
 }
 
@@ -102,6 +106,10 @@ function toThought(r: RawPost): Thought {
     likeCount: typeof r.like_count === "number" ? r.like_count : undefined,
     likedByMe: Boolean(r.liked_by_me),
     replyCount: typeof r.reply_count === "number" ? r.reply_count : undefined,
+    boostCount: typeof r.boost_count === "number" ? r.boost_count : undefined,
+    boostedByMe: Boolean(r.boosted_by_me),
+    bookmarkedByMe: Boolean(r.bookmarked_by_me),
+    viewCount: typeof r.view_count === "number" ? r.view_count : undefined,
     authorJoinedAt: r.author_joined_at ?? undefined,
   };
 }
@@ -194,6 +202,15 @@ export async function addReaction(postId: string, reaction: string): Promise<boo
   } catch (e) {
     console.error("addReaction:", e);
     return false;
+  }
+}
+
+/** Fire-and-forget: record a view. Best-effort — a failure here shouldn't affect the reader. */
+export async function markViewed(postId: string): Promise<void> {
+  try {
+    await jsonFetch(`${API}/posts/${postId}/view`, { method: "POST" });
+  } catch (e) {
+    console.error("markViewed:", e);
   }
 }
 

@@ -9,7 +9,7 @@ import { checkDignity, normalizeTag } from "@/lib/dignity";
 import { GLOBAL_SEED_POSTS } from "@/lib/seed-posts";
 import { notifyFollowersOfPost } from "@/lib/activity";
 import { dailyPromptForDay, promptDayKeyUTC } from "@/lib/daily-prompt";
-import { LIKE_REACTION, buildLikedBy } from "@/lib/likes";
+import { LIKE_REACTION, BOOST_REACTION, BOOKMARK_REACTION, buildLikedBy } from "@/lib/likes";
 import { assertCanPost, contentFingerprint } from "@/lib/anti-abuse";
 
 const MEDIA_TYPES = new Set(["audio", "video", "text"]);
@@ -171,6 +171,7 @@ export async function GET(request: NextRequest) {
     }
 
     const messageCounts = new Map<string, number>();
+    const viewCounts = new Map<string, number>();
     if (postIds.length > 0) {
       const counts = await db
         .collection("messages")
@@ -181,6 +182,17 @@ export async function GET(request: NextRequest) {
         .toArray();
       for (const row of counts) {
         if (row._id) messageCounts.set(String(row._id), row.n);
+      }
+
+      const views = await db
+        .collection("post_views")
+        .aggregate<{ _id: string; n: number }>([
+          { $match: { post_id: { $in: postIds } } },
+          { $group: { _id: "$post_id", n: { $sum: 1 } } },
+        ])
+        .toArray();
+      for (const row of views) {
+        if (row._id) viewCounts.set(String(row._id), row.n);
       }
     }
 
@@ -198,6 +210,21 @@ export async function GET(request: NextRequest) {
       const likedByMe = Boolean(
         me &&
           heartRows.some((r) => r.handle?.trim().toLowerCase().replace(/^@/, "") === me)
+      );
+      const boostRows = rows.filter((r) => r.reaction === BOOST_REACTION);
+      const boostCount = new Set(
+        boostRows.map((r) => r.handle?.trim().toLowerCase().replace(/^@/, "")).filter(Boolean)
+      ).size;
+      const boostedByMe = Boolean(
+        me && boostRows.some((r) => r.handle?.trim().toLowerCase().replace(/^@/, "") === me)
+      );
+      const bookmarkedByMe = Boolean(
+        me &&
+          rows.some(
+            (r) =>
+              r.reaction === BOOKMARK_REACTION &&
+              r.handle?.trim().toLowerCase().replace(/^@/, "") === me
+          )
       );
       const authorKey = String(p.handle || "")
         .trim()
@@ -231,6 +258,10 @@ export async function GET(request: NextRequest) {
         like_count: unique.size,
         liked_by_me: likedByMe,
         reply_count: messageCounts.get(id) ?? 0,
+        boost_count: boostCount,
+        boosted_by_me: boostedByMe,
+        bookmarked_by_me: bookmarkedByMe,
+        view_count: viewCounts.get(id) ?? 0,
         author_joined_at: p.author_joined_at ?? null,
       };
     });

@@ -1,5 +1,14 @@
 /** Heart reaction used by the Like button on feed cards. */
 export const LIKE_REACTION = "❤️" as const;
+/** Repost/boost — a public signal, same toggle mechanics as Like. */
+export const BOOST_REACTION = "🔁" as const;
+/** Bookmark — private; see shouldNotifyOwner. */
+export const BOOKMARK_REACTION = "🔖" as const;
+
+/** Bookmarking must stay private — the post owner never learns who saved it. */
+export function shouldNotifyOwner(reaction: string): boolean {
+  return reaction !== BOOKMARK_REACTION;
+}
 
 export type LikedByPerson = {
   handle: string;

@@ -38,6 +38,7 @@ import {
 import type { ReportReason } from "@/components/Feed/FeedCard";
 import type { RegionScope } from "@/components/Feed/FilterBar";
 import { todayKey as promptTodayKey } from "@/lib/daily-prompt";
+import { BOOKMARK_REACTION } from "@/lib/likes";
 
 type MediaFilter = "all" | MediaType;
 
@@ -372,6 +373,26 @@ export default function Home() {
     return addReaction(thoughtId, reaction);
   }, []);
 
+  // Unsaving from the Saved list needs the feed's own `bookmarkedByMe` flag
+  // flipped too — FeedCard's optimistic toggle is local-only, so without
+  // this the item would only disappear after the next full feed refetch.
+  const onUnsave = useCallback(
+    async (thoughtId: string) => {
+      setThoughts((prev) =>
+        prev.map((t) => (t.id === thoughtId ? { ...t, bookmarkedByMe: false } : t))
+      );
+      const ok = await onReact(thoughtId, BOOKMARK_REACTION);
+      if (ok === false) {
+        setThoughts((prev) =>
+          prev.map((t) => (t.id === thoughtId ? { ...t, bookmarkedByMe: true } : t))
+        );
+      }
+    },
+    [onReact]
+  );
+
+  const saved = useMemo(() => thoughts.filter((t) => t.bookmarkedByMe), [thoughts]);
+
   const reloadFeed = useCallback(
     async (opts?: { silent?: boolean }) => {
       if (!isLive()) {
@@ -647,8 +668,10 @@ export default function Home() {
           <div className="app-pad pt-4">
             <ProfileView
               myThoughts={mine}
+              savedThoughts={saved}
               onCreate={() => openShare("video")}
               onDelete={user ? onDelete : undefined}
+              onUnsave={onUnsave}
             />
             <StreakCard
               count={streak.count}
