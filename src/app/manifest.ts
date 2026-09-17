@@ -6,8 +6,8 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "AiTo",
     description:
       "Express how AI makes you feel — love it, fear it, or both. Voice, video, or words.",
-    id: "/app",
-    start_url: "/app",
+    id: "/",
+    start_url: "/",
     scope: "/",
     display: "standalone",
     orientation: "any",
