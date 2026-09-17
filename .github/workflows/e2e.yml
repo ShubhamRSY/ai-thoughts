@@ -1,0 +1,40 @@
+name: E2E
+
+"on":
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      - name: Start a TLS-enabled MongoDB for the test run
+        run: ./e2e/start-test-mongo.sh
+
+      - run: npm run test:e2e
+        env:
+          # No E2E_BASE_URL: playwright.config.ts starts `next dev` itself
+          # and points it at these Mongo/secret values (its default baseURL
+          # is already "localhost", required — see the comment there — not
+          # "127.0.0.1", which silently hangs client hydration).
+          AUTH_SECRET: ci-e2e-secret-not-for-prod
+          CRON_SECRET: ci-e2e-cron-secret
+          MONGODB_URL: "mongodb://127.0.0.1:27017/aithoughts-e2e?tlsAllowInvalidCertificates=true"
+          MONGODB_DB: aithoughts-e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14

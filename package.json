@@ -10,7 +10,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --experimental-strip-types --test src/lib/security.test.ts src/lib/anti-abuse.test.ts src/lib/trust.test.ts src/lib/privacy.test.ts",
+    "test": "node --experimental-strip-types --test src/lib/security.test.ts src/lib/anti-abuse.test.ts src/lib/trust.test.ts src/lib/privacy.test.ts src/lib/likes.test.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
     "seed": "node scripts/seed-mongo.mjs",
     "cap:sync": "npx cap sync",
     "cap:ios": "npx cap sync ios && npx cap open ios",
@@ -34,6 +36,7 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
