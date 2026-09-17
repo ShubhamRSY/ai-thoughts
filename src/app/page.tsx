@@ -15,7 +15,7 @@ export default async function LandingPage() {
 
   const ctaHref = session ? "/app" : "/sign-in";
   const ctaLabel = session ? BRAND.openCta : BRAND.joinCta;
-  const installHref = session ? "/install" : "/sign-in?next=/install";
+  const installHref = "/install";
   const crowdLine = session
     ? `Welcome back${session.displayName ? `, ${session.displayName}` : ""}.`
     : crowdCountLabel(total);
