@@ -319,6 +319,13 @@ export default function FeedCard({
         </div>
       </div>
 
+      {thought.mediaType === "text" && thought.mediaUrl && (
+        <div className="relative z-0 mt-3 overflow-hidden rounded-xl border border-[var(--border-base)] bg-black">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={thought.mediaUrl} alt="" className="max-h-[520px] w-full object-contain" />
+        </div>
+      )}
+
       {(thought.mediaType === "audio" || thought.mediaType === "video") && (
         <div className="relative z-0 mt-3 overflow-hidden rounded-xl border border-[var(--border-base)]">
           {thought.mediaType === "audio" && (

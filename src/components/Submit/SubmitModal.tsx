@@ -82,6 +82,7 @@ export default function SubmitModal({
   const [published, setPublished] = useState(false);
   const [publishedAsPrompt, setPublishedAsPrompt] = useState(false);
   const [captured, setCaptured] = useState<CapturedClip | null>(null);
+  const [image, setImage] = useState<File | null>(null);
   const [publishError, setPublishError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -116,6 +117,7 @@ export default function SubmitModal({
   const switchTab = (t: Tab) => {
     setTab(t);
     setCaptured(null);
+    setImage(null);
     setPublishError(null);
   };
 
@@ -172,9 +174,15 @@ export default function SubmitModal({
         : {}),
     };
 
+    const clip =
+      tab !== "text"
+        ? (captured ?? undefined)
+        : image
+          ? { blob: image, duration: 0 }
+          : undefined;
     let result: PublishResult;
     try {
-      result = await onPublish(payload, tab !== "text" ? (captured ?? undefined) : undefined);
+      result = await onPublish(payload, clip);
     } catch (e) {
       console.error("publish failed:", e);
       setPublishError(e instanceof Error ? e.message : "Couldn’t share right now. Try again.");
@@ -294,7 +302,9 @@ export default function SubmitModal({
             <div className="flex-1 space-y-4 bg-[var(--background)] py-4">
               {tab === "audio" && <MediaRecorderView kind="audio" onCaptured={setCaptured} />}
               {tab === "video" && <MediaRecorderView kind="video" onCaptured={setCaptured} />}
-              {tab === "text" && <TextForm value={content} onChange={setContent} />}
+              {tab === "text" && (
+                <TextForm value={content} onChange={setContent} image={image} onImageChange={setImage} />
+              )}
 
               <div>
                 <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1">

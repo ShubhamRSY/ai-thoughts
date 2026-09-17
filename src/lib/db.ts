@@ -133,7 +133,13 @@ export async function publishPost(
           ? "mp4"
           : mediaBlob.type.includes("mp3")
             ? "mp3"
-            : "webm";
+            : mediaBlob.type.includes("png")
+              ? "png"
+              : mediaBlob.type.includes("webp")
+                ? "webp"
+                : mediaBlob.type.includes("jpeg") || mediaBlob.type.includes("jpg")
+                  ? "jpg"
+                  : "webm";
       const uploaded = await upload(`take-${Date.now()}.${ext}`, mediaBlob, {
         access: "public",
         contentType: mediaBlob.type || "application/octet-stream",
