@@ -13,6 +13,9 @@ import {
   setSiteSettings,
 } from "@/lib/admin";
 import { authorizeBearer } from "@/lib/cron-auth";
+import { logSecurityEvent } from "@/lib/audit";
+import { clientIp } from "@/lib/rate-limit";
+import { collectSentimentSnapshot } from "@/lib/sentiment";
 
 function normHandle(h: string) {
   return h.trim().toLowerCase().replace(/^@/, "");
@@ -31,7 +34,7 @@ export async function GET() {
 
   try {
     const { db } = await connectToDatabase();
-    const [admins, keepers, settings, users, posts, reportsOpen, messages] =
+    const [admins, keepers, settings, users, posts, reportsOpen, messages, auditRows, sentiment] =
       await Promise.all([
         listAdmins(),
         listKeepers(),
@@ -40,6 +43,13 @@ export async function GET() {
         db.collection("posts").countDocuments(),
         db.collection("reports").countDocuments({ status: { $ne: "resolved" } }),
         db.collection("messages").countDocuments(),
+        db
+          .collection("security_audit_log")
+          .find({})
+          .sort({ created_at: -1 })
+          .limit(50)
+          .toArray(),
+        collectSentimentSnapshot(db),
       ]);
 
     const recentPosts = await db
@@ -65,6 +75,17 @@ export async function GET() {
       settings,
       admins,
       keepers,
+      sentiment,
+      auditLog: auditRows.map((r) => ({
+        id: r._id.toString(),
+        action: r.action,
+        actor_handle: r.actor_handle ?? null,
+        via: r.via ?? "session",
+        detail: r.detail ?? {},
+        ip: r.ip ?? null,
+        created_at:
+          r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at ?? ""),
+      })),
       recentPosts: recentPosts.map((p) => ({
         id: p._id.toString(),
         handle: p.handle,
@@ -90,10 +111,10 @@ export async function POST(request: NextRequest) {
   // Break-glass: claim admin for a handle using owner/cron secret (once).
   if (action === "bootstrap") {
     if (
-      !authorizeBearer(request, {
+      !(await authorizeBearer(request, {
         secrets: [process.env.OWNER_DASHBOARD_SECRET, process.env.CRON_SECRET],
         allowInsecureDev: process.env.NODE_ENV !== "production",
-      })
+      }))
     ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -103,6 +124,13 @@ export async function POST(request: NextRequest) {
     }
     try {
       await addAdmin(handle);
+      const { db } = await connectToDatabase();
+      await logSecurityEvent(db, {
+        action: "bootstrap_admin",
+        actorHandle: `@${normHandle(handle)}`,
+        via: "bearer",
+        ip: clientIp(request),
+      });
       return NextResponse.json({ ok: true, handle: `@${normHandle(handle)}` });
     } catch (e) {
       return NextResponse.json(
@@ -117,24 +145,38 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: gate.error }, { status: gate.status });
   }
 
+  const audit = (auditAction: string, detail?: Record<string, unknown>) =>
+    connectToDatabase().then(({ db }) =>
+      logSecurityEvent(db, {
+        action: auditAction,
+        actorHandle: gate.session.handle,
+        via: "session",
+        detail,
+        ip: clientIp(request),
+      })
+    );
+
   try {
     switch (action) {
       case "add_keeper": {
         const handle = String(body.handle || "").trim();
         if (!handle) return NextResponse.json({ error: "handle required" }, { status: 400 });
         await addKeeper(handle);
+        await audit("add_keeper", { handle: `@${normHandle(handle)}` });
         return NextResponse.json({ ok: true, keepers: await listKeepers() });
       }
       case "remove_keeper": {
         const handle = String(body.handle || "").trim();
         if (!handle) return NextResponse.json({ error: "handle required" }, { status: 400 });
         await removeKeeper(handle);
+        await audit("remove_keeper", { handle: `@${normHandle(handle)}` });
         return NextResponse.json({ ok: true, keepers: await listKeepers() });
       }
       case "add_admin": {
         const handle = String(body.handle || "").trim();
         if (!handle) return NextResponse.json({ error: "handle required" }, { status: 400 });
         await addAdmin(handle);
+        await audit("add_admin", { handle: `@${normHandle(handle)}` });
         return NextResponse.json({ ok: true, admins: await listAdmins() });
       }
       case "remove_admin": {
@@ -144,6 +186,7 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: "Cannot remove yourself" }, { status: 400 });
         }
         await removeAdmin(handle);
+        await audit("remove_admin", { handle: `@${normHandle(handle)}` });
         return NextResponse.json({ ok: true, admins: await listAdmins() });
       }
       case "settings": {
@@ -153,6 +196,7 @@ export async function POST(request: NextRequest) {
             typeof body.maintenanceMessage === "string" ? body.maintenanceMessage : undefined,
           invitesOpen: typeof body.invitesOpen === "boolean" ? body.invitesOpen : undefined,
         });
+        await audit("settings", settings);
         return NextResponse.json({ ok: true, settings });
       }
       case "delete_post": {
@@ -170,6 +214,7 @@ export async function POST(request: NextRequest) {
         await db.collection("messages").deleteMany({ post_id: id });
         await db.collection("reactions").deleteMany({ post_id: id });
         await db.collection("reports").deleteMany({ post_id: id });
+        await audit("delete_post", { postId: id, authorHandle: post.handle });
         return NextResponse.json({ ok: true, deleted: id });
       }
       case "seed": {

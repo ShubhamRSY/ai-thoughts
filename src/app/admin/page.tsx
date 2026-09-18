@@ -10,8 +10,27 @@ import {
   Sprout,
   AlertTriangle,
   ExternalLink,
+  HeartPulse,
+  ScrollText,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+
+type FeelingBucket = { id: string; short: string; label: string; count: number; pct: number };
+type SentimentSnapshot = {
+  today: { total: number; buckets: FeelingBucket[] };
+  last7d: { total: number; buckets: FeelingBucket[] };
+  last30d: { total: number; buckets: FeelingBucket[] };
+  daily: { day: string; total: number; dominant: { id: string; short: string; count: number } | null }[];
+};
+type AuditEntry = {
+  id: string;
+  action: string;
+  actor_handle: string | null;
+  via: "session" | "bearer";
+  detail: Record<string, unknown>;
+  ip: string | null;
+  created_at: string;
+};
 
 type AdminData = {
   you: { handle: string; displayName: string };
@@ -23,6 +42,8 @@ type AdminData = {
   };
   admins: { handle: string; source: "env" | "db" }[];
   keepers: string[];
+  sentiment: SentimentSnapshot;
+  auditLog: AuditEntry[];
   recentPosts: {
     id: string;
     handle: string;
@@ -221,7 +242,68 @@ export default function AdminPage() {
             </Link>
           </div>
 
-          <section className="mt-8 rounded-2xl border border-[var(--border-base)] p-4">
+          <section className="mt-6 rounded-2xl border border-[var(--border-base)] p-4">
+            <div className="flex items-center gap-2">
+              <HeartPulse className="h-4 w-4 text-[var(--accent)]" />
+              <h2 className="text-sm font-semibold">Sentiment</h2>
+            </div>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              Aggregate mood only — grouped by feeling and day, never by person.
+            </p>
+
+            <p className="mt-3 text-xs text-[var(--muted)]">
+              Today: <span className="font-semibold text-[var(--foreground)]">{data.sentiment.today.total}</span>{" "}
+              takes with a feeling
+              {data.sentiment.today.buckets[0] &&
+                ` · most common right now: ${data.sentiment.today.buckets[0].short}`}
+            </p>
+
+            <div className="mt-3 space-y-2">
+              {data.sentiment.last7d.buckets.length === 0 && (
+                <p className="text-xs text-[var(--muted)]">Not enough data yet.</p>
+              )}
+              {data.sentiment.last7d.buckets.map((b) => (
+                <div key={b.id}>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium text-[var(--foreground)]">{b.short}</span>
+                    <span className="text-[var(--muted)]">
+                      {b.count} · {b.pct}%
+                    </span>
+                  </div>
+                  <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface-2)]">
+                    <div
+                      className="h-full rounded-full bg-[var(--accent)]"
+                      style={{ width: `${b.pct}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <p className="mt-4 text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+              Last 14 days — dominant feeling per day
+            </p>
+            <div className="mt-2 flex items-end gap-1">
+              {data.sentiment.daily.map((d) => (
+                <div
+                  key={d.day}
+                  className="flex flex-1 flex-col items-center gap-1"
+                  title={`${d.day}: ${d.dominant ? `${d.dominant.short} (${d.dominant.count})` : "no data"}`}
+                >
+                  <div
+                    className="w-full rounded-t bg-[var(--accent)]"
+                    style={{
+                      height: `${Math.max(4, Math.min(40, d.total * 4))}px`,
+                      opacity: d.dominant ? 1 : 0.15,
+                    }}
+                  />
+                  <span className="text-[9px] text-[var(--muted)]">{d.day.slice(5)}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="mt-6 rounded-2xl border border-[var(--border-base)] p-4">
             <h2 className="text-sm font-semibold">Site switches</h2>
             <div className="mt-3 flex flex-col gap-3">
               <label className="flex items-center justify-between gap-3 text-sm">
@@ -383,6 +465,36 @@ export default function AdminPage() {
                 Add
               </button>
             </form>
+          </section>
+
+          <section className="mt-6 rounded-2xl border border-[var(--border-base)] p-4">
+            <div className="flex items-center gap-2">
+              <ScrollText className="h-4 w-4 text-[var(--accent)]" />
+              <h2 className="text-sm font-semibold">Audit log</h2>
+            </div>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              Every admin/keeper grant, revoke, and settings change — so a leaked secret or session
+              leaves a trail.
+            </p>
+            <ul className="mt-3 space-y-2 text-xs">
+              {data.auditLog.length === 0 && (
+                <li className="text-[var(--muted)]">No events yet.</li>
+              )}
+              {data.auditLog.map((e) => (
+                <li key={e.id} className="border-b border-[var(--border-base)] pb-2 last:border-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-[var(--foreground)]">{e.action}</span>
+                    <span className="text-[var(--muted)]">
+                      {new Date(e.created_at).toLocaleString()}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-[var(--muted)]">
+                    {e.actor_handle ?? "unknown"} · via {e.via}
+                    {e.ip ? ` · ${e.ip}` : ""}
+                  </p>
+                </li>
+              ))}
+            </ul>
           </section>
 
           <section className="mt-6 rounded-2xl border border-[var(--border-base)] p-4">
