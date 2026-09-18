@@ -10,6 +10,7 @@ App code hardens sessions, OTP, emails-at-rest, and account deletion. **You** st
 - [ ] `CRON_SECRET` on Vercel Cron + `Authorization: Bearer …` for digests.
 - [ ] Seed only with secret: `POST /api/admin/seed` needs `Authorization: Bearer <ADMIN_SEED_SECRET|CRON_SECRET>`.
 - [ ] Keep `RESEND_API_KEY` + verified `EMAIL_FROM` domain aligned.
+- [ ] Optional: `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` — free tier at [upstash.com](https://upstash.com) makes rate limits shared across all serverless instances instead of per-instance in-memory. Unset = still protected, just per-instance.
 
 Generate secrets:
 

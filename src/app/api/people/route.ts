@@ -28,7 +28,7 @@ type PersonRow = {
 export async function GET(request: NextRequest) {
   try {
     const ip = clientIp(request);
-    const { ok, retryInSec } = rateLimit(`people-search:${ip}`, 60, 60_000);
+    const { ok, retryInSec } = await rateLimit(`people-search:${ip}`, 60, 60_000);
     if (!ok) {
       return NextResponse.json(
         { error: "Too many searches — try again shortly", retry_in_sec: retryInSec },

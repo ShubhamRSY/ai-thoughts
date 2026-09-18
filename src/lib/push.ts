@@ -38,11 +38,31 @@ function handleVariants(h: string): string[] {
   return Array.from(new Set([h, `@${n}`, n]));
 }
 
+// The server later POSTs to this URL unattended (via webpush.sendNotification)
+// whenever the subscriber gets a notification. Without this check, anyone
+// signed in could register their own internal/private URL as their "push
+// endpoint" and use the server as an SSRF proxy against internal infra.
+const PRIVATE_HOSTNAME_RE =
+  /^(localhost|127\.|10\.|192\.168\.|169\.254\.|0\.0\.0\.0|::1$|\[::1\]$|(172\.(1[6-9]|2\d|3[0-1]))\.)/i;
+
+export function isSafePushEndpoint(endpoint: string): boolean {
+  try {
+    const url = new URL(endpoint);
+    if (url.protocol !== "https:") return false;
+    return !PRIVATE_HOSTNAME_RE.test(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
 export async function savePushSubscription(
   db: Db,
   handle: string,
   sub: PushSubscriptionJSON
 ): Promise<void> {
+  if (!isSafePushEndpoint(sub.endpoint)) {
+    throw new Error("Invalid subscription endpoint");
+  }
   await db.collection("push_subscriptions").updateOne(
     { endpoint: sub.endpoint },
     {
@@ -92,6 +112,10 @@ export async function sendPushToHandle(
 
   await Promise.all(
     subs.map(async (s) => {
+      if (!isSafePushEndpoint(String(s.endpoint || ""))) {
+        await db.collection("push_subscriptions").deleteOne({ endpoint: s.endpoint });
+        return;
+      }
       try {
         await webpush.sendNotification(
           {

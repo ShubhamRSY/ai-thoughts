@@ -13,16 +13,16 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(request: Request) {
   if (
-    !authorizeBearer(request, {
+    !(await authorizeBearer(request, {
       secrets: [process.env.OWNER_DASHBOARD_SECRET, process.env.CRON_SECRET],
       allowInsecureDev: false,
-    })
+    }))
   ) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const ip = clientIp(request);
-  const { ok, retryInSec } = rateLimit(`owner-metrics:${ip}`, 30, 60_000);
+  const { ok, retryInSec } = await rateLimit(`owner-metrics:${ip}`, 30, 60_000);
   if (!ok) {
     return NextResponse.json(
       { error: "Too many requests", retry_in_sec: retryInSec },

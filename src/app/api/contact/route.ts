@@ -67,7 +67,7 @@ export async function PATCH(request: Request) {
 export async function POST(request: Request) {
   try {
     const ip = clientIp(request);
-    const { ok, retryInSec } = rateLimit(`contact:${ip}`, CONTACT_LIMIT, CONTACT_WINDOW_MS);
+    const { ok, retryInSec } = await rateLimit(`contact:${ip}`, CONTACT_LIMIT, CONTACT_WINDOW_MS);
     if (!ok) {
       return NextResponse.json(
         { error: "Too many messages — try again later", retry_in_sec: retryInSec },

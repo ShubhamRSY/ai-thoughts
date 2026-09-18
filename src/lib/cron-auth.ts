@@ -1,14 +1,29 @@
 import { timingSafeEqual } from "crypto";
 import type { NextRequest } from "next/server";
+import { rateLimit, clientIp } from "./rate-limit.ts";
+
+// Every route that guards a privileged action with a Bearer secret
+// (admin bootstrap, admin seed, owner metrics, cron) routes through here —
+// bounding attempts per IP here protects all of them, present and future,
+// instead of relying on each route to remember its own guard.
+const BEARER_ATTEMPT_LIMIT = 20;
+const BEARER_ATTEMPT_WINDOW_MS = 10 * 60_000;
 
 /**
  * Timing-safe Bearer check for cron / admin seed routes.
  * Production requires CRON_SECRET (or an explicit override secret).
  */
-export function authorizeBearer(
+export async function authorizeBearer(
   request: Request | NextRequest,
   opts?: { secrets?: (string | undefined)[]; allowInsecureDev?: boolean }
-): boolean {
+): Promise<boolean> {
+  const { ok: withinAttemptLimit } = await rateLimit(
+    `bearer-auth:${clientIp(request as Request)}`,
+    BEARER_ATTEMPT_LIMIT,
+    BEARER_ATTEMPT_WINDOW_MS
+  );
+  if (!withinAttemptLimit) return false;
+
   const candidates = (opts?.secrets ?? [
     process.env.CRON_SECRET,
     process.env.ADMIN_SEED_SECRET,
@@ -40,7 +55,7 @@ export function authorizeBearer(
   }
 }
 
-export function authorizeCron(request: Request | NextRequest): boolean {
+export async function authorizeCron(request: Request | NextRequest): Promise<boolean> {
   return authorizeBearer(request, {
     secrets: [process.env.CRON_SECRET],
     allowInsecureDev: true,

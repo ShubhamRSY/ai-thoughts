@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
 import { redactForStorage } from "@/lib/privacy";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
+
+const IP_REPORT_LIMIT = 20;
+const IP_REPORT_WINDOW_MS = 10 * 60_000;
 
 const VALID_REASONS = new Set([
   "Hate or harassment",
@@ -20,6 +24,12 @@ export async function POST(
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+
+    const ip = clientIp(request);
+    const { ok: ipOk } = await rateLimit(`report:${ip}`, IP_REPORT_LIMIT, IP_REPORT_WINDOW_MS);
+    if (!ipOk) {
+      return NextResponse.json({ error: "Too many reports — slow down" }, { status: 429 });
+    }
 
     const { id } = await params;
     const body = await request.json();

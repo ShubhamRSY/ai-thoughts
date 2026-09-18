@@ -39,7 +39,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         if (!session) throw new Error("Sign in required");
 
         const ip = clientIp(request);
-        const { ok: ipOk } = rateLimit(`upload:${ip}`, IP_UPLOAD_LIMIT, IP_UPLOAD_WINDOW_MS);
+        const { ok: ipOk } = await rateLimit(`upload:${ip}`, IP_UPLOAD_LIMIT, IP_UPLOAD_WINDOW_MS);
         if (!ipOk) throw new Error("Too many uploads — slow down");
 
         return {

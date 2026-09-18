@@ -9,6 +9,7 @@ import {
   hashEmail,
   timingSafeEqualStr,
 } from "./secure.ts";
+import { isSafePushEndpoint } from "./push.ts";
 
 describe("timingSafeEqualStr", () => {
   it("matches equal strings", () => {
@@ -60,44 +61,88 @@ describe("authorizeBearer", () => {
     else process.env.VERCEL_ENV = prevVercel;
   });
 
-  it("accepts valid bearer in production", () => {
+  it("accepts valid bearer in production", async () => {
     process.env.NODE_ENV = "production";
     process.env.CRON_SECRET = "super-secret-cron";
     const req = new Request("https://example.com", {
-      headers: { authorization: "Bearer super-secret-cron" },
+      headers: {
+        authorization: "Bearer super-secret-cron",
+        "x-forwarded-for": "203.0.113.1",
+      },
     });
-    assert.equal(authorizeBearer(req, { secrets: [process.env.CRON_SECRET] }), true);
+    assert.equal(await authorizeBearer(req, { secrets: [process.env.CRON_SECRET] }), true);
   });
 
-  it("rejects wrong bearer", () => {
+  it("rejects wrong bearer", async () => {
     process.env.NODE_ENV = "production";
     process.env.CRON_SECRET = "super-secret-cron";
     const req = new Request("https://example.com", {
-      headers: { authorization: "Bearer nope" },
+      headers: { authorization: "Bearer nope", "x-forwarded-for": "203.0.113.2" },
     });
-    assert.equal(authorizeBearer(req, { secrets: [process.env.CRON_SECRET] }), false);
+    assert.equal(await authorizeBearer(req, { secrets: [process.env.CRON_SECRET] }), false);
   });
 
-  it("rejects missing secret in production", () => {
+  it("rejects missing secret in production", async () => {
     process.env.NODE_ENV = "production";
     delete process.env.CRON_SECRET;
     delete process.env.VERCEL_ENV;
     const req = new Request("https://example.com", {
-      headers: { authorization: "Bearer anything" },
+      headers: { authorization: "Bearer anything", "x-forwarded-for": "203.0.113.3" },
     });
     assert.equal(
-      authorizeBearer(req, { secrets: [process.env.CRON_SECRET], allowInsecureDev: true }),
+      await authorizeBearer(req, { secrets: [process.env.CRON_SECRET], allowInsecureDev: true }),
       false
     );
+  });
+
+  it("caps brute-force attempts per IP regardless of the secret guessed", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.CRON_SECRET = "super-secret-cron";
+    const ip = `203.0.113.${100 + Math.floor(Math.random() * 50)}`;
+    const attempt = () =>
+      authorizeBearer(
+        new Request("https://example.com", {
+          headers: { authorization: "Bearer nope", "x-forwarded-for": ip },
+        }),
+        { secrets: [process.env.CRON_SECRET] }
+      );
+    for (let i = 0; i < 20; i++) {
+      assert.equal(await attempt(), false); // wrong secret, but still within the attempt budget
+    }
+    // The budget (BEARER_ATTEMPT_LIMIT in cron-auth.ts) is now spent for this
+    // IP — confirm the shared limiter it uses reflects that.
+    const { rateLimit } = await import("./rate-limit.ts");
+    assert.equal((await rateLimit(`bearer-auth:${ip}`, 20, 10 * 60_000)).ok, false);
+  });
+});
+
+describe("isSafePushEndpoint (SSRF guard)", () => {
+  it("accepts real push services", () => {
+    assert.equal(isSafePushEndpoint("https://fcm.googleapis.com/fcm/send/abc"), true);
+    assert.equal(isSafePushEndpoint("https://updates.push.services.mozilla.com/wpush/v2/abc"), true);
+  });
+  it("rejects non-https", () => {
+    assert.equal(isSafePushEndpoint("http://fcm.googleapis.com/fcm/send/abc"), false);
+  });
+  it("rejects loopback / private / link-local hosts", () => {
+    assert.equal(isSafePushEndpoint("https://localhost/x"), false);
+    assert.equal(isSafePushEndpoint("https://127.0.0.1/x"), false);
+    assert.equal(isSafePushEndpoint("https://10.0.0.5/x"), false);
+    assert.equal(isSafePushEndpoint("https://192.168.1.1/x"), false);
+    assert.equal(isSafePushEndpoint("https://169.254.169.254/latest/meta-data"), false);
+    assert.equal(isSafePushEndpoint("https://172.16.0.1/x"), false);
+  });
+  it("rejects garbage", () => {
+    assert.equal(isSafePushEndpoint("not-a-url"), false);
   });
 });
 
 describe("rateLimit", () => {
-  it("allows then blocks", () => {
+  it("allows then blocks", async () => {
     const key = `test-${Date.now()}-${Math.random()}`;
-    assert.equal(rateLimit(key, 2, 60_000).ok, true);
-    assert.equal(rateLimit(key, 2, 60_000).ok, true);
-    assert.equal(rateLimit(key, 2, 60_000).ok, false);
+    assert.equal((await rateLimit(key, 2, 60_000)).ok, true);
+    assert.equal((await rateLimit(key, 2, 60_000)).ok, true);
+    assert.equal((await rateLimit(key, 2, 60_000)).ok, false);
   });
 });
 

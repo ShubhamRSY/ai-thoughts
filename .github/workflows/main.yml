@@ -18,6 +18,10 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm test
+      # Fails the build on new high/critical dependency vulnerabilities so a
+      # hackable package can't ship silently. `high` (not the default `low`)
+      # so an existing moderate advisory doesn't block unrelated PRs.
+      - run: npm audit --audit-level=high
       # `next build` runs its own TypeScript check internally (and, unlike
       # a standalone `tsc --noEmit`, generates .next/types — e.g. LayoutProps
       # — before checking, so it doesn't need a prior build to pass).

@@ -281,7 +281,7 @@ export async function POST(request: NextRequest) {
     if (!session) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
 
     const ip = clientIp(request);
-    const { ok: ipOk } = rateLimit(`post:${ip}`, IP_POST_LIMIT, IP_POST_WINDOW_MS);
+    const { ok: ipOk } = await rateLimit(`post:${ip}`, IP_POST_LIMIT, IP_POST_WINDOW_MS);
     if (!ipOk) {
       return NextResponse.json({ error: "Too many posts — slow down" }, { status: 429 });
     }

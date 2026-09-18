@@ -1,113 +1,60 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { SESSION_COOKIE } from "@/lib/auth";
 
-const SESSION_COOKIE = "aithoughts.session";
-const PROTECTED_PATHS = ["/app", "/keeper", "/admin"];
-const AUTH_PAGES = ["/sign-in"];
+const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
-function getSecret(): string {
-  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
-  if (!secret) throw new Error("AUTH_SECRET is not set");
-  return secret;
-}
+// Backstop, not the primary defense: routes still keep their own tighter
+// rate.limit() calls. This just bounds any endpoint that forgets one (as
+// messages/reactions/report did) so a future miss doesn't go unthrottled.
+const BACKSTOP_LIMIT = 300;
+const BACKSTOP_WINDOW_MS = 5 * 60_000;
 
-async function hmacSign(data: string, secret: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(data));
-  return Array.from(new Uint8Array(signature))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-function decodeSessionPayload(encoded: string): { exp?: number } | null {
+function originOf(value: string): string | null {
   try {
-    // Prefer base64url (new tokens); fall back to legacy btoa(JSON) tokens.
-    try {
-      const padded = encoded.replace(/-/g, "+").replace(/_/g, "/");
-      const withPad = padded + "=".repeat((4 - (padded.length % 4)) % 4);
-      const binary = atob(withPad);
-      const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
-      return JSON.parse(new TextDecoder().decode(bytes));
-    } catch {
-      return JSON.parse(atob(encoded));
-    }
+    return new URL(value).origin;
   } catch {
     return null;
   }
 }
 
-/** Edge-safe constant-time compare (no node:crypto in middleware). */
-function timingSafeEqualStr(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let out = 0;
-  for (let i = 0; i < a.length; i++) {
-    out |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  return out === 0;
-}
+/**
+ * CSRF defense-in-depth for cookie-authenticated mutations. SameSite=Lax on
+ * the session cookie (see sessionCookieOptions) already blocks it from being
+ * sent on cross-site POSTs, so this is a second layer, not the only one: it
+ * also catches a session cookie replayed with Origin/Referer stripped or
+ * spoofed by something other than a normal browser fetch.
+ */
+function blockedByOriginCheck(request: NextRequest): boolean {
+  if (!MUTATING_METHODS.has(request.method)) return false;
+  if (!request.cookies.get(SESSION_COOKIE)) return false;
 
-async function validateToken(token: string): Promise<boolean> {
-  try {
-    const [encoded, signature] = token.split(".");
-    if (!encoded || !signature) return false;
+  const origin = request.headers.get("origin");
+  const referer = request.headers.get("referer");
+  const selfOrigin = request.nextUrl.origin;
 
-    const expectedSig = await hmacSign(encoded, getSecret());
-    if (!timingSafeEqualStr(signature, expectedSig)) return false;
-
-    const payload = decodeSessionPayload(encoded);
-    return Boolean(payload?.exp && payload.exp >= Date.now());
-  } catch {
-    return false;
-  }
-}
-
-async function hasValidSession(request: NextRequest): Promise<boolean> {
-  const token = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!token) return false;
-  return validateToken(token);
+  if (origin) return origin !== selfOrigin;
+  if (referer) return originOf(referer) !== selfOrigin;
+  // A cookie-carrying mutation with neither header is not how browser fetch
+  // behaves — treat it as suspicious rather than trust it by default.
+  return true;
 }
 
 export async function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  const isProtected = PROTECTED_PATHS.some(
-    (p) => pathname === p || pathname.startsWith(p + "/")
-  );
-
-  if (isProtected) {
-    const valid = await hasValidSession(request);
-    if (!valid) {
-      const signInUrl = new URL("/sign-in", request.url);
-      signInUrl.searchParams.set("from", pathname);
-      const res = NextResponse.redirect(signInUrl);
-      res.cookies.set(SESSION_COOKIE, "", { path: "/", maxAge: 0 });
-      return res;
-    }
-    return NextResponse.next();
+  const ip = clientIp(request);
+  const { ok } = await rateLimit(`api-backstop:${ip}`, BACKSTOP_LIMIT, BACKSTOP_WINDOW_MS);
+  if (!ok) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
-  // Already joined → never show join / landing again
-  if (pathname === "/" || AUTH_PAGES.includes(pathname)) {
-    if (await hasValidSession(request)) {
-      const from = request.nextUrl.searchParams.get("from");
-      const dest =
-        from && from.startsWith("/") && !from.startsWith("//") ? from : "/app";
-      return NextResponse.redirect(new URL(dest, request.url));
-    }
+  if (blockedByOriginCheck(request)) {
+    return NextResponse.json({ error: "Cross-site request blocked" }, { status: 403 });
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|icons|media|manifest.webmanifest|sw.js).*)",
-  ],
+  matcher: "/api/:path*",
 };

@@ -10,7 +10,7 @@ function normHandle(h: string) {
 
 export async function GET(request: NextRequest) {
   try {
-    if (!authorizeCron(request)) {
+    if (!(await authorizeCron(request))) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

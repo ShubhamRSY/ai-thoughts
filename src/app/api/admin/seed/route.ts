@@ -15,10 +15,10 @@ function hash(s: string) {
  */
 export async function POST(request: Request) {
   if (
-    !authorizeBearer(request, {
+    !(await authorizeBearer(request, {
       secrets: [process.env.ADMIN_SEED_SECRET, process.env.CRON_SECRET],
       allowInsecureDev: false,
-    })
+    }))
   ) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

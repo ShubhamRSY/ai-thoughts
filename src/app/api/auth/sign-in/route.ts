@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     }
 
     const ip = clientIp(request);
-    const { ok, retryInSec } = rateLimit(`sign-in:${ip}`, SIGN_IN_LIMIT, SIGN_IN_WINDOW_MS);
+    const { ok, retryInSec } = await rateLimit(`sign-in:${ip}`, SIGN_IN_LIMIT, SIGN_IN_WINDOW_MS);
     if (!ok) {
       return NextResponse.json(
         { error: "Too many attempts — try again shortly", retry_in_sec: retryInSec },
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { ok: globalOk, retryInSec: globalRetry } = rateLimit(
+    const { ok: globalOk, retryInSec: globalRetry } = await rateLimit(
       "sign-in:global",
       GLOBAL_OTP_LIMIT,
       GLOBAL_OTP_WINDOW_MS
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: disposable.reason, code: disposable.code }, { status: 400 });
     }
 
-    const { ok: emailOk, retryInSec: emailRetry } = rateLimit(
+    const { ok: emailOk, retryInSec: emailRetry } = await rateLimit(
       `sign-in-email:${normalized}`,
       EMAIL_OTP_LIMIT,
       EMAIL_OTP_WINDOW_MS

@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     }
 
     const ip = clientIp(request);
-    const { ok, retryInSec } = rateLimit(`verify:${ip}`, VERIFY_LIMIT, VERIFY_WINDOW_MS);
+    const { ok, retryInSec } = await rateLimit(`verify:${ip}`, VERIFY_LIMIT, VERIFY_WINDOW_MS);
     if (!ok) {
       return NextResponse.json(
         { error: "Too many attempts — try again shortly", retry_in_sec: retryInSec },

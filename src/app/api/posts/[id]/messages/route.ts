@@ -5,6 +5,10 @@ import { checkDignity } from "@/lib/dignity";
 import { notifyPostOwner, notifyMentions } from "@/lib/activity";
 import { extractMentions, normHandle } from "@/lib/mentions";
 import { ObjectId } from "mongodb";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
+
+const IP_MESSAGE_LIMIT = 30;
+const IP_MESSAGE_WINDOW_MS = 10 * 60_000;
 
 export async function GET(
   _request: NextRequest,
@@ -43,6 +47,12 @@ export async function POST(
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+
+    const ip = clientIp(request);
+    const { ok: ipOk } = await rateLimit(`message:${ip}`, IP_MESSAGE_LIMIT, IP_MESSAGE_WINDOW_MS);
+    if (!ipOk) {
+      return NextResponse.json({ error: "Too many replies — slow down" }, { status: 429 });
+    }
 
     const { id } = await params;
     const body = await request.json();

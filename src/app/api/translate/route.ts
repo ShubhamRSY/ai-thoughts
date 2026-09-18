@@ -10,7 +10,7 @@ const WINDOW_MS = 10 * 60_000;
 export async function POST(request: Request) {
   try {
     const ip = clientIp(request);
-    const { ok, retryInSec } = rateLimit(`translate:${ip}`, LIMIT, WINDOW_MS);
+    const { ok, retryInSec } = await rateLimit(`translate:${ip}`, LIMIT, WINDOW_MS);
     if (!ok) {
       return NextResponse.json(
         { error: "Too many translations — try again shortly", retry_in_sec: retryInSec },

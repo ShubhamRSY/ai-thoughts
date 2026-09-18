@@ -4,6 +4,10 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
 import { notifyPostOwner } from "@/lib/activity";
 import { shouldNotifyOwner } from "@/lib/likes";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
+
+const IP_REACTION_LIMIT = 120;
+const IP_REACTION_WINDOW_MS = 10 * 60_000;
 
 function normHandle(h: string) {
   return h.trim().toLowerCase().replace(/^@/, "");
@@ -22,6 +26,12 @@ export async function POST(
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+
+    const ip = clientIp(request);
+    const { ok: ipOk } = await rateLimit(`reaction:${ip}`, IP_REACTION_LIMIT, IP_REACTION_WINDOW_MS);
+    if (!ipOk) {
+      return NextResponse.json({ error: "Too many reactions — slow down" }, { status: 429 });
+    }
 
     const { id } = await params;
     let objectId: ObjectId;

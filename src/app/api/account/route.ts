@@ -35,7 +35,7 @@ export async function GET(request: Request) {
     }
 
     const ip = clientIp(request);
-    const { ok, retryInSec } = rateLimit(`account-export:${ip}`, 10, 60 * 60_000);
+    const { ok, retryInSec } = await rateLimit(`account-export:${ip}`, 10, 60 * 60_000);
     if (!ok) {
       return NextResponse.json(
         { error: "Too many exports — try again later", retry_in_sec: retryInSec },
@@ -187,7 +187,7 @@ export async function DELETE(request: Request) {
     }
 
     const ip = clientIp(request);
-    const { ok, retryInSec } = rateLimit(`account-delete:${ip}`, 5, 60 * 60_000);
+    const { ok, retryInSec } = await rateLimit(`account-delete:${ip}`, 5, 60 * 60_000);
     if (!ok) {
       return NextResponse.json(
         { error: "Too many attempts — try again later", retry_in_sec: retryInSec },
