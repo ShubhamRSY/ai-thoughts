@@ -27,6 +27,7 @@
     "@capacitor/core": "^8.5.1",
     "@capacitor/ios": "^8.5.1",
     "@upstash/redis": "^1.38.4",
+    "@vercel/analytics": "^2.0.1",
     "@vercel/blob": "^2.8.0",
     "@vercel/functions": "^3.9.5",
     "lucide-react": "^1.39.0",

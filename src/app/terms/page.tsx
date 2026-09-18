@@ -1,5 +1,11 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { LEGAL_UPDATED } from "@/lib/site";
+
+export const metadata: Metadata = {
+  title: "Terms of Use — AI·Thoughts",
+  description: "The terms for sharing and using AI·Thoughts, the public pulse for how AI makes people feel.",
+};
 
 export default function TermsPage() {
   return (

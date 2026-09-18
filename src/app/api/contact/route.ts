@@ -76,11 +76,22 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { email, message, kind } = body as {
+    const { email, message, kind, website } = body as {
       email?: string;
       message?: string;
       kind?: string;
+      website?: string;
     };
+
+    // Honeypot: a hidden field real users never fill. Bots that submit the
+    // form field-for-field trip it — respond as if it worked so scripts
+    // don't learn to skip the field, but never store or act on it.
+    if (typeof website === "string" && website.trim()) {
+      return NextResponse.json({
+        ok: true,
+        message: `Received — keepers will follow up. You can also email ${CONTACT_EMAIL}.`,
+      });
+    }
 
     if (!email || typeof email !== "string" || email.length > 254) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });

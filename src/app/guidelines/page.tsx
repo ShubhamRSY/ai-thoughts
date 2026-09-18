@@ -1,5 +1,11 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { LEGAL_UPDATED } from "@/lib/site";
+
+export const metadata: Metadata = {
+  title: "Community Guidelines — AI·Thoughts",
+  description: "How we keep AI·Thoughts safe and honest for all ages — what belongs here and what doesn't.",
+};
 
 export default function GuidelinesPage() {
   return (

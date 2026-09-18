@@ -57,7 +57,7 @@ export default function TextForm({ value, onChange, image, onImageChange }: Text
       {previewUrl && (
         <div className="relative mx-3 overflow-hidden rounded-lg border border-[var(--border-base)] bg-black">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={previewUrl} alt="" className="max-h-64 w-full object-contain" />
+          <img src={previewUrl} alt="Preview of the photo you're attaching" className="max-h-64 w-full object-contain" />
           <button
             type="button"
             onClick={() => onImageChange(null)}

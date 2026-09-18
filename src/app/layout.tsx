@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Manrope } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import PwaRegister from "@/components/PwaRegister";
 import PWAInstall from "@/components/PWAInstall";
@@ -43,20 +44,11 @@ export const metadata: Metadata = {
     siteName: "AiTo",
     title,
     description,
-    images: [
-      {
-        url: "/icons/icon-512.png",
-        width: 512,
-        height: 512,
-        alt: "AiTo — say how AI makes you feel",
-      },
-    ],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title,
     description,
-    images: ["/icons/icon-512.png"],
   },
 };
 
@@ -80,6 +72,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <PWAInstall />
         </AuthProvider>
         <PwaRegister />
+        <Analytics />
       </body>
     </html>
   );
