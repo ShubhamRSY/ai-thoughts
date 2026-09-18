@@ -3,21 +3,41 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bookmark, Camera, Check, Download, PencilLine, Trash2 } from "lucide-react";
+import { ArrowLeft, Bookmark, Camera, Check, Download, PencilLine, Trash2, UserPlus, UserCheck } from "lucide-react";
 import { upload } from "@vercel/blob/client";
 import type { Thought } from "@/lib/types";
 import { useLocalProfile } from "@/hooks/useLocalProfile";
 import { useAuth } from "@/hooks/useAuth";
-import { saveProfile } from "@/lib/db";
+import {
+  saveProfile,
+  fetchProfileInfo,
+  fetchPostsByHandle,
+  fetchPostsTagged,
+  fetchFollowGraph,
+  type ProfileInfo,
+  type FollowGraph,
+} from "@/lib/db";
 import { BRAND } from "@/lib/brand";
+
+function normHandle(h: string) {
+  return h.trim().toLowerCase().replace(/^@/, "");
+}
 
 interface ProfileViewProps {
   myThoughts: Thought[];
   /** Bookmarked takes — private to this viewer, never shown to anyone else. */
   savedThoughts?: Thought[];
+  /** Takes you've reposted/quote-reposted — own profile only. */
+  repostedThoughts?: Thought[];
   onCreate: () => void;
   onDelete?: (thoughtId: string) => void;
   onUnsave?: (thoughtId: string) => void;
+  /** Handle to view. Omitted/own handle = your own editable profile. */
+  viewHandle?: string;
+  /** Follow/unfollow the profile being viewed (only used when viewHandle is someone else). */
+  onFollowToggle?: (handle: string, next: boolean) => void | Promise<unknown>;
+  /** Shown as a "← Back" affordance when viewing someone else's profile. */
+  onBack?: () => void;
 }
 
 interface ConnectionProfile {
@@ -38,9 +58,13 @@ function initials(name: string) {
 export default function ProfileView({
   myThoughts,
   savedThoughts = [],
+  repostedThoughts = [],
   onCreate,
   onDelete,
   onUnsave,
+  viewHandle,
+  onFollowToggle,
+  onBack,
 }: ProfileViewProps) {
   const router = useRouter();
   const { profile, save } = useLocalProfile();
@@ -59,12 +83,62 @@ export default function ProfileView({
   const [followers, setFollowers] = useState<ConnectionProfile[]>([]);
   const [followingList, setFollowingList] = useState<ConnectionProfile[]>([]);
 
-  const name = user?.displayName || profile.author || profile.handle.replace(/^@/, "") || "You";
-  const displayHandle = user?.handle || profile.handle || "@you";
-  const tagCount = new Set(myThoughts.flatMap((t) => t.tags ?? [])).size;
+  const isOwn = !viewHandle || (user ? normHandle(viewHandle) === normHandle(user.handle) : false);
+  const effectiveHandle = isOwn ? user?.handle : viewHandle;
+
+  // Someone else's profile: their bio/avatar, their takes, their follow graph.
+  const [viewedProfile, setViewedProfile] = useState<ProfileInfo | null>(null);
+  const [viewedPosts, setViewedPosts] = useState<Thought[]>([]);
+  const [viewedFollow, setViewedFollow] = useState<FollowGraph | null>(null);
+  const [followBusy, setFollowBusy] = useState(false);
+  const [taggedThoughts, setTaggedThoughts] = useState<Thought[]>([]);
 
   useEffect(() => {
-    if (!user) {
+    if (isOwn || !viewHandle) {
+      setViewedProfile(null);
+      setViewedPosts([]);
+      setViewedFollow(null);
+      return;
+    }
+    let cancelled = false;
+    Promise.all([
+      fetchProfileInfo(viewHandle),
+      fetchPostsByHandle(viewHandle),
+      fetchFollowGraph(viewHandle),
+    ]).then(([p, posts, graph]) => {
+      if (cancelled) return;
+      setViewedProfile(p);
+      setViewedPosts(posts);
+      setViewedFollow(graph);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOwn, viewHandle]);
+
+  // "Tagged" applies to whichever profile is showing — own or someone else's.
+  useEffect(() => {
+    if (!effectiveHandle) {
+      setTaggedThoughts([]);
+      return;
+    }
+    let cancelled = false;
+    fetchPostsTagged(effectiveHandle).then((rows) => {
+      if (!cancelled) setTaggedThoughts(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveHandle]);
+
+  const name = isOwn
+    ? user?.displayName || profile.author || profile.handle.replace(/^@/, "") || "You"
+    : viewedProfile?.author || viewHandle?.replace(/^@/, "") || "";
+  const displayHandle = isOwn ? user?.handle || profile.handle || "@you" : viewHandle || "";
+  const postsList = isOwn ? myThoughts : viewedPosts;
+
+  useEffect(() => {
+    if (!isOwn || !user) {
       setFollowers([]);
       setFollowingList([]);
       return;
@@ -81,7 +155,7 @@ export default function ProfileView({
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [isOwn, user]);
 
   const persist = async (next: {
     handle?: string;
@@ -166,15 +240,45 @@ export default function ProfileView({
     }
   };
 
+  const isFollowingViewed = Boolean(viewedFollow?.isFollowedByMe);
+
+  const toggleFollow = async () => {
+    if (!viewHandle || !onFollowToggle || followBusy) return;
+    setFollowBusy(true);
+    const next = !isFollowingViewed;
+    try {
+      await onFollowToggle(viewHandle, next);
+      setViewedFollow((prev) => (prev ? { ...prev, isFollowedByMe: next } : prev));
+      const graph = await fetchFollowGraph(viewHandle);
+      setViewedFollow(graph);
+    } finally {
+      setFollowBusy(false);
+    }
+  };
+
+  const shownAvatarUrl = isOwn ? avatarUrl : viewedProfile?.avatarUrl || "";
+  const shownBio = isOwn
+    ? (bio || profile.bio || BRAND.footerLine).trim()
+    : (viewedProfile?.bio || "No bio yet.").trim();
+
   return (
     <div className="py-5">
+      {!isOwn && onBack && (
+        <button
+          type="button"
+          onClick={onBack}
+          className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--muted)] hover:text-[var(--foreground)]"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back
+        </button>
+      )}
       <div className="rounded-2xl border border-[var(--border-base)] bg-[var(--surface)] p-5">
         <div className="flex items-start gap-4">
           <div className="relative shrink-0">
-            {avatarUrl ? (
+            {shownAvatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={avatarUrl}
+                src={shownAvatarUrl}
                 alt=""
                 className="h-16 w-16 rounded-full object-cover"
               />
@@ -183,6 +287,7 @@ export default function ProfileView({
                 {initials(name)}
               </div>
             )}
+            {isOwn && (
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
@@ -192,6 +297,7 @@ export default function ProfileView({
             >
               <Camera className="h-3.5 w-3.5" />
             </button>
+            )}
             <input
               ref={fileRef}
               type="file"
@@ -206,23 +312,46 @@ export default function ProfileView({
               <h2 className="font-display truncate text-lg font-semibold text-[var(--foreground)]">
                 {name}
               </h2>
-              <button
-                type="button"
-                onClick={() => (editing ? void commit() : setEditing(true))}
-                aria-label={editing ? "Save profile" : "Edit profile"}
-                className="rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
-              >
-                {editing ? <Check className="h-4 w-4" /> : <PencilLine className="h-4 w-4" />}
-              </button>
+              {isOwn ? (
+                <button
+                  type="button"
+                  onClick={() => (editing ? void commit() : setEditing(true))}
+                  aria-label={editing ? "Save profile" : "Edit profile"}
+                  className="rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+                >
+                  {editing ? <Check className="h-4 w-4" /> : <PencilLine className="h-4 w-4" />}
+                </button>
+              ) : (
+                user && onFollowToggle && (
+                  <button
+                    type="button"
+                    onClick={() => void toggleFollow()}
+                    disabled={followBusy}
+                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${
+                      isFollowingViewed
+                        ? "border border-[var(--border-base)] text-[var(--foreground)] hover:border-rose-300 hover:text-rose-700"
+                        : "bg-[var(--accent)] text-[var(--surface)] hover:bg-[var(--accent-2)]"
+                    }`}
+                  >
+                    {isFollowingViewed ? (
+                      <>
+                        <UserCheck className="h-3.5 w-3.5" /> Following
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="h-3.5 w-3.5" /> Follow
+                      </>
+                    )}
+                  </button>
+                )
+              )}
             </div>
             <p className="text-sm text-[var(--muted)]">{displayHandle}</p>
-            <p className="mt-2 text-sm leading-relaxed text-[var(--foreground)]">
-              {(bio || profile.bio || BRAND.footerLine).trim()}
-            </p>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--foreground)]">{shownBio}</p>
           </div>
         </div>
 
-        {editing && (
+        {isOwn && editing && (
           <div className="mt-4 space-y-3 border-t border-[var(--border-base)] pt-4">
             {!user && (
               <div>
@@ -283,54 +412,65 @@ export default function ProfileView({
         <div className="mt-5 grid grid-cols-3 gap-3 border-t border-[var(--border-base)] pt-4 text-center">
           <div>
             <div className="text-lg font-semibold tabular-nums text-[var(--foreground)]">
-              {myThoughts.length}
+              {postsList.length}
             </div>
             <div className="text-[10px] font-medium uppercase tracking-wider text-[var(--muted)]">
-              Takes
+              Posts
             </div>
           </div>
           <div>
             <div className="text-lg font-semibold tabular-nums text-[var(--foreground)]">
-              {tagCount}
+              {isOwn ? followers.length : (viewedFollow?.followers.length ?? 0)}
             </div>
             <div className="text-[10px] font-medium uppercase tracking-wider text-[var(--muted)]">
-              Topics
+              Followers
             </div>
           </div>
           <div>
             <div className="text-lg font-semibold tabular-nums text-[var(--foreground)]">
-              {myThoughts.filter((t) => t.mediaType !== "text").length}
+              {isOwn ? followingList.length : (viewedFollow?.followingProfiles.length ?? 0)}
             </div>
             <div className="text-[10px] font-medium uppercase tracking-wider text-[var(--muted)]">
-              Clips
+              Following
             </div>
           </div>
         </div>
       </div>
 
-      {user && (followers.length > 0 || followingList.length > 0) && (
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <ConnectionList title="Followers" people={followers} />
-          <ConnectionList title="Following" people={followingList} />
+      {isOwn
+        ? user &&
+          (followers.length > 0 || followingList.length > 0) && (
+            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <ConnectionList title="Followers" people={followers} />
+              <ConnectionList title="Following" people={followingList} />
+            </div>
+          )
+        : viewedFollow &&
+          (viewedFollow.followers.length > 0 || viewedFollow.followingProfiles.length > 0) && (
+            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <ConnectionList title="Followers" people={viewedFollow.followers} />
+              <ConnectionList title="Following" people={viewedFollow.followingProfiles} />
+            </div>
+          )}
+
+      {isOwn && (
+        <div className="mt-6 rounded-2xl border border-[var(--border-base)] bg-[var(--surface)] p-4">
+          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+            <Download className="h-3.5 w-3.5 text-[var(--accent)]" /> Get the app
+          </p>
+          <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">
+            Install {BRAND.shortName} on your phone, or get it on the Microsoft Store for Windows.
+          </p>
+          <Link
+            href="/install"
+            className="mt-3 inline-flex rounded-full bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-[var(--surface)] transition hover:bg-[var(--accent-2)]"
+          >
+            Install {BRAND.shortName}
+          </Link>
         </div>
       )}
 
-      <div className="mt-6 rounded-2xl border border-[var(--border-base)] bg-[var(--surface)] p-4">
-        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-          <Download className="h-3.5 w-3.5 text-[var(--accent)]" /> Get the app
-        </p>
-        <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">
-          Install {BRAND.shortName} on your phone, or get it on the Microsoft Store for Windows.
-        </p>
-        <Link
-          href="/install"
-          className="mt-3 inline-flex rounded-full bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-[var(--surface)] transition hover:bg-[var(--accent-2)]"
-        >
-          Install {BRAND.shortName}
-        </Link>
-      </div>
-
-      {user && (
+      {isOwn && user && (
         <div className="mt-6 space-y-3">
           <div className="rounded-2xl border border-[var(--border-base)] bg-[var(--surface)] p-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
@@ -444,20 +584,26 @@ export default function ProfileView({
 
       <div className="mt-6">
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-          Your takes
+          {isOwn ? "Your takes" : "Posts"}
         </p>
-        {myThoughts.length === 0 ? (
-          <button
-            type="button"
-            onClick={onCreate}
-            className="w-full rounded-2xl border border-dashed border-[var(--border-base)] bg-[var(--surface)] px-4 py-8 text-center transition hover:border-[var(--accent)]"
-          >
-            <p className="text-sm font-medium text-[var(--foreground)]">Share your first take</p>
-            <p className="mt-1 text-xs text-[var(--muted)]">{BRAND.tagline}</p>
-          </button>
+        {postsList.length === 0 ? (
+          isOwn ? (
+            <button
+              type="button"
+              onClick={onCreate}
+              className="w-full rounded-2xl border border-dashed border-[var(--border-base)] bg-[var(--surface)] px-4 py-8 text-center transition hover:border-[var(--accent)]"
+            >
+              <p className="text-sm font-medium text-[var(--foreground)]">Share your first take</p>
+              <p className="mt-1 text-xs text-[var(--muted)]">{BRAND.tagline}</p>
+            </button>
+          ) : (
+            <p className="rounded-2xl border border-dashed border-[var(--border-base)] bg-[var(--surface)] px-4 py-8 text-center text-sm text-[var(--muted)]">
+              No takes yet.
+            </p>
+          )
         ) : (
           <div className="flex flex-col gap-2">
-            {myThoughts.map((t) => (
+            {postsList.map((t) => (
               <div
                 key={t.id}
                 className="flex items-center gap-3 rounded-xl border border-[var(--border-base)] bg-[var(--surface)] px-3 py-2.5"
@@ -466,7 +612,7 @@ export default function ProfileView({
                   {t.content}
                 </p>
                 <span className="shrink-0 text-xs tabular-nums text-[var(--muted)]">{t.timeLabel}</span>
-                {onDelete && (
+                {isOwn && onDelete && (
                   <button
                     type="button"
                     aria-label="Delete take"
@@ -489,7 +635,29 @@ export default function ProfileView({
         )}
       </div>
 
-      {savedThoughts.length > 0 && (
+      {taggedThoughts.length > 0 && (
+        <div className="mt-6">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+            Tagged
+          </p>
+          <div className="flex flex-col gap-2">
+            {taggedThoughts.map((t) => (
+              <div
+                key={t.id}
+                className="flex items-center gap-3 rounded-xl border border-[var(--border-base)] bg-[var(--surface)] px-3 py-2.5"
+              >
+                <p dir="auto" className="min-w-0 flex-1 truncate text-sm text-[var(--foreground)]">
+                  <span className="font-medium text-[var(--foreground)]">{t.author}: </span>
+                  {t.content}
+                </p>
+                <span className="shrink-0 text-xs tabular-nums text-[var(--muted)]">{t.timeLabel}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {isOwn && savedThoughts.length > 0 && (
         <div className="mt-6">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
             Saved
@@ -514,6 +682,28 @@ export default function ProfileView({
                     <Bookmark className="h-3.5 w-3.5" fill="currentColor" />
                   </button>
                 )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {isOwn && repostedThoughts.length > 0 && (
+        <div className="mt-6">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+            Reposts
+          </p>
+          <div className="flex flex-col gap-2">
+            {repostedThoughts.map((t) => (
+              <div
+                key={t.id}
+                className="flex items-center gap-3 rounded-xl border border-[var(--border-base)] bg-[var(--surface)] px-3 py-2.5"
+              >
+                <p dir="auto" className="min-w-0 flex-1 truncate text-sm text-[var(--foreground)]">
+                  <span className="font-medium text-[var(--foreground)]">{t.author}: </span>
+                  {t.content}
+                </p>
+                <span className="shrink-0 text-xs tabular-nums text-[var(--muted)]">{t.timeLabel}</span>
               </div>
             ))}
           </div>

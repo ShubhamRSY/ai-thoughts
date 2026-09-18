@@ -34,6 +34,7 @@ import {
   deletePost,
   checkPublishGuard,
   markPublished,
+  quoteRepost,
 } from "@/lib/db";
 import type { ReportReason } from "@/components/Feed/FeedCard";
 import type { RegionScope } from "@/components/Feed/FilterBar";
@@ -65,7 +66,8 @@ export default function Home() {
   const [undoId, setUndoId] = useState<string | null>(null);
   const [following, setFollowing] = useState<string[]>([]);
   const [shareFromDaily, setShareFromDaily] = useState(false);
-  const [personFilter, setPersonFilter] = useState<string | null>(null);
+  /** Handle whose profile the "You" tab is currently showing (null = your own). */
+  const [viewProfileHandle, setViewProfileHandle] = useState<string | null>(null);
   const { items: activityItems, unread: activityUnread, markAllRead, refresh: refreshActivity } =
     useActivity(!!user);
   const { maintenance, message: maintenanceMessage } = useSiteFlags();
@@ -105,13 +107,6 @@ export default function Home() {
       return mOk && fOk;
     });
 
-    if (personFilter) {
-      const key = personFilter.trim().toLowerCase().replace(/^@/, "");
-      return base.filter(
-        (t) => t.handle.trim().toLowerCase().replace(/^@/, "") === key
-      );
-    }
-
     if (regionScope === "today") {
       const day = promptTodayKey();
       base = base.filter((t) => t.promptDay === day);
@@ -125,7 +120,7 @@ export default function Home() {
     }
 
     return base;
-  }, [thoughts, media, feeling, regionScope, followingSet, personFilter]);
+  }, [thoughts, media, feeling, regionScope, followingSet]);
 
   const todayAnswerCount = useMemo(() => {
     const day = promptTodayKey();
@@ -373,6 +368,27 @@ export default function Home() {
     return addReaction(thoughtId, reaction);
   }, []);
 
+  const onQuoteRepost = useCallback(
+    async (postId: string, comment: string) => {
+      if (!user) return false;
+      const result = await quoteRepost(postId, comment, user.handle, user.displayName || user.handle);
+      if ("error" in result) return false;
+      setThoughts((prev) => [result.thought, ...prev.filter((t) => t.id !== result.thought.id)]);
+      setMine((prev) => [result.thought, ...prev.filter((t) => t.id !== result.thought.id)]);
+      // The original take's boost count/boostedByMe changed server-side too —
+      // reflect it locally so the count is right without a full refetch.
+      setThoughts((prev) =>
+        prev.map((t) =>
+          t.id === postId && !t.boostedByMe
+            ? { ...t, boostedByMe: true, boostCount: (t.boostCount ?? 0) + 1 }
+            : t
+        )
+      );
+      return true;
+    },
+    [user]
+  );
+
   // Unsaving from the Saved list needs the feed's own `bookmarkedByMe` flag
   // flipped too — FeedCard's optimistic toggle is local-only, so without
   // this the item would only disappear after the next full feed refetch.
@@ -392,6 +408,7 @@ export default function Home() {
   );
 
   const saved = useMemo(() => thoughts.filter((t) => t.bookmarkedByMe), [thoughts]);
+  const reposted = useMemo(() => thoughts.filter((t) => t.boostedByMe), [thoughts]);
 
   const reloadFeed = useCallback(
     async (opts?: { silent?: boolean }) => {
@@ -487,6 +504,7 @@ export default function Home() {
         active={tab}
         onTab={(t) => {
           setTab(t);
+          setViewProfileHandle(null);
           if (t === "activity") void refreshActivity();
         }}
         onCreate={() => openShare("video")}
@@ -510,6 +528,7 @@ export default function Home() {
                 onDelete={onDelete}
                 onOpenRoom={handleOpenRoom}
                 onFeelWith={user ? onFeelWith : undefined}
+                onQuoteRepost={user ? onQuoteRepost : undefined}
                 followingHandles={followingSet}
                 othersMap={othersMap}
                 currentHandle={user?.handle ?? null}
@@ -542,51 +561,26 @@ export default function Home() {
                   onFeelingChange={setFeeling}
                   regionScope={regionScope}
                   onRegionScopeChange={(scope) => {
-                    setPersonFilter(null);
                     setRegionScope(scope);
                   }}
                   circleCount={following.length}
                   todayCount={todayAnswerCount}
                 />
 
-                {personFilter && (
-                  <div className="app-pad mt-2 flex items-center justify-between gap-2">
-                    <p className="text-[13px] text-[var(--foreground)]">
-                      Takes from{" "}
-                      <span className="font-semibold">
-                        {personFilter.startsWith("@") ? personFilter : `@${personFilter}`}
-                      </span>
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setPersonFilter(null)}
-                      className="text-[12px] font-semibold text-[var(--accent)]"
-                    >
-                      Clear
-                    </button>
-                  </div>
-                )}
-
                 <div className="app-pad mt-2">
                   <div className="mb-1 flex items-end justify-between border-b border-[var(--border-base)] pb-3 pt-4">
                     <div>
                       <h2 className="font-display text-lg font-medium text-[var(--foreground)]">
-                        {personFilter
-                          ? "Their takes"
-                          : regionScope === "today"
-                            ? "Today’s answers"
-                            : "Latest takes"}
+                        {regionScope === "today" ? "Today’s answers" : "Latest takes"}
                       </h2>
                       <p className="mt-0.5 text-[11px] text-[var(--muted)]">
-                        {personFilter
-                          ? "From Search · Follow them to keep their takes in your circle"
-                          : regionScope === "today"
-                            ? "Same prompt, many voices · Follow someone who resonates"
-                            : regionScope === "circle"
-                              ? following.length
-                                ? "People you follow · Translate anytime"
-                                : "Follow someone from ··· on a take"
-                              : "Voices from everywhere · tap Translate on any language"}
+                        {regionScope === "today"
+                          ? "Same prompt, many voices · Follow someone who resonates"
+                          : regionScope === "circle"
+                            ? following.length
+                              ? "People you follow · Translate anytime"
+                              : "Follow someone from ··· on a take"
+                            : "Voices from everywhere · tap Translate on any language"}
                       </p>
                     </div>
                     <span className="text-[11px] tabular-nums text-[var(--muted)]">
@@ -602,6 +596,7 @@ export default function Home() {
                     currentAuthor={identityAuthor ?? null}
                     onOpenRoom={handleOpenRoom}
                     onFeelWith={user ? onFeelWith : undefined}
+                    onQuoteRepost={user ? onQuoteRepost : undefined}
                     followingHandles={followingSet}
                     othersMap={othersMap}
                     loading={feedStatus === "loading"}
@@ -655,37 +650,48 @@ export default function Home() {
             onNeedSignIn={() => router.push("/sign-in?next=/app")}
             onFollow={(handle, next) => onFeelWith(handle, next)}
             onOpenPerson={(handle) => {
-              setPersonFilter(handle);
-              setRoom(null);
-              setFeeling("all");
-              setMedia("all");
-              setTab("home");
+              setViewProfileHandle(handle);
+              setTab("you");
             }}
           />
         )}
 
-        {tab === "you" && (
-          <div className="app-pad pt-4">
-            <ProfileView
-              myThoughts={mine}
-              savedThoughts={saved}
-              onCreate={() => openShare("video")}
-              onDelete={user ? onDelete : undefined}
-              onUnsave={onUnsave}
-            />
-            <StreakCard
-              count={streak.count}
-              todayFeeling={streak.todayFeeling}
-              checkedInToday={streak.last === todayKey()}
-              onCreate={() => openShare("video")}
-            />
-            <DailyHabits
-              checkedInToday={streak.last === todayKey()}
-              displayHandle={identityHandle}
-              signedIn={!!user}
-            />
-          </div>
-        )}
+        {tab === "you" && (() => {
+          const viewingOther =
+            viewProfileHandle &&
+            viewProfileHandle.trim().toLowerCase().replace(/^@/, "") !==
+              (user?.handle || "").trim().toLowerCase().replace(/^@/, "");
+          return (
+            <div className="app-pad pt-4">
+              <ProfileView
+                myThoughts={mine}
+                savedThoughts={saved}
+                repostedThoughts={reposted}
+                onCreate={() => openShare("video")}
+                onDelete={user ? onDelete : undefined}
+                onUnsave={onUnsave}
+                viewHandle={viewingOther ? viewProfileHandle! : undefined}
+                onFollowToggle={(handle, next) => onFeelWith(handle, next)}
+                onBack={() => setViewProfileHandle(null)}
+              />
+              {!viewingOther && (
+                <>
+                  <StreakCard
+                    count={streak.count}
+                    todayFeeling={streak.todayFeeling}
+                    checkedInToday={streak.last === todayKey()}
+                    onCreate={() => openShare("video")}
+                  />
+                  <DailyHabits
+                    checkedInToday={streak.last === todayKey()}
+                    displayHandle={identityHandle}
+                    signedIn={!!user}
+                  />
+                </>
+              )}
+            </div>
+          );
+        })()}
       </main>
       </div>
 

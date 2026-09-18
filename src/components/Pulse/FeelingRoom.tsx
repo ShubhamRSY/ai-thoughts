@@ -15,6 +15,7 @@ interface FeelingRoomProps {
   onDelete?: (thoughtId: string) => void;
   onOpenRoom?: (id: FeelingId) => void;
   onFeelWith?: (handle: string, next: boolean) => void;
+  onQuoteRepost?: (postId: string, comment: string) => Promise<boolean>;
   followingHandles?: Set<string> | string[];
   othersMap?: Record<string, number>;
   currentHandle?: string | null;
@@ -35,6 +36,7 @@ export default function FeelingRoom({
   onDelete,
   onOpenRoom,
   onFeelWith,
+  onQuoteRepost,
   followingHandles,
   othersMap,
   currentHandle,
@@ -103,6 +105,7 @@ export default function FeelingRoom({
               onDelete={onDelete}
               onOpenRoom={onOpenRoom}
               onFeelWith={onFeelWith}
+              onQuoteRepost={onQuoteRepost}
               feelingWith={following.has(norm(t.handle))}
               currentHandle={currentHandle}
               currentAuthor={currentAuthor}

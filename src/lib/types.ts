@@ -111,6 +111,18 @@ export interface Thought {
   boostedByMe?: boolean;
   /** Whether the signed-in user has bookmarked this take (private to them). */
   bookmarkedByMe?: boolean;
+  /** Set when this take is a quote-repost — the original take's id. */
+  quotedPostId?: string;
+  /** Embedded preview of the quoted take. Null if the original was deleted. */
+  quotedPost?: {
+    id: string;
+    handle: string;
+    author: string;
+    content: string;
+    mediaType: MediaType;
+    mediaUrl?: string;
+    feeling?: FeelingId;
+  } | null;
   /** Deduped view count (one per viewer). Approximate: counted on card mount. */
   viewCount?: number;
   /** ISO when the author account was created (for “New” badge). */

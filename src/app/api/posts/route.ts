@@ -7,10 +7,20 @@ import { FEELINGS } from "@/lib/feelings";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { checkDignity, normalizeTag } from "@/lib/dignity";
 import { GLOBAL_SEED_POSTS } from "@/lib/seed-posts";
-import { notifyFollowersOfPost } from "@/lib/activity";
+import { notifyFollowersOfPost, notifyMentions, notifyPostOwner } from "@/lib/activity";
 import { dailyPromptForDay, promptDayKeyUTC } from "@/lib/daily-prompt";
 import { LIKE_REACTION, BOOST_REACTION, BOOKMARK_REACTION, buildLikedBy } from "@/lib/likes";
 import { assertCanPost, contentFingerprint } from "@/lib/anti-abuse";
+import { extractMentions } from "@/lib/mentions";
+
+function normHandle(h: string) {
+  return h.trim().toLowerCase().replace(/^@/, "");
+}
+
+function handleVariants(h: string): string[] {
+  const n = normHandle(h);
+  return Array.from(new Set([h, `@${n}`, n, `@${n}`.toLowerCase()]));
+}
 
 const MEDIA_TYPES = new Set(["audio", "video", "text"]);
 const FEELING_IDS = new Set(FEELINGS.map((f) => f.id));
@@ -38,6 +48,10 @@ interface PostDoc {
   integrity_label?: string | null;
   transcript?: unknown;
   boosts?: number;
+  /** Real registered handles @mentioned in this take's own content (not replies). */
+  mentioned_handles?: string[];
+  /** Set when this take is a quote-repost — the original take's _id as a string. */
+  quoted_post_id?: string | null;
   content_fp?: string;
   author_joined_at?: string | null;
   abuse_flags?: string[];
@@ -113,9 +127,21 @@ export async function GET(request: NextRequest) {
     await ensureSamplePosts(db);
 
     const promptDay = request.nextUrl.searchParams.get("prompt_day")?.trim();
-    const limit = promptDay ? 60 : 40;
+    const handleParam = request.nextUrl.searchParams.get("handle")?.trim();
+    const taggedParam = request.nextUrl.searchParams.get("tagged")?.trim();
 
-    const filter = promptDay ? { prompt_day: promptDay } : {};
+    let filter: Record<string, unknown> = {};
+    let limit = 40;
+    if (handleParam) {
+      filter = { handle: { $in: handleVariants(handleParam) } };
+      limit = 200;
+    } else if (taggedParam) {
+      filter = { mentioned_handles: normHandle(taggedParam) };
+      limit = 200;
+    } else if (promptDay) {
+      filter = { prompt_day: promptDay };
+      limit = 60;
+    }
     const posts = await db
       .collection<PostDoc>("posts")
       .find(filter)
@@ -167,6 +193,51 @@ export async function GET(request: NextRequest) {
         if (!u.handle) continue;
         const key = u.handle.trim().toLowerCase().replace(/^@/, "");
         if (u.displayName) nameByHandle.set(key, u.displayName);
+      }
+    }
+
+    // Hydrate embedded quote-repost previews. A missing entry (original
+    // deleted) just resolves to null — the client shows "removed" instead.
+    const quotedIds = [
+      ...new Set(posts.map((p) => p.quoted_post_id).filter((v): v is string => Boolean(v))),
+    ];
+    const quotedPostsMap = new Map<
+      string,
+      {
+        id: string;
+        handle: string;
+        author: string;
+        content: string;
+        media_type: string;
+        media_url: string | null;
+        feeling: string | null;
+      }
+    >();
+    if (quotedIds.length > 0) {
+      const objIds = quotedIds
+        .map((id) => {
+          try {
+            return new ObjectId(id);
+          } catch {
+            return null;
+          }
+        })
+        .filter((v): v is ObjectId => v !== null);
+      const quoted = await db
+        .collection<PostDoc>("posts")
+        .find({ _id: { $in: objIds } })
+        .project({ handle: 1, author: 1, content: 1, media_type: 1, media_url: 1, feeling: 1 })
+        .toArray();
+      for (const q of quoted) {
+        quotedPostsMap.set(String(q._id), {
+          id: String(q._id),
+          handle: q.handle,
+          author: q.author,
+          content: q.content,
+          media_type: q.media_type,
+          media_url: q.media_url ?? null,
+          feeling: q.feeling ?? null,
+        });
       }
     }
 
@@ -249,6 +320,8 @@ export async function GET(request: NextRequest) {
         integrity_verified: Boolean(p.integrity_verified),
         integrity_label: p.integrity_label ?? null,
         transcript: p.transcript ?? null,
+        quoted_post_id: p.quoted_post_id ?? null,
+        quoted_post: p.quoted_post_id ? quotedPostsMap.get(p.quoted_post_id) ?? null : null,
         prompt_day: p.prompt_day ?? null,
         prompt_text: p.prompt_text ?? null,
         created_at:
@@ -372,6 +445,32 @@ export async function POST(request: NextRequest) {
         : dailyPromptForDay(promptDay)
       : undefined;
 
+    // Only tag real registered users — never store an arbitrary @string as a
+    // "tagged" mention just because someone typed it.
+    const rawMentions = extractMentions(content);
+    let mentionedHandles: string[] = [];
+    if (rawMentions.length) {
+      const variants = rawMentions.flatMap((h) => [h, `@${h}`]);
+      const matched = await db
+        .collection("users")
+        .find({ handle: { $in: variants } })
+        .project({ handle: 1 })
+        .toArray();
+      const matchedSet = new Set(matched.map((u) => normHandle(String(u.handle))));
+      mentionedHandles = rawMentions.filter((h) => matchedSet.has(h));
+    }
+
+    // A quote-repost references another take by id — validate the id shape
+    // only; a since-deleted original is handled gracefully at read time.
+    let quotedPostId: string | null = null;
+    if (typeof body.quoted_post_id === "string" && body.quoted_post_id.trim()) {
+      try {
+        quotedPostId = new ObjectId(body.quoted_post_id.trim()).toString();
+      } catch {
+        quotedPostId = null;
+      }
+    }
+
     const doc: PostDoc = {
       user_id: session.id,
       handle: session.handle,
@@ -384,6 +483,8 @@ export async function POST(request: NextRequest) {
       stream_url: null,
       stream_ready: false,
       tags,
+      mentioned_handles: mentionedHandles,
+      quoted_post_id: quotedPostId,
       language: typeof body.language === "string" ? body.language : null,
       language_label: typeof body.language_label === "string" ? body.language_label : null,
       integrity_hash: typeof body.integrity_hash === "string" ? body.integrity_hash : null,
@@ -401,6 +502,34 @@ export async function POST(request: NextRequest) {
     const result = await db.collection<PostDoc>("posts").insertOne(doc);
     const postId = result.insertedId.toString();
 
+    // A quote-repost is a repost — keep boost count / boostedByMe / the
+    // Reposts profile tab in sync with what a plain repost would do.
+    if (quotedPostId) {
+      const variants = handleVariants(session.handle);
+      const storeHandle = `@${normHandle(session.handle)}`;
+      const existingRepost = await db.collection("reactions").findOne({
+        post_id: quotedPostId,
+        handle: { $in: variants },
+        reaction: BOOST_REACTION,
+      });
+      if (!existingRepost) {
+        await db.collection("reactions").insertOne({
+          post_id: quotedPostId,
+          handle: storeHandle,
+          handle_norm: normHandle(session.handle),
+          reaction: BOOST_REACTION,
+          created_at: new Date(),
+        });
+        void notifyPostOwner(db, {
+          postId: quotedPostId,
+          actorHandle: storeHandle,
+          actorAuthor: session.displayName || session.handle,
+          kind: "reaction",
+          preview: BOOST_REACTION,
+        });
+      }
+    }
+
     // Don't block the response on fan-out
     void notifyFollowersOfPost(db, {
       postId,
@@ -408,12 +537,49 @@ export async function POST(request: NextRequest) {
       authorName: session.displayName || session.handle,
       preview: content,
     });
+    if (mentionedHandles.length) {
+      void notifyMentions(db, {
+        postId,
+        actorHandle: session.handle,
+        actorAuthor: session.displayName || session.handle,
+        preview: content,
+        mentioned: mentionedHandles,
+      });
+    }
+
+    let quotedPostPreview: {
+      id: string;
+      handle: string;
+      author: string;
+      content: string;
+      media_type: string;
+      media_url: string | null;
+      feeling: string | null;
+    } | null = null;
+    if (quotedPostId) {
+      const orig = await db.collection<PostDoc>("posts").findOne(
+        { _id: new ObjectId(quotedPostId) },
+        { projection: { handle: 1, author: 1, content: 1, media_type: 1, media_url: 1, feeling: 1 } }
+      );
+      if (orig) {
+        quotedPostPreview = {
+          id: quotedPostId,
+          handle: orig.handle,
+          author: orig.author,
+          content: orig.content,
+          media_type: orig.media_type,
+          media_url: orig.media_url ?? null,
+          feeling: orig.feeling ?? null,
+        };
+      }
+    }
 
     return NextResponse.json({
       id: postId,
       ...doc,
       created_at: doc.created_at.toISOString(),
       reactions: [],
+      quoted_post: quotedPostPreview,
     });
   } catch (error) {
     console.error(error);

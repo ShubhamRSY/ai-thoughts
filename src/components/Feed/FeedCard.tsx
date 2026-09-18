@@ -6,6 +6,7 @@ import {
   MessageCircle,
   Heart,
   Repeat2,
+  Quote,
   Bookmark,
   BarChart2,
   MoreHorizontal,
@@ -52,6 +53,7 @@ interface FeedCardProps {
   onDelete?: (thoughtId: string) => void;
   onOpenRoom?: (id: FeelingId) => void;
   onFeelWith?: (handle: string, next: boolean) => void;
+  onQuoteRepost?: (postId: string, comment: string) => Promise<boolean>;
   feelingWith?: boolean;
   /** Signed-in handle — only this author sees Delete on their take. */
   currentHandle?: string | null;
@@ -84,6 +86,7 @@ export default function FeedCard({
   onDelete,
   onOpenRoom,
   onFeelWith,
+  onQuoteRepost,
   feelingWith,
   currentHandle,
   currentAuthor,
@@ -98,6 +101,10 @@ export default function FeedCard({
   const [likedBy, setLikedBy] = useState<LikedByPerson[]>(thought.likedBy ?? []);
   const [boosted, setBoosted] = useState(Boolean(thought.boostedByMe));
   const [boosts, setBoosts] = useState(thought.boostCount ?? 0);
+  const [quoting, setQuoting] = useState(false);
+  const [quoteText, setQuoteText] = useState("");
+  const [quoteBusy, setQuoteBusy] = useState(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
   const [bookmarked, setBookmarked] = useState(Boolean(thought.bookmarkedByMe));
   const [menuOpen, setMenuOpen] = useState(false);
   const [reporting, setReporting] = useState(false);
@@ -210,6 +217,22 @@ export default function FeedCard({
       setBoosted(was);
       setBoosts(prevBoosts);
       setActionError("Couldn’t save that repost — try again.");
+    }
+  };
+
+  const submitQuote = async () => {
+    if (!currentHandle || !onQuoteRepost || !quoteText.trim()) return;
+    setQuoteBusy(true);
+    setQuoteError(null);
+    const ok = await onQuoteRepost(thought.id, quoteText.trim());
+    setQuoteBusy(false);
+    if (ok) {
+      setBoosted(true);
+      setBoosts((n) => (boosted ? n : n + 1));
+      setQuoting(false);
+      setQuoteText("");
+    } else {
+      setQuoteError("Couldn’t post that — try again.");
     }
   };
 
@@ -362,7 +385,11 @@ export default function FeedCard({
       {thought.mediaType === "text" && thought.mediaUrl && (
         <div className="relative z-0 mt-3 overflow-hidden rounded-xl border border-[var(--border-base)] bg-black">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={thought.mediaUrl} alt="" className="max-h-[520px] w-full object-contain" />
+          <img
+            src={thought.mediaUrl}
+            alt={thought.content ? `Photo: ${thought.content}` : `Photo attached by ${thought.author}`}
+            className="max-h-[520px] w-full object-contain"
+          />
         </div>
       )}
 
@@ -421,6 +448,28 @@ export default function FeedCard({
             })}
           </p>
         )}
+        {thought.quotedPostId && (
+          <div className="mt-1 rounded-xl border border-[var(--border-base)] bg-[var(--surface)]/60 p-3">
+            {thought.quotedPost ? (
+              <>
+                <p className="text-[13px] font-semibold text-[var(--foreground)]">
+                  {thought.quotedPost.author}{" "}
+                  <span className="font-normal text-[var(--foreground)]/60">
+                    {thought.quotedPost.handle}
+                  </span>
+                </p>
+                <p
+                  dir="auto"
+                  className="mt-1 line-clamp-4 whitespace-pre-wrap text-[14px] leading-relaxed text-[var(--foreground)]/85"
+                >
+                  {thought.quotedPost.content}
+                </p>
+              </>
+            ) : (
+              <p className="text-[13px] text-[var(--foreground)]/50">This take was removed.</p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="relative z-0 mt-4 flex items-center gap-4 text-[var(--foreground)]/65">
@@ -450,6 +499,18 @@ export default function FeedCard({
           <Repeat2 className="h-[18px] w-[18px]" strokeWidth={2} />
           {boosts > 0 ? boosts : null}
         </button>
+        {onQuoteRepost && (
+          <button
+            type="button"
+            onClick={() => setQuoting(true)}
+            disabled={!currentHandle}
+            aria-label="Quote repost"
+            title={!currentHandle ? "Sign in to repost" : "Repost with a comment"}
+            className="flex items-center gap-1.5 text-[13px] font-medium transition hover:text-[var(--foreground)] disabled:opacity-50"
+          >
+            <Quote className="h-[18px] w-[18px]" strokeWidth={2} />
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setChatOpen((v) => !v)}
@@ -490,6 +551,73 @@ export default function FeedCard({
           {formatLikedBy(likedBy, likes, currentHandle)}
         </p>
       )}
+
+      {mounted &&
+        quoting &&
+        createPortal(
+          <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/40 sm:items-center">
+            <button
+              type="button"
+              className="absolute inset-0 cursor-default"
+              aria-label="Close quote repost"
+              onClick={() => {
+                setQuoting(false);
+                setQuoteError(null);
+              }}
+            />
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="quote-title"
+              className="relative z-10 flex max-h-[min(85dvh,32rem)] w-full max-w-md flex-col rounded-t-2xl border border-[var(--border-base)] bg-[var(--surface)] shadow-xl sm:rounded-2xl"
+            >
+              <div className="flex items-center justify-between border-b border-[var(--border-base)] px-5 py-3">
+                <h3 id="quote-title" className="font-display text-base font-semibold">
+                  Repost with comment
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuoting(false);
+                    setQuoteError(null);
+                  }}
+                  className="text-sm font-medium text-[var(--muted)] hover:text-[var(--foreground)]"
+                >
+                  Cancel
+                </button>
+              </div>
+              <div className="overflow-y-auto overscroll-contain px-5 py-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+                <textarea
+                  value={quoteText}
+                  onChange={(e) => setQuoteText(e.target.value.slice(0, 500))}
+                  rows={3}
+                  autoFocus
+                  placeholder="Add a comment…"
+                  className="w-full resize-none rounded-xl border border-[var(--border-base)] bg-transparent px-3 py-2.5 text-sm outline-none focus:border-[var(--accent)]"
+                />
+                <div className="mt-3 rounded-xl border border-[var(--border-base)] bg-[var(--surface)]/60 p-3">
+                  <p className="text-[13px] font-semibold text-[var(--foreground)]">
+                    {thought.author}{" "}
+                    <span className="font-normal text-[var(--foreground)]/60">{thought.handle}</span>
+                  </p>
+                  <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-[14px] text-[var(--foreground)]/85">
+                    {thought.content}
+                  </p>
+                </div>
+                {quoteError && <p className="mt-3 text-sm text-rose-700">{quoteError}</p>}
+                <button
+                  type="button"
+                  disabled={quoteBusy || !quoteText.trim()}
+                  onClick={() => void submitQuote()}
+                  className="mt-4 w-full rounded-full bg-[var(--accent)] py-2.5 text-sm font-semibold text-[var(--surface)] disabled:opacity-50"
+                >
+                  {quoteBusy ? "Posting…" : "Repost"}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
 
       {mounted &&
         (reporting || reported) &&

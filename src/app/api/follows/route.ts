@@ -4,6 +4,10 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
 import { followUser, listFollowers, listFollowing, unfollowUser } from "@/lib/follows";
 
+function normHandle(h: string) {
+  return h.trim().toLowerCase().replace(/^@/, "");
+}
+
 async function resolveProfiles(db: Db, handles: string[]) {
   const unique = [...new Set(handles)];
   if (unique.length === 0) return [];
@@ -22,20 +26,27 @@ async function resolveProfiles(db: Db, handles: string[]) {
   });
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const targetParam = request.nextUrl.searchParams.get("handle")?.trim();
     const session = await getSession();
-    if (!session) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+    const targetHandle = targetParam || session?.handle;
+    if (!targetHandle) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+
     const { db } = await connectToDatabase();
     const [following, followerHandles] = await Promise.all([
-      listFollowing(db, session.handle),
-      listFollowers(db, session.handle),
+      listFollowing(db, targetHandle),
+      listFollowers(db, targetHandle),
     ]);
     const [followingProfiles, followers] = await Promise.all([
       resolveProfiles(db, following),
       resolveProfiles(db, followerHandles),
     ]);
-    return NextResponse.json({ following, followingProfiles, followers });
+    const isFollowedByMe =
+      session && normHandle(session.handle) !== normHandle(targetHandle)
+        ? followerHandles.some((h) => normHandle(h) === normHandle(session.handle))
+        : undefined;
+    return NextResponse.json({ following, followingProfiles, followers, isFollowedByMe });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });

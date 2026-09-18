@@ -69,6 +69,16 @@ interface RawPost {
   bookmarked_by_me?: boolean;
   view_count?: number;
   author_joined_at?: string | null;
+  quoted_post_id?: string | null;
+  quoted_post?: {
+    id: string;
+    handle: string;
+    author: string;
+    content: string;
+    media_type: string;
+    media_url?: string | null;
+    feeling?: string | null;
+  } | null;
 }
 
 function toThought(r: RawPost): Thought {
@@ -111,6 +121,20 @@ function toThought(r: RawPost): Thought {
     bookmarkedByMe: Boolean(r.bookmarked_by_me),
     viewCount: typeof r.view_count === "number" ? r.view_count : undefined,
     authorJoinedAt: r.author_joined_at ?? undefined,
+    quotedPostId: r.quoted_post_id ?? undefined,
+    quotedPost: r.quoted_post
+      ? {
+          id: r.quoted_post.id,
+          handle: r.quoted_post.handle,
+          author: r.quoted_post.author || r.quoted_post.handle.replace(/^@/, ""),
+          content: r.quoted_post.content,
+          mediaType: r.quoted_post.media_type as Thought["mediaType"],
+          mediaUrl: r.quoted_post.media_url ?? undefined,
+          feeling: (r.quoted_post.feeling as Thought["feeling"]) || undefined,
+        }
+      : r.quoted_post_id
+        ? null
+        : undefined,
   };
 }
 
@@ -124,6 +148,71 @@ export async function fetchPulsePosts(opts?: {
     return rows.map(toThought);
   } catch (e) {
     console.error("fetchPulsePosts:", e);
+    return null;
+  }
+}
+
+/** All takes by one handle — used by profile pages (their own total, not just what's in the loaded feed). */
+export async function fetchPostsByHandle(handle: string): Promise<Thought[]> {
+  try {
+    const q = new URLSearchParams({ handle, t: String(Date.now()) });
+    const rows = await jsonFetch<RawPost[]>(`${API}/posts?${q}`);
+    return rows.map(toThought);
+  } catch (e) {
+    console.error("fetchPostsByHandle:", e);
+    return [];
+  }
+}
+
+/** Takes where this handle was @mentioned in the take's own content. */
+export async function fetchPostsTagged(handle: string): Promise<Thought[]> {
+  try {
+    const q = new URLSearchParams({ tagged: handle, t: String(Date.now()) });
+    const rows = await jsonFetch<RawPost[]>(`${API}/posts?${q}`);
+    return rows.map(toThought);
+  } catch (e) {
+    console.error("fetchPostsTagged:", e);
+    return [];
+  }
+}
+
+export interface ProfileInfo {
+  handle: string;
+  author: string;
+  bio: string;
+  avatarUrl: string;
+}
+
+export async function fetchProfileInfo(handle: string): Promise<ProfileInfo | null> {
+  try {
+    const data = await jsonFetch<{ profile: ProfileInfo | null }>(
+      `${API}/profile?handle=${encodeURIComponent(handle)}`
+    );
+    return data.profile;
+  } catch (e) {
+    console.error("fetchProfileInfo:", e);
+    return null;
+  }
+}
+
+export interface FollowConnection {
+  handle: string;
+  author: string;
+  avatarUrl: string;
+}
+
+export interface FollowGraph {
+  following: string[];
+  followingProfiles: FollowConnection[];
+  followers: FollowConnection[];
+  isFollowedByMe?: boolean;
+}
+
+export async function fetchFollowGraph(handle: string): Promise<FollowGraph | null> {
+  try {
+    return await jsonFetch<FollowGraph>(`${API}/follows?handle=${encodeURIComponent(handle)}`);
+  } catch (e) {
+    console.error("fetchFollowGraph:", e);
     return null;
   }
 }
@@ -202,6 +291,37 @@ export async function addReaction(postId: string, reaction: string): Promise<boo
   } catch (e) {
     console.error("addReaction:", e);
     return false;
+  }
+}
+
+/**
+ * Quote-repost: a lightweight new post that embeds the original, skipping
+ * the full share flow (feeling picker, media capture, integrity) since a
+ * quote is commentary, not a new "how AI makes you feel" entry.
+ */
+export async function quoteRepost(
+  quotedPostId: string,
+  comment: string,
+  handle: string,
+  author: string
+): Promise<{ thought: Thought } | { error: string; code?: string; retryInSec?: number }> {
+  try {
+    const row = await jsonFetch<RawPost>(`${API}/posts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        handle,
+        author,
+        content: comment,
+        media_type: "text",
+        quoted_post_id: quotedPostId,
+      }),
+    });
+    return { thought: toThought(row) };
+  } catch (e) {
+    console.error("quoteRepost:", e);
+    const err = e as Error & { code?: string; retryInSec?: number };
+    return { error: err.message || "Couldn’t repost right now", code: err.code, retryInSec: err.retryInSec };
   }
 }
 
