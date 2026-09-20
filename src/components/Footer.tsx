@@ -15,7 +15,13 @@ export default function Footer() {
         <Link href="/keeper" className="hover:text-[var(--muted)]">Keepers</Link>
       </div>
       <p className="mt-3 text-[11px] leading-relaxed text-[var(--muted)]">
+        {BRAND.trustLine}
+      </p>
+      <p className="mt-3 text-[11px] leading-relaxed text-[var(--muted)]">
         {BRAND.footerLine}
+      </p>
+      <p className="mt-2 text-[10px] uppercase tracking-widest text-[var(--muted)]">
+        {BRAND.runBy}
       </p>
     </footer>
   );

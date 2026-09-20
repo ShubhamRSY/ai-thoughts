@@ -21,6 +21,8 @@ import { useActivity } from "@/components/ActivityPanel";
 import ActivityView from "@/components/ActivityView";
 import PeopleSearchView from "@/components/PeopleSearchView";
 import MaintenanceBanner, { useSiteFlags } from "@/components/MaintenanceBanner";
+import OnboardingWizard from "@/components/OnboardingWizard";
+import PulseMoved from "@/components/PulseMoved";
 import { digestBytes } from "@/lib/integrity";
 import { useLocalProfile } from "@/hooks/useLocalProfile";
 import { useAuth } from "@/hooks/useAuth";
@@ -68,6 +70,8 @@ export default function Home() {
   const [undoId, setUndoId] = useState<string | null>(null);
   const [following, setFollowing] = useState<string[]>([]);
   const [shareFromDaily, setShareFromDaily] = useState(false);
+  /** null = not loaded yet (wizard hidden to avoid flash); true = already onboarded. */
+  const [onboarded, setOnboarded] = useState<boolean | null>(null);
   /** Handle whose profile the "You" tab is currently showing (null = your own). */
   const [viewProfileHandle, setViewProfileHandle] = useState<string | null>(null);
   const [showAccount, setShowAccount] = useState(false);
@@ -87,6 +91,26 @@ export default function Home() {
         if (!cancelled && data?.following) setFollowing(data.following);
       })
       .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  // First-run onboarding: only new accounts have onboarded=false in prefs.
+  useEffect(() => {
+    if (!user) {
+      setOnboarded(null);
+      return;
+    }
+    let cancelled = false;
+    fetch("/api/prefs", { credentials: "include", cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled) setOnboarded(data ? Boolean(data.onboarded) : true);
+      })
+      .catch(() => {
+        if (!cancelled) setOnboarded(true);
+      });
     return () => {
       cancelled = true;
     };
@@ -224,7 +248,7 @@ export default function Home() {
   }, []);
 
   const openShare = (
-    tabPref: MediaType = "video",
+    tabPref: MediaType = "text",
     presetFeeling?: FeelingId,
     fromDaily = false
   ) => {
@@ -249,6 +273,20 @@ export default function Home() {
     setRegionScope("today");
   }, []);
 
+  const finishOnboarding = useCallback(async () => {
+    setOnboarded(true);
+    try {
+      await fetch("/api/prefs", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ onboarded: true }),
+      });
+    } catch {
+      /* Session-local flag already covers it. */
+    }
+  }, []);
+
   const handleOpenRoom = (id: FeelingId) => {
     setFeeling(id);
     setRoom(id);
@@ -260,7 +298,7 @@ export default function Home() {
   };
 
   const handleShareInRoom = (id: FeelingId) => {
-    openShare("video", id);
+    openShare("text", id);
   };
 
   const onReport = useCallback(
@@ -359,7 +397,7 @@ export default function Home() {
         setUndoId(posted.thought.id);
         setFocusPostId(posted.thought.id);
         bump(data.feeling);
-        return { ok: true };
+        return { ok: true, thought: posted.thought };
       }
 
       markPublished();
@@ -377,7 +415,7 @@ export default function Home() {
       setMine((prev) => [newThought, ...prev]);
       setUndoId(newThought.id);
       bump(data.feeling);
-      return { ok: true };
+      return { ok: true, thought: newThought };
     },
     [profile, save, bump, user]
   );
@@ -526,12 +564,12 @@ export default function Home() {
           setViewProfileHandle(null);
           if (t === "activity") void refreshActivity();
         }}
-        onCreate={() => openShare("video")}
+        onCreate={() => openShare("text")}
         activityCount={activityUnread}
       />
       <div className="app-frame flex-1">
       <MaintenanceBanner />
-      <Header onShare={() => openShare("video")} />
+      <Header onShare={() => openShare("text")} />
 
       <main className="flex-1 pb-nav">
         {tab === "home" && (
@@ -572,6 +610,8 @@ export default function Home() {
                   }}
                   onAnswerToday={() => openShare("text", undefined, true)}
                 />
+
+                <PulseMoved />
 
                 <FilterBar
                   media={media}
@@ -693,7 +733,7 @@ export default function Home() {
                 myThoughts={mine}
                 savedThoughts={saved}
                 repostedThoughts={reposted}
-                onCreate={() => openShare("video")}
+                onCreate={() => openShare("text")}
                 onDelete={user ? onDelete : undefined}
                 onArchive={user ? onArchive : undefined}
                 onUnsave={onUnsave}
@@ -708,7 +748,7 @@ export default function Home() {
                     count={streak.count}
                     todayFeeling={streak.todayFeeling}
                     checkedInToday={streak.last === todayKey()}
-                    onCreate={() => openShare("video")}
+                    onCreate={() => openShare("text")}
                   />
                   <DailyHabits
                     checkedInToday={streak.last === todayKey()}
@@ -765,6 +805,16 @@ export default function Home() {
         }}
         onPublish={publish}
       />
+
+      {user && onboarded === false && (
+        <OnboardingWizard
+          identityHandle={identityHandle}
+          identityAuthor={identityAuthor}
+          onPublish={publish}
+          onFeelWith={onFeelWith}
+          onDone={finishOnboarding}
+        />
+      )}
     </div>
   );
 }
