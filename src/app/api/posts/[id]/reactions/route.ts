@@ -3,7 +3,8 @@ import { ObjectId } from "mongodb";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
 import { notifyPostOwner } from "@/lib/activity";
-import { shouldNotifyOwner } from "@/lib/likes";
+import { BOOST_REACTION, shouldNotifyOwner } from "@/lib/likes";
+import { canBeReposted, canViewPost, getPrivacy } from "@/lib/visibility";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 const IP_REACTION_LIMIT = 120;
@@ -48,6 +49,12 @@ export async function POST(
     const { db } = await connectToDatabase();
     const post = await db.collection("posts").findOne({ _id: objectId });
     if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (!(await canViewPost(db, session.handle, post))) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    if (reaction === BOOST_REACTION && !canBeReposted(await getPrivacy(db, String(post.handle)))) {
+      return NextResponse.json({ error: "This take can't be reposted" }, { status: 403 });
+    }
 
     const variants = handleVariants(session.handle);
     const storeHandle = session.handle.startsWith("@")

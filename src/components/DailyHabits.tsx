@@ -1,205 +1,46 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { BellRing, Share2, Mail, Smartphone } from "lucide-react";
+import { BellRing, Share2 } from "lucide-react";
 import { todayKey } from "@/lib/daily-prompt";
-
-const NUDGE_KEY = "aithoughts.daily-nudge.v1";
-
-interface NudgePrefs {
-  enabled: boolean;
-  lastShownDay: string;
-  hour: number;
-}
-
-function readPrefs(): NudgePrefs {
-  try {
-    const raw = localStorage.getItem(NUDGE_KEY);
-    if (raw) return { hour: 9, lastShownDay: "", enabled: false, ...JSON.parse(raw) };
-  } catch {
-    /* ignore */
-  }
-  return { enabled: false, lastShownDay: "", hour: 9 };
-}
-
-function writePrefs(p: NudgePrefs) {
-  try {
-    localStorage.setItem(NUDGE_KEY, JSON.stringify(p));
-  } catch {
-    /* ignore */
-  }
-}
-
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = atob(base64);
-  return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
-}
+import { readNudgePrefs, writeNudgePrefs, type NudgePrefs } from "@/lib/nudge";
 
 interface DailyHabitsProps {
   checkedInToday: boolean;
   displayHandle: string;
   signedIn: boolean;
+  /** Opens the Account Center, where notification settings now live. */
+  onOpenAccount?: () => void;
 }
 
 export default function DailyHabits({
   checkedInToday,
   displayHandle,
   signedIn,
+  onOpenAccount,
 }: DailyHabitsProps) {
   const [prefs, setPrefs] = useState<NudgePrefs>(() =>
-    typeof window === "undefined" ? { enabled: false, lastShownDay: "", hour: 9 } : readPrefs()
-  );
-  const [perm, setPerm] = useState<NotificationPermission>(() =>
-    typeof Notification !== "undefined" ? Notification.permission : "default"
+    typeof window === "undefined" ? { enabled: false, lastShownDay: "", hour: 9 } : readNudgePrefs()
   );
   const [copied, setCopied] = useState(false);
   const [pushOn, setPushOn] = useState(false);
-  const [pushBusy, setPushBusy] = useState(false);
-  const [pushConfigured, setPushConfigured] = useState(true);
-  const [emailDigest, setEmailDigest] = useState(false);
-  const [weeklyDigest, setWeeklyDigest] = useState(false);
-  const [prefsBusy, setPrefsBusy] = useState(false);
 
+  // The reminder below needs to know whether push already covers today. Both
+  // it and the nudge setting are changed in the Account Center, which replaces
+  // this view while open — so re-reading on mount is enough.
   useEffect(() => {
     if (!signedIn) return;
     let cancelled = false;
-    (async () => {
-      try {
-        const [prefsRes, vapidRes] = await Promise.all([
-          fetch("/api/prefs", { credentials: "include", cache: "no-store" }),
-          fetch("/api/push/vapid", { cache: "no-store" }),
-        ]);
-        if (cancelled) return;
-        if (prefsRes.ok) {
-          const data = await prefsRes.json();
-          setEmailDigest(Boolean(data.email_digest));
-          setWeeklyDigest(Boolean(data.weekly_digest));
-          setPushOn(Boolean(data.push_enabled));
-        }
-        if (vapidRes.ok) {
-          const v = await vapidRes.json();
-          setPushConfigured(Boolean(v.configured));
-        } else {
-          setPushConfigured(false);
-        }
-      } catch {
-        /* ignore */
-      }
-    })();
+    fetch("/api/prefs", { credentials: "include", cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && d) setPushOn(Boolean(d.push_enabled));
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
   }, [signedIn]);
-
-  const enableLocalNudge = useCallback(async () => {
-    if (typeof Notification === "undefined") {
-      alert("Notifications aren’t available here. Install the app to your home screen.");
-      return;
-    }
-    const result = await Notification.requestPermission();
-    setPerm(result);
-    if (result !== "granted") return;
-    const next = { ...readPrefs(), enabled: true };
-    writePrefs(next);
-    setPrefs(next);
-  }, []);
-
-  const disableLocalNudge = useCallback(() => {
-    const next = { ...readPrefs(), enabled: false };
-    writePrefs(next);
-    setPrefs(next);
-  }, []);
-
-  const enableWebPush = useCallback(async () => {
-    if (!signedIn) {
-      alert("Sign in to get push alerts when the app is closed.");
-      return;
-    }
-    setPushBusy(true);
-    try {
-      const vapid = await fetch("/api/push/vapid").then((r) => r.json());
-      if (!vapid.publicKey) {
-        setPushConfigured(false);
-        alert("Web Push isn’t configured on the server yet (VAPID keys).");
-        return;
-      }
-      const permission = await Notification.requestPermission();
-      setPerm(permission);
-      if (permission !== "granted") return;
-
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapid.publicKey),
-      });
-      const json = sub.toJSON();
-      const res = await fetch("/api/push/subscribe", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(json),
-      });
-      if (!res.ok) throw new Error("subscribe failed");
-      setPushOn(true);
-      const next = { ...readPrefs(), enabled: true };
-      writePrefs(next);
-      setPrefs(next);
-    } catch (e) {
-      console.error(e);
-      alert("Couldn’t enable Web Push on this device.");
-    } finally {
-      setPushBusy(false);
-    }
-  }, [signedIn]);
-
-  const disableWebPush = useCallback(async () => {
-    setPushBusy(true);
-    try {
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.getSubscription();
-      const endpoint = sub?.endpoint;
-      await sub?.unsubscribe();
-      await fetch("/api/push/subscribe", {
-        method: "DELETE",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ endpoint }),
-      });
-      setPushOn(false);
-    } catch {
-      /* ignore */
-    } finally {
-      setPushBusy(false);
-    }
-  }, []);
-
-  const saveEmailPrefs = useCallback(
-    async (next: { email_digest?: boolean; weekly_digest?: boolean }) => {
-      if (!signedIn) return;
-      setPrefsBusy(true);
-      try {
-        const res = await fetch("/api/prefs", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email_digest: next.email_digest ?? emailDigest,
-            weekly_digest: next.weekly_digest ?? weeklyDigest,
-          }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setEmailDigest(Boolean(data.email_digest));
-          setWeeklyDigest(Boolean(data.weekly_digest));
-        }
-      } finally {
-        setPrefsBusy(false);
-      }
-    },
-    [signedIn, emailDigest, weeklyDigest]
-  );
 
   useEffect(() => {
     if (!prefs.enabled || checkedInToday || pushOn) return;
@@ -218,8 +59,8 @@ export default function DailyHabits({
         tag: "aithoughts-daily",
         data: { url: "/app" },
       });
-      const next = { ...readPrefs(), lastShownDay: day };
-      writePrefs(next);
+      const next = { ...readNudgePrefs(), lastShownDay: day };
+      writeNudgePrefs(next);
       setPrefs(next);
     })();
     return () => {
@@ -249,101 +90,24 @@ export default function DailyHabits({
 
   return (
     <div className="mt-4 space-y-3">
-      <div className="rounded-2xl border border-[var(--border-base)] bg-[var(--surface)] p-4">
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-soft)]">
-            <Smartphone className="h-5 w-5 text-[var(--accent-2)]" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-[var(--foreground)]">Push alerts</p>
-            <p className="mt-0.5 text-xs text-[var(--muted)]">
-              Works when the app is closed — replies, reactions, and people you feel with.
-              {!pushConfigured && " (Server VAPID keys not set yet.)"}
-            </p>
-            <button
-              type="button"
-              disabled={pushBusy || !pushConfigured}
-              onClick={() => (pushOn ? void disableWebPush() : void enableWebPush())}
-              className="mt-3 rounded-full border border-[var(--border-base)] px-3 py-1.5 text-xs font-semibold text-[var(--foreground)] hover:border-[var(--accent)] disabled:opacity-50"
-            >
-              {pushBusy
-                ? "Working…"
-                : pushOn
-                  ? "Turn off push"
-                  : perm === "denied"
-                    ? "Notifications blocked"
-                    : "Enable Web Push"}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-[var(--border-base)] bg-[var(--surface)] p-4">
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-soft)]">
-            <BellRing className="h-5 w-5 text-[var(--accent-2)]" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-[var(--foreground)]">Soft daily nudge</p>
-            <p className="mt-0.5 text-xs text-[var(--muted)]">
-              Backup reminder if Web Push is off. Same-day replies and reactions are the main hook.
-            </p>
-            <button
-              type="button"
-              onClick={() => (prefs.enabled ? disableLocalNudge() : void enableLocalNudge())}
-              className="mt-3 rounded-full border border-[var(--border-base)] px-3 py-1.5 text-xs font-semibold text-[var(--foreground)] hover:border-[var(--accent)]"
-            >
-              {prefs.enabled ? "Turn off nudge" : "Turn on nudge"}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {signedIn && (
+      {onOpenAccount && (
         <div className="rounded-2xl border border-[var(--border-base)] bg-[var(--surface)] p-4">
           <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-2)]">
-              <Mail className="h-5 w-5 text-[var(--foreground)]" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-soft)]">
+              <BellRing className="h-5 w-5 text-[var(--accent-2)]" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-[var(--foreground)]">Email digests</p>
+              <p className="text-sm font-semibold text-[var(--foreground)]">Notifications</p>
               <p className="mt-0.5 text-xs text-[var(--muted)]">
-                Optional — activity summaries and the weekly Voices episode.
+                Push alerts, the daily nudge and email digests now live in your Account Center.
               </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  disabled={prefsBusy}
-                  onClick={() => {
-                    const next = !emailDigest;
-                    setEmailDigest(next);
-                    void saveEmailPrefs({ email_digest: next });
-                  }}
-                  className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-                    emailDigest
-                      ? "bg-[var(--accent)] text-[var(--surface)]"
-                      : "border border-[var(--border-base)] text-[var(--foreground)]"
-                  }`}
-                >
-                  Activity email
-                </button>
-                <button
-                  type="button"
-                  disabled={prefsBusy}
-                  onClick={() => {
-                    const next = !weeklyDigest;
-                    setWeeklyDigest(next);
-                    void saveEmailPrefs({ weekly_digest: next });
-                  }}
-                  className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-                    weeklyDigest
-                      ? "bg-[var(--accent)] text-[var(--surface)]"
-                      : "border border-[var(--border-base)] text-[var(--foreground)]"
-                  }`}
-                >
-                  Weekly Voices
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={onOpenAccount}
+                className="mt-3 rounded-full border border-[var(--border-base)] px-3 py-1.5 text-xs font-semibold text-[var(--foreground)] hover:border-[var(--accent)]"
+              >
+                Notification settings
+              </button>
             </div>
           </div>
         </div>

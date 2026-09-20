@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { ObjectId } from "mongodb";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
+import { canViewPost } from "@/lib/visibility";
 
 const ANON_ID_COOKIE = "aithoughts.anon";
 const ANON_ID_MAX_AGE = 400 * 24 * 3600; // ~13 months, well past any session
@@ -36,8 +37,11 @@ export async function POST(
     const viewerKey = session ? `user:${session.handle}` : `anon:${anonId}`;
 
     const { db } = await connectToDatabase();
-    const post = await db.collection("posts").findOne({ _id: objectId }, { projection: { _id: 1 } });
+    const post = await db.collection("posts").findOne({ _id: objectId }, { projection: { handle: 1, archived: 1 } });
     if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (!(await canViewPost(db, session?.handle ?? null, post))) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
 
     await db.collection("post_views").updateOne(
       { post_id: id, viewer_key: viewerKey },

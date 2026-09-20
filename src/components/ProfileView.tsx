@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Bookmark, Camera, Check, Download, PencilLine, Trash2, UserPlus, UserCheck } from "lucide-react";
+import { Archive, ArrowLeft, Ban, Bookmark, Camera, Check, Download, Lock, PencilLine, Settings, Trash2, UserPlus, UserCheck } from "lucide-react";
 import { upload } from "@vercel/blob/client";
 import type { Thought } from "@/lib/types";
 import { useLocalProfile } from "@/hooks/useLocalProfile";
@@ -31,6 +31,8 @@ interface ProfileViewProps {
   repostedThoughts?: Thought[];
   onCreate: () => void;
   onDelete?: (thoughtId: string) => void;
+  /** Hide a take from everyone but you (reversible from the Account Center). */
+  onArchive?: (thoughtId: string) => void;
   onUnsave?: (thoughtId: string) => void;
   /** Handle to view. Omitted/own handle = your own editable profile. */
   viewHandle?: string;
@@ -38,6 +40,8 @@ interface ProfileViewProps {
   onFollowToggle?: (handle: string, next: boolean) => void | Promise<unknown>;
   /** Shown as a "← Back" affordance when viewing someone else's profile. */
   onBack?: () => void;
+  /** Opens the Account Center (owned by the page so it can replace the whole view). */
+  onOpenAccount?: () => void;
 }
 
 interface ConnectionProfile {
@@ -61,10 +65,12 @@ export default function ProfileView({
   repostedThoughts = [],
   onCreate,
   onDelete,
+  onArchive,
   onUnsave,
   viewHandle,
   onFollowToggle,
   onBack,
+  onOpenAccount,
 }: ProfileViewProps) {
   const router = useRouter();
   const { profile, save } = useLocalProfile();
@@ -240,17 +246,45 @@ export default function ProfileView({
     }
   };
 
-  const isFollowingViewed = Boolean(viewedFollow?.isFollowedByMe);
+  const followState =
+    viewedFollow?.followState ?? (viewedFollow?.isFollowedByMe ? "following" : "none");
+  const isFollowingViewed = followState === "following";
+  const isRequested = followState === "requested";
 
   const toggleFollow = async () => {
     if (!viewHandle || !onFollowToggle || followBusy) return;
     setFollowBusy(true);
-    const next = !isFollowingViewed;
+    const next = !(isFollowingViewed || isRequested); // tapping "Requested" cancels it
     try {
       await onFollowToggle(viewHandle, next);
-      setViewedFollow((prev) => (prev ? { ...prev, isFollowedByMe: next } : prev));
       const graph = await fetchFollowGraph(viewHandle);
       setViewedFollow(graph);
+    } finally {
+      setFollowBusy(false);
+    }
+  };
+
+  const setBlocked = async (action: "block" | "unblock") => {
+    if (!viewHandle || followBusy) return;
+    if (
+      action === "block" &&
+      !window.confirm(
+        `Block ${viewHandle}? Neither of you will see the other's takes or profile, and they won't be told.`
+      )
+    ) {
+      return;
+    }
+    setFollowBusy(true);
+    try {
+      const res = await fetch("/api/blocks", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ handle: viewHandle, action }),
+      });
+      if (!res.ok) return;
+      if (action === "block") onBack?.();
+      else setViewedFollow(await fetchFollowGraph(viewHandle));
     } finally {
       setFollowBusy(false);
     }
@@ -260,6 +294,7 @@ export default function ProfileView({
   const shownBio = isOwn
     ? (bio || profile.bio || BRAND.footerLine).trim()
     : (viewedProfile?.bio || "No bio yet.").trim();
+
 
   return (
     <div className="py-5">
@@ -321,14 +356,33 @@ export default function ProfileView({
                 >
                   {editing ? <Check className="h-4 w-4" /> : <PencilLine className="h-4 w-4" />}
                 </button>
+              ) : user && viewedFollow?.blockedByMe ? (
+                <button
+                  type="button"
+                  onClick={() => void setBlocked("unblock")}
+                  disabled={followBusy}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border-base)] px-3 py-1.5 text-xs font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)] disabled:opacity-50"
+                >
+                  <Ban className="h-3.5 w-3.5" /> Unblock
+                </button>
               ) : (
                 user && onFollowToggle && (
+                  <>
+                  <button
+                    type="button"
+                    aria-label="Block"
+                    onClick={() => void setBlocked("block")}
+                    disabled={followBusy}
+                    className="rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-[var(--surface-2)] hover:text-rose-700 disabled:opacity-50"
+                  >
+                    <Ban className="h-4 w-4" />
+                  </button>
                   <button
                     type="button"
                     onClick={() => void toggleFollow()}
                     disabled={followBusy}
                     className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${
-                      isFollowingViewed
+                      isFollowingViewed || isRequested
                         ? "border border-[var(--border-base)] text-[var(--foreground)] hover:border-rose-300 hover:text-rose-700"
                         : "bg-[var(--accent)] text-[var(--surface)] hover:bg-[var(--accent-2)]"
                     }`}
@@ -337,12 +391,17 @@ export default function ProfileView({
                       <>
                         <UserCheck className="h-3.5 w-3.5" /> Following
                       </>
+                    ) : isRequested ? (
+                      <>
+                        <UserCheck className="h-3.5 w-3.5" /> Requested
+                      </>
                     ) : (
                       <>
                         <UserPlus className="h-3.5 w-3.5" /> Follow
                       </>
                     )}
                   </button>
+                  </>
                 )
               )}
             </div>
@@ -452,6 +511,40 @@ export default function ProfileView({
               <ConnectionList title="Following" people={viewedFollow.followingProfiles} />
             </div>
           )}
+
+      {!isOwn && viewedFollow?.blockedByMe && (
+        <div className="mt-6 rounded-2xl border border-[var(--border-base)] bg-[var(--surface)] p-6 text-center">
+          <Ban className="mx-auto h-5 w-5 text-[var(--muted)]" />
+          <p className="mt-2 text-sm font-semibold text-[var(--foreground)]">
+            You blocked this account
+          </p>
+        </div>
+      )}
+
+      {!isOwn && viewedFollow?.restricted && !viewedFollow.blockedByMe && (
+        <div className="mt-6 rounded-2xl border border-[var(--border-base)] bg-[var(--surface)] p-6 text-center">
+          <Lock className="mx-auto h-5 w-5 text-[var(--muted)]" />
+          <p className="mt-2 text-sm font-semibold text-[var(--foreground)]">
+            This account is private
+          </p>
+          <p className="mt-1 text-xs text-[var(--muted)]">
+            Follow to request access to their takes.
+          </p>
+        </div>
+      )}
+
+      {isOwn && user && onOpenAccount && (
+        <button
+          type="button"
+          onClick={onOpenAccount}
+          className="mt-6 flex w-full items-center justify-between rounded-2xl border border-[var(--border-base)] bg-[var(--surface)] p-4 text-left transition hover:border-[var(--accent)]"
+        >
+          <span className="flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
+            <Settings className="h-4 w-4 text-[var(--accent)]" /> Account Center
+          </span>
+          <span className="text-xs text-[var(--muted)]">Privacy and requests</span>
+        </button>
+      )}
 
       {isOwn && (
         <div className="mt-6 rounded-2xl border border-[var(--border-base)] bg-[var(--surface)] p-4">
@@ -612,6 +705,16 @@ export default function ProfileView({
                   {t.content}
                 </p>
                 <span className="shrink-0 text-xs tabular-nums text-[var(--muted)]">{t.timeLabel}</span>
+                {isOwn && onArchive && (
+                  <button
+                    type="button"
+                    aria-label="Archive take"
+                    onClick={() => onArchive(t.id)}
+                    className="shrink-0 rounded-md p-1.5 text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+                  >
+                    <Archive className="h-3.5 w-3.5" />
+                  </button>
+                )}
                 {isOwn && onDelete && (
                   <button
                     type="button"

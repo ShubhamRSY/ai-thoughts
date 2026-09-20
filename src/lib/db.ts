@@ -181,6 +181,9 @@ export interface ProfileInfo {
   author: string;
   bio: string;
   avatarUrl: string;
+  privacy?: "public" | "private" | "locked";
+  /** True when the viewer may see this profile's shell but not its takes. */
+  restricted?: boolean;
 }
 
 export async function fetchProfileInfo(handle: string): Promise<ProfileInfo | null> {
@@ -206,6 +209,11 @@ export interface FollowGraph {
   followingProfiles: FollowConnection[];
   followers: FollowConnection[];
   isFollowedByMe?: boolean;
+  followState?: "none" | "requested" | "following";
+  /** The viewer blocked this account (never set for the blocked side). */
+  blockedByMe?: boolean;
+  /** Follower/following lists are hidden from this viewer (private/locked). */
+  restricted?: boolean;
 }
 
 export async function fetchFollowGraph(handle: string): Promise<FollowGraph | null> {
@@ -480,6 +488,23 @@ export async function deletePost(postId: string): Promise<boolean> {
     return true;
   } catch (e) {
     console.error("deletePost:", e);
+    return false;
+  }
+}
+
+/** Hide (or restore) one of your own takes. Archived takes are visible only to you. */
+export async function archivePost(postId: string, archived: boolean): Promise<boolean> {
+  try {
+    if (!/^[a-f0-9]{24}$/i.test(postId)) return true; // local-only mock ids
+    const res = await fetch(`${API}/posts/${postId}/archive`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ archived }),
+    });
+    return res.ok;
+  } catch (e) {
+    console.error("archivePost:", e);
     return false;
   }
 }

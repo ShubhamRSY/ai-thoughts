@@ -8,12 +8,16 @@ import {
   sessionCookieOptions,
 } from "@/lib/auth";
 import { checkDisplayNameAllowed } from "@/lib/anti-abuse";
+import { getVisibility } from "@/lib/visibility";
 
 export async function GET(request: NextRequest) {
   try {
     const handle = request.nextUrl.searchParams.get("handle");
     if (!handle) return NextResponse.json({ profile: null });
     const { db } = await connectToDatabase();
+    const session = await getSession();
+    const vis = await getVisibility(db, session?.handle ?? null, handle);
+    if (!vis.profile) return NextResponse.json({ profile: null });
     const profile = await db.collection("profiles").findOne({ handle });
     return NextResponse.json({
       profile: profile
@@ -22,6 +26,8 @@ export async function GET(request: NextRequest) {
             author: profile.author,
             bio: profile.bio ?? "",
             avatarUrl: profile.avatar_url ?? profile.avatarUrl ?? "",
+            privacy: vis.privacy,
+            restricted: !vis.posts,
           }
         : null,
     });
@@ -82,11 +88,10 @@ export async function PUT(request: NextRequest) {
       /* ignore */
     }
 
-    const token = await createSession({
-      id: session.id,
-      handle: session.handle,
-      displayName: author,
-    });
+    const token = await createSession(
+      { id: session.id, handle: session.handle, displayName: author },
+      { sid: session.sid, userAgent: request.headers.get("user-agent") }
+    );
 
     const res = NextResponse.json({
       ok: true,

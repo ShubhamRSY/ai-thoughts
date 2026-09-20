@@ -43,6 +43,21 @@ export async function ensureCoreIndexes(db: Db): Promise<void> {
       { follower: 1, following: 1 },
       { unique: true, name: "follows_pair_unique" }
     ),
+    db.collection("profiles").createIndex(
+      { privacy: 1 },
+      { sparse: true, name: "profiles_privacy" }
+    ),
+    db.collection("blocks").createIndex(
+      { blocker: 1, blocked: 1 },
+      { unique: true, name: "blocks_pair_unique" }
+    ),
+    db.collection("blocks").createIndex({ blocked: 1 }, { name: "blocks_blocked" }),
+    db.collection("sessions").createIndex({ sid: 1 }, { unique: true, name: "sessions_sid_unique" }),
+    db.collection("sessions").createIndex({ user_id: 1 }, { name: "sessions_user" }),
+    db.collection("sessions").createIndex(
+      { expires_at: 1 },
+      { expireAfterSeconds: 0, name: "sessions_ttl" }
+    ),
     db.collection("notifications").createIndex(
       { recipient_handle: 1, created_at: -1 },
       { name: "notifications_recipient_created" }

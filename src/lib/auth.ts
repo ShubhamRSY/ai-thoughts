@@ -22,6 +22,8 @@ export interface SessionUser {
   email: string;
   handle: string;
   displayName: string;
+  /** Server-side session id. Missing on legacy cookies until /api/auth/me upgrades them. */
+  sid?: string;
 }
 
 export interface UserRecord {
@@ -34,6 +36,8 @@ export interface UserRecord {
   displayName: string;
   createdAt: string;
   lastLoginAt: string;
+  /** "Sign out everywhere": tokens issued before this (ms) are rejected. */
+  sessions_revoked_before?: number;
 }
 
 function getSecret(): string {
@@ -92,12 +96,20 @@ export function sessionCookieOptions(maxAge: number = SESSION_MAX_AGE) {
   };
 }
 
-export async function createSession(user: {
-  _id?: ObjectId | string;
-  id?: string;
-  handle: string;
-  displayName: string;
-}): Promise<string> {
+/**
+ * Issue a session token. Without `opts.sid` this starts a NEW session (a row in
+ * `sessions`, so it shows up in the user's device list); pass the current `sid`
+ * when merely re-issuing a cookie (sliding expiry, renamed profile).
+ */
+export async function createSession(
+  user: {
+    _id?: ObjectId | string;
+    id?: string;
+    handle: string;
+    displayName: string;
+  },
+  opts: { sid?: string; userAgent?: string | null } = {}
+): Promise<string> {
   // Do not put email in the cookie — load from DB when needed.
   const id =
     typeof user.id === "string"
@@ -105,11 +117,29 @@ export async function createSession(user: {
       : user._id
         ? String(user._id)
         : "";
+  const now = Date.now();
+  let sid = opts.sid;
+  if (!sid) {
+    sid = crypto.randomUUID();
+    const { db } = await connectToDatabase();
+    await db.collection("sessions").insertOne({
+      sid,
+      user_id: id,
+      handle: user.handle,
+      user_agent: (opts.userAgent ?? "").slice(0, 300),
+      created_at: new Date(now),
+      last_seen_at: new Date(now),
+      // TTL index (see ensureCoreIndexes) drops the row when the cookie would expire anyway.
+      expires_at: new Date(now + SESSION_MAX_AGE * 1000),
+    });
+  }
   const payload = {
     id,
     handle: user.handle,
     displayName: user.displayName,
-    exp: Date.now() + SESSION_MAX_AGE * 1000,
+    exp: now + SESSION_MAX_AGE * 1000,
+    iat: now,
+    sid,
   };
 
   const encoded = encodeSessionPayload(payload);
@@ -117,7 +147,12 @@ export async function createSession(user: {
   return `${encoded}.${signature}`;
 }
 
-export async function validateSession(token: string): Promise<SessionUser | null> {
+/**
+ * Signature + expiry check only — no DB round trip. Cheap enough for the
+ * proxy to run on every page request; use validateSession when you need the
+ * user.
+ */
+export async function verifySessionToken(token: string) {
   try {
     const [encoded, signature] = token.split(".");
     if (!encoded || !signature) return null;
@@ -131,12 +166,31 @@ export async function validateSession(token: string): Promise<SessionUser | null
       handle: string;
       displayName: string;
       exp: number;
+      /** Issued-at (ms). Legacy tokens lack it; see issuedAt(). */
+      iat?: number;
+      sid?: string;
     };
     if (!payload?.exp || payload.exp < Date.now()) return null;
     if (!payload.id || !payload.handle) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+/** Legacy tokens have no `iat`, but they always lived exactly SESSION_MAX_AGE. */
+function issuedAt(payload: { iat?: number; exp: number }): number {
+  return payload.iat ?? payload.exp - SESSION_MAX_AGE * 1000;
+}
+
+export async function validateSession(token: string): Promise<SessionUser | null> {
+  try {
+    const payload = await verifySessionToken(token);
+    if (!payload) return null;
 
     const { db } = await connectToDatabase();
     let email = "";
+    let revokedBefore = 0;
     try {
       const user = await db.collection<UserRecord>("users").findOne({
         _id: new ObjectId(payload.id),
@@ -146,8 +200,24 @@ export async function validateSession(token: string): Promise<SessionUser | null
         decryptEmail(user?.email) ||
         payload.email ||
         "";
+      revokedBefore = user?.sessions_revoked_before ?? 0;
     } catch {
       email = payload.email || "";
+    }
+
+    // "Sign out everywhere" — also the only way to end legacy (sid-less) tokens.
+    if (issuedAt(payload) < revokedBefore) return null;
+
+    // A session that was revoked (or expired out of the store) is gone for good.
+    if (payload.sid) {
+      const row = await db.collection("sessions").findOne({ sid: payload.sid });
+      if (!row) return null;
+      const last = row.last_seen_at instanceof Date ? row.last_seen_at.getTime() : 0;
+      if (Date.now() - last > 10 * 60_000) {
+        void db
+          .collection("sessions")
+          .updateOne({ sid: payload.sid }, { $set: { last_seen_at: new Date() } });
+      }
     }
 
     return {
@@ -155,6 +225,7 @@ export async function validateSession(token: string): Promise<SessionUser | null
       email,
       handle: payload.handle,
       displayName: payload.displayName,
+      sid: payload.sid,
     };
   } catch {
     return null;
@@ -195,7 +266,7 @@ export async function clearSessionCookie(): Promise<void> {
 export async function findOrCreateUser(
   email: string,
   displayName: string
-): Promise<UserRecord> {
+): Promise<{ user: UserRecord; createdNew: boolean }> {
   const disposable = checkDisposableEmail(email);
   if (!disposable.ok) {
     throw new Error(disposable.reason);
@@ -215,6 +286,7 @@ export async function findOrCreateUser(
   let user: UserRecord | null =
     (await users.findOne({ emailHash })) ||
     (await users.findOne({ email: normalizedEmail }));
+  let createdNew = false;
 
   if (user) {
     await users.updateOne(
@@ -256,9 +328,10 @@ export async function findOrCreateUser(
     const result = await users.insertOne(newUser);
     newUser._id = result.insertedId;
     user = newUser;
+    createdNew = true;
   }
 
-  return user;
+  return { user, createdNew };
 }
 
 /** Wipe account + related data for the signed-in user. */
@@ -327,6 +400,7 @@ export async function deleteUserAccount(session: SessionUser): Promise<void> {
       { following: { $in: handleVariants } },
     ],
   });
+  await db.collection("sessions").deleteMany({ user_id: session.id });
   await db.collection("user_prefs").deleteMany({ handle: { $in: handleVariants } });
   await db.collection("push_subscriptions").deleteMany({ handle: { $in: handleVariants } });
   await db.collection("profiles").deleteMany({

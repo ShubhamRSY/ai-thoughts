@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
-import { SESSION_COOKIE } from "@/lib/auth";
+import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
 
+const PROTECTED_PATHS = ["/app", "/keeper", "/admin"];
+const AUTH_PAGES = ["/sign-in"];
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 // Backstop, not the primary defense: routes still keep their own tighter
@@ -41,7 +43,12 @@ function blockedByOriginCheck(request: NextRequest): boolean {
   return true;
 }
 
-export async function proxy(request: NextRequest) {
+async function hasValidSession(request: NextRequest): Promise<boolean> {
+  const token = request.cookies.get(SESSION_COOKIE)?.value;
+  return Boolean(token && (await verifySessionToken(token)));
+}
+
+async function guardApi(request: NextRequest) {
   const ip = clientIp(request);
   const { ok } = await rateLimit(`api-backstop:${ip}`, BACKSTOP_LIMIT, BACKSTOP_WINDOW_MS);
   if (!ok) {
@@ -55,6 +62,36 @@ export async function proxy(request: NextRequest) {
   return NextResponse.next();
 }
 
+export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  if (pathname.startsWith("/api/")) return guardApi(request);
+
+  const isProtected = PROTECTED_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
+
+  if (isProtected) {
+    if (!(await hasValidSession(request))) {
+      const signInUrl = new URL("/sign-in", request.url);
+      signInUrl.searchParams.set("from", pathname);
+      const res = NextResponse.redirect(signInUrl);
+      res.cookies.set(SESSION_COOKIE, "", { path: "/", maxAge: 0 });
+      return res;
+    }
+    return NextResponse.next();
+  }
+
+  // Already joined → never show join / landing again
+  if ((pathname === "/" || AUTH_PAGES.includes(pathname)) && (await hasValidSession(request))) {
+    const from = request.nextUrl.searchParams.get("from");
+    const dest = from && from.startsWith("/") && !from.startsWith("//") ? from : "/app";
+    return NextResponse.redirect(new URL(dest, request.url));
+  }
+
+  return NextResponse.next();
+}
+
 export const config = {
-  matcher: "/api/:path*",
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|icons|media|manifest.webmanifest|sw.js).*)",
+  ],
 };

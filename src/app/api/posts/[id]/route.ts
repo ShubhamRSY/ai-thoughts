@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { getSession, isKeeperHandle } from "@/lib/auth";
+import { canViewPost } from "@/lib/visibility";
+import { blockedHandles } from "@/lib/blocks";
 
 function parseObjectId(id: string): ObjectId | null {
   try {
@@ -22,6 +24,10 @@ export async function GET(
     const { db } = await connectToDatabase();
     const post = await db.collection("posts").findOne({ _id: objectId });
     if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    const session = await getSession();
+    if (!(await canViewPost(db, session?.handle ?? null, post))) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
     const reactions = await db
       .collection<{ reaction: string; handle?: string; created_at?: Date }>("reactions")
       .find({ post_id: id })
@@ -30,7 +36,6 @@ export async function GET(
     for (const r of reactions) reactMap[r.reaction] = (reactMap[r.reaction] ?? 0) + 1;
 
     const { LIKE_REACTION, buildLikedBy } = await import("@/lib/likes");
-    const session = await getSession();
     const me = session?.handle?.trim().toLowerCase().replace(/^@/, "") ?? null;
     const nameByHandle = new Map<string, string>();
     const handles = [
@@ -54,7 +59,16 @@ export async function GET(
       }
     }
     const heartRows = reactions.filter((r) => r.reaction === LIKE_REACTION);
-    const likedBy = buildLikedBy(heartRows, nameByHandle, 8);
+    const blockedSet = new Set(
+      (await blockedHandles(db, session?.handle ?? null)).map((h) => h.replace(/^@/, ""))
+    );
+    const likedBy = buildLikedBy(
+      heartRows.filter(
+        (r) => !blockedSet.has((r.handle ?? "").trim().toLowerCase().replace(/^@/, ""))
+      ),
+      nameByHandle,
+      8
+    );
     const unique = new Set(
       heartRows
         .map((r) => r.handle?.trim().toLowerCase().replace(/^@/, ""))

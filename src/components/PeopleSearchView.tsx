@@ -9,6 +9,8 @@ export type PersonHit = {
   bio: string;
   avatarUrl: string;
   following: boolean;
+  /** A follow request to a private account is waiting on approval. */
+  requested?: boolean;
 };
 
 interface PeopleSearchViewProps {
@@ -74,17 +76,24 @@ export default function PeopleSearchView({
       onNeedSignIn?.();
       return;
     }
-    const next = !person.following;
+    // Tapping "Requested" cancels the request.
+    const next = !(person.following || person.requested);
     setBusyHandle(person.handle);
     setPeople((prev) =>
-      prev.map((p) => (p.handle === person.handle ? { ...p, following: next } : p))
+      prev.map((p) =>
+        p.handle === person.handle ? { ...p, following: next, requested: false } : p
+      )
     );
     try {
       await onFollow(person.handle, next);
+      // A private account only gets a request, not a follower: show the server's answer.
+      await load(query.trim());
     } catch {
       setPeople((prev) =>
         prev.map((p) =>
-          p.handle === person.handle ? { ...p, following: !next } : p
+          p.handle === person.handle
+            ? { ...p, following: person.following, requested: person.requested }
+            : p
         )
       );
     } finally {
@@ -160,7 +169,7 @@ export default function PeopleSearchView({
                 disabled={busyHandle === p.handle}
                 onClick={() => void toggleFollow(p)}
                 className={`inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-semibold transition disabled:opacity-50 ${
-                  p.following
+                  p.following || p.requested
                     ? "border border-[var(--border-base)] text-[var(--foreground)]"
                     : "bg-[var(--accent)] text-[var(--surface)]"
                 }`}
@@ -169,6 +178,11 @@ export default function PeopleSearchView({
                   <>
                     <UserCheck className="h-3.5 w-3.5" />
                     Following
+                  </>
+                ) : p.requested ? (
+                  <>
+                    <UserCheck className="h-3.5 w-3.5" />
+                    Requested
                   </>
                 ) : (
                   <>

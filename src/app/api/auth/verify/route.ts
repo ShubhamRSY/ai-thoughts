@@ -11,6 +11,7 @@ import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { getSiteSettings } from "@/lib/admin";
 import { connectToDatabase } from "@/lib/mongodb";
 import { hashEmail } from "@/lib/secure";
+import { upsertPrefs } from "@/lib/prefs";
 
 const VERIFY_LIMIT = 20;
 const VERIFY_WINDOW_MS = 10 * 60_000;
@@ -19,11 +20,14 @@ export async function POST(request: Request) {
   try {
     const existing = await getSession();
     if (existing) {
-      const token = await createSession({
-        id: existing.id,
-        handle: existing.handle,
-        displayName: existing.displayName,
-      });
+      const token = await createSession(
+        {
+          id: existing.id,
+          handle: existing.handle,
+          displayName: existing.displayName,
+        },
+        { sid: existing.sid, userAgent: request.headers.get("user-agent") }
+      );
       const res = NextResponse.json({
         ok: true,
         alreadySignedIn: true,
@@ -88,13 +92,26 @@ export async function POST(request: Request) {
     }
 
     let user;
+    let createdNew = false;
     try {
-      user = await findOrCreateUser(normalized, result.displayName);
+      ({ user, createdNew } = await findOrCreateUser(normalized, result.displayName));
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Could not create account";
       return NextResponse.json({ error: msg }, { status: 400 });
     }
-    const token = await createSession(user);
+
+    // Fresh accounts get an onboarding prefs row so the guided first-take
+    // wizard shows once; returning members already have rows (or none).
+    if (createdNew) {
+      try {
+        const { db } = await connectToDatabase();
+        await upsertPrefs(db, user.handle, { onboarded: false });
+      } catch {
+        // Non-fatal — the wizard simply won't show if the write failed.
+      }
+    }
+
+    const token = await createSession(user, { userAgent: request.headers.get("user-agent") });
 
     const res = NextResponse.json({
       ok: true,

@@ -15,6 +15,7 @@ import FeelingRoom from "@/components/Pulse/FeelingRoom";
 import StreakCard from "@/components/StreakCard";
 import DailyCheckIn from "@/components/DailyCheckIn";
 import DailyHabits from "@/components/DailyHabits";
+import AccountCenter from "@/components/AccountCenter";
 import MissedYesterday from "@/components/MissedYesterday";
 import { useActivity } from "@/components/ActivityPanel";
 import ActivityView from "@/components/ActivityView";
@@ -32,6 +33,7 @@ import {
   addReaction,
   reportPost,
   deletePost,
+  archivePost,
   checkPublishGuard,
   markPublished,
   quoteRepost,
@@ -68,6 +70,7 @@ export default function Home() {
   const [shareFromDaily, setShareFromDaily] = useState(false);
   /** Handle whose profile the "You" tab is currently showing (null = your own). */
   const [viewProfileHandle, setViewProfileHandle] = useState<string | null>(null);
+  const [showAccount, setShowAccount] = useState(false);
   const { items: activityItems, unread: activityUnread, markAllRead, refresh: refreshActivity } =
     useActivity(!!user);
   const { maintenance, message: maintenanceMessage } = useSiteFlags();
@@ -154,7 +157,8 @@ export default function Home() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ handle, action: next ? "follow" : "unfollow" }),
         });
-        if (!res.ok) setFollowing(prev);
+        // A follow on a private account is only a request — not "following" yet.
+        if (!res.ok || (next && (await res.json()).requested)) setFollowing(prev);
       } catch {
         setFollowing(prev);
       }
@@ -291,6 +295,21 @@ export default function Home() {
       }
     },
     [thoughts, removeLocal, identityHandle]
+  );
+
+  const onArchive = useCallback(
+    async (thoughtId: string) => {
+      const snapshot =
+        thoughts.find((t) => t.id === thoughtId) ?? mine.find((t) => t.id === thoughtId);
+      removeLocal(thoughtId);
+      if (!isLive()) return;
+      const ok = await archivePost(thoughtId, true);
+      if (!ok && snapshot) {
+        setThoughts((prev) => [snapshot, ...prev]);
+        setMine((prev) => [snapshot, ...prev]);
+      }
+    },
+    [thoughts, mine, removeLocal]
   );
 
   const undoPublish = useCallback(async () => {
@@ -661,6 +680,13 @@ export default function Home() {
             viewProfileHandle &&
             viewProfileHandle.trim().toLowerCase().replace(/^@/, "") !==
               (user?.handle || "").trim().toLowerCase().replace(/^@/, "");
+          if (showAccount && user) {
+            return (
+              <div className="app-pad pt-4">
+                <AccountCenter onBack={() => setShowAccount(false)} />
+              </div>
+            );
+          }
           return (
             <div className="app-pad pt-4">
               <ProfileView
@@ -669,10 +695,12 @@ export default function Home() {
                 repostedThoughts={reposted}
                 onCreate={() => openShare("video")}
                 onDelete={user ? onDelete : undefined}
+                onArchive={user ? onArchive : undefined}
                 onUnsave={onUnsave}
                 viewHandle={viewingOther ? viewProfileHandle! : undefined}
                 onFollowToggle={(handle, next) => onFeelWith(handle, next)}
                 onBack={() => setViewProfileHandle(null)}
+                onOpenAccount={() => setShowAccount(true)}
               />
               {!viewingOther && (
                 <>
@@ -686,6 +714,7 @@ export default function Home() {
                     checkedInToday={streak.last === todayKey()}
                     displayHandle={identityHandle}
                     signedIn={!!user}
+                    onOpenAccount={user ? () => setShowAccount(true) : undefined}
                   />
                 </>
               )}

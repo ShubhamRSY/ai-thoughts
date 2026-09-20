@@ -27,10 +27,13 @@ export async function POST(request: NextRequest) {
     const { db } = await connectToDatabase();
     const prefs = await upsertPrefs(db, session.handle, {
       email: session.email,
-      email_digest: Boolean(body.email_digest),
-      weekly_digest: body.weekly_digest === undefined ? true : Boolean(body.weekly_digest),
+      // Patch semantics: only fields the caller sent change. New rows default to
+      // off (see upsertPrefs), so nobody is opted into email without choosing it.
+      email_digest: body.email_digest === undefined ? undefined : Boolean(body.email_digest),
+      weekly_digest: body.weekly_digest === undefined ? undefined : Boolean(body.weekly_digest),
       push_enabled:
         body.push_enabled === undefined ? undefined : Boolean(body.push_enabled),
+      onboarded: body.onboarded === undefined ? undefined : Boolean(body.onboarded),
     });
     return NextResponse.json(prefs);
   } catch (error) {

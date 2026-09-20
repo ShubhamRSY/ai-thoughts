@@ -6,6 +6,8 @@ import { notifyPostOwner, notifyMentions } from "@/lib/activity";
 import { extractMentions, normHandle } from "@/lib/mentions";
 import { ObjectId } from "mongodb";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { canViewPost, postHiddenFrom } from "@/lib/visibility";
+import { blockedHandles } from "@/lib/blocks";
 
 const IP_MESSAGE_LIMIT = 30;
 const IP_MESSAGE_WINDOW_MS = 10 * 60_000;
@@ -17,6 +19,12 @@ export async function GET(
   try {
     const { id } = await params;
     const { db } = await connectToDatabase();
+    const viewer = await getSession();
+    if (await postHiddenFrom(db, viewer?.handle ?? null, id)) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    // Replies from anyone in a block relationship with the viewer, either direction.
+    const blocked = new Set((await blockedHandles(db, viewer?.handle ?? null)).map(normHandle));
     const messages = await db
       .collection("messages")
       .find({ post_id: id })
@@ -25,7 +33,9 @@ export async function GET(
       .toArray();
 
     return NextResponse.json(
-      messages.map((m) => ({
+      messages
+        .filter((m) => !blocked.has(normHandle(String(m.handle ?? ""))))
+        .map((m) => ({
         id: m._id.toString(),
         post_id: m.post_id,
         handle: m.handle,
@@ -73,9 +83,12 @@ export async function POST(
     }
     const post = await db.collection("posts").findOne(
       { _id: objectId },
-      { projection: { handle: 1 } }
+      { projection: { handle: 1, archived: 1 } }
     );
     if (!post) return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    if (!(await canViewPost(db, session.handle, post))) {
+      return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    }
 
     const preview = trimmed.slice(0, 600);
     const result = await db.collection("messages").insertOne({

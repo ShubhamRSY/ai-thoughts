@@ -1,6 +1,8 @@
 import { ObjectId } from "mongodb";
 import type { Db } from "mongodb";
 import { sendPushToHandle } from "@/lib/push";
+import { canViewPosts, getPrivacy } from "@/lib/visibility";
+import { isBlockedPair } from "@/lib/blocks";
 
 export type ActivityKind = "reply" | "reaction" | "follow_post" | "mention";
 
@@ -41,6 +43,8 @@ async function writeActivity(
   }
 ): Promise<void> {
   if (normHandle(opts.recipientHandle) === normHandle(opts.actorHandle)) return;
+  // Single sink for notifications and push: a blocked pair never reaches each other.
+  if (await isBlockedPair(db, opts.recipientHandle, opts.actorHandle)) return;
 
   await db.collection("notifications").insertOne({
     recipient_handle: recipientForm(opts.recipientHandle),
@@ -182,6 +186,7 @@ export async function notifyMentions(
 
   const skip = new Set((opts.skipHandles ?? []).map(normHandle));
   skip.add(normHandle(opts.actorHandle));
+  const restricted = (await getPrivacy(db, String(post.handle))) !== "public";
 
   for (const raw of opts.mentioned) {
     const key = normHandle(raw);
@@ -196,6 +201,9 @@ export async function notifyMentions(
       allowed = Boolean(user);
     }
     if (!allowed) continue;
+    // A mention must not carry a private thread's comment to someone who
+    // can't open that thread.
+    if (restricted && !(await canViewPosts(db, `@${key}`, String(post.handle)))) continue;
 
     skip.add(key);
     await writeActivity(db, {

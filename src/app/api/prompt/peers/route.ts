@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
 import { listFollowing } from "@/lib/follows";
+import { hiddenAuthorFilter } from "@/lib/visibility";
 import { dailyPromptForDay, todayKey, yesterdayKey } from "@/lib/daily-prompt";
 
 function norm(h: string) {
@@ -56,6 +57,7 @@ export async function GET(request: NextRequest) {
         .collection("posts")
         .find({
           prompt_day: catchDay,
+          archived: { $ne: true },
           handle: { $in: variants },
         })
         .sort({ created_at: -1 })
@@ -89,7 +91,11 @@ export async function GET(request: NextRequest) {
 
     const rows = await db
       .collection("posts")
-      .find({ prompt_day: day })
+      .find({
+        prompt_day: day,
+        archived: { $ne: true },
+        ...(await hiddenAuthorFilter(db, session?.handle ?? null)),
+      })
       .sort({ created_at: -1 })
       .limit(40)
       .toArray();

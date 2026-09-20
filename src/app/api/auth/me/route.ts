@@ -14,7 +14,7 @@ import { decryptEmail } from "@/lib/secure";
  * GET /api/auth/me — current user from DB (fresh displayName/handle).
  * Slides the session cookie forward and refreshes identity from Mongo.
  */
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ user: null }, { status: 401 });
@@ -37,11 +37,11 @@ export async function GET() {
       ? decryptEmail(userDoc.emailEnc) || session.email
       : session.email;
 
-    const token = await createSession({
-      id: session.id,
-      handle,
-      displayName,
-    });
+    const token = await createSession(
+      { id: session.id, handle, displayName },
+      // A legacy cookie has no sid; passing none here upgrades it to a tracked session.
+      { sid: session.sid, userAgent: request.headers.get("user-agent") }
+    );
 
     const res = NextResponse.json({
       user: {
@@ -55,11 +55,10 @@ export async function GET() {
     return res;
   } catch (e) {
     console.error(e);
-    const token = await createSession({
-      id: session.id,
-      handle: session.handle,
-      displayName: session.displayName,
-    });
+    const token = await createSession(
+      { id: session.id, handle: session.handle, displayName: session.displayName },
+      { sid: session.sid, userAgent: request.headers.get("user-agent") }
+    );
     // Never dump the raw session object — only fields the client needs.
     const res = NextResponse.json({
       user: {

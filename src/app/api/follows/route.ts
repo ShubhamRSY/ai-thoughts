@@ -1,29 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import type { Db } from "mongodb";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
-import { followUser, listFollowers, listFollowing, unfollowUser } from "@/lib/follows";
+import {
+  followUser,
+  getFollowState,
+  listFollowers,
+  listFollowing,
+  resolveProfiles,
+  resolveRequest,
+  unfollowUser,
+} from "@/lib/follows";
+import { getVisibility } from "@/lib/visibility";
+import { blockedByMe } from "@/lib/blocks";
 
 function normHandle(h: string) {
   return h.trim().toLowerCase().replace(/^@/, "");
-}
-
-async function resolveProfiles(db: Db, handles: string[]) {
-  const unique = [...new Set(handles)];
-  if (unique.length === 0) return [];
-  const rows = await db
-    .collection("profiles")
-    .find({ handle: { $in: unique } })
-    .toArray();
-  const byHandle = new Map(rows.map((r) => [String(r.handle), r]));
-  return unique.map((handle) => {
-    const row = byHandle.get(handle);
-    return {
-      handle,
-      author: row?.author ?? handle.replace(/^@/, ""),
-      avatarUrl: row?.avatar_url ?? row?.avatarUrl ?? "",
-    };
-  });
 }
 
 export async function GET(request: NextRequest) {
@@ -34,6 +25,27 @@ export async function GET(request: NextRequest) {
     if (!targetHandle) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
 
     const { db } = await connectToDatabase();
+    const viewer = session?.handle ?? null;
+    const isSelf = !!viewer && normHandle(viewer) === normHandle(targetHandle);
+    const followState =
+      viewer && !isSelf ? await getFollowState(db, viewer, targetHandle) : undefined;
+
+    // Only the blocker ever learns about a block.
+    const iBlocked = viewer && !isSelf ? await blockedByMe(db, viewer, targetHandle) : false;
+
+    const vis = await getVisibility(db, viewer, targetHandle);
+    if (!vis.lists) {
+      return NextResponse.json({
+        following: [],
+        followingProfiles: [],
+        followers: [],
+        restricted: true,
+        blockedByMe: iBlocked || undefined,
+        followState,
+        isFollowedByMe: false,
+      });
+    }
+
     const [following, followerHandles] = await Promise.all([
       listFollowing(db, targetHandle),
       listFollowers(db, targetHandle),
@@ -42,11 +54,14 @@ export async function GET(request: NextRequest) {
       resolveProfiles(db, following),
       resolveProfiles(db, followerHandles),
     ]);
-    const isFollowedByMe =
-      session && normHandle(session.handle) !== normHandle(targetHandle)
-        ? followerHandles.some((h) => normHandle(h) === normHandle(session.handle))
-        : undefined;
-    return NextResponse.json({ following, followingProfiles, followers, isFollowedByMe });
+    return NextResponse.json({
+      following,
+      followingProfiles,
+      followers,
+      followState,
+      blockedByMe: iBlocked || undefined,
+      isFollowedByMe: followState === "following",
+    });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
@@ -62,6 +77,10 @@ export async function POST(request: NextRequest) {
     if (!handle) return NextResponse.json({ error: "handle required" }, { status: 400 });
 
     const { db } = await connectToDatabase();
+    if (body.action === "approve" || body.action === "decline") {
+      const resolved = await resolveRequest(db, session.handle, handle, body.action);
+      return NextResponse.json({ ok: true, resolved });
+    }
     if (body.action === "unfollow") {
       await unfollowUser(db, session.handle, handle);
       return NextResponse.json({ ok: true, following: false });
@@ -69,7 +88,11 @@ export async function POST(request: NextRequest) {
 
     const result = await followUser(db, session.handle, handle);
     if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
-    return NextResponse.json({ ok: true, following: true });
+    return NextResponse.json({
+      ok: true,
+      following: !result.pending,
+      requested: !!result.pending,
+    });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });

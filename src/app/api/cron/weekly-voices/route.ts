@@ -5,6 +5,7 @@ import { sendWeeklyVoicesEmail } from "@/lib/email";
 import { feelingOf } from "@/lib/feelings";
 import type { FeelingId } from "@/lib/types";
 import { authorizeCron } from "@/lib/cron-auth";
+import { hiddenAuthorFilter } from "@/lib/visibility";
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +17,11 @@ export async function GET(request: NextRequest) {
     const weekAgo = new Date(Date.now() - 7 * 864e5);
     const posts = await db
       .collection("posts")
-      .find({ created_at: { $gte: weekAgo } })
+      .find({
+        created_at: { $gte: weekAgo },
+        archived: { $ne: true },
+        ...(await hiddenAuthorFilter(db, null)),
+      })
       .sort({ created_at: -1 })
       .limit(200)
       .toArray();

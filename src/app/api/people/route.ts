@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
-import { listFollowing } from "@/lib/follows";
+import { listFollowing, listRequested } from "@/lib/follows";
+import { hiddenHandles } from "@/lib/visibility";
 
 function norm(h: string) {
   return h.trim().toLowerCase().replace(/^@/, "");
@@ -19,6 +20,7 @@ type PersonRow = {
   bio: string;
   avatarUrl: string;
   following: boolean;
+  requested: boolean;
 };
 
 /**
@@ -41,11 +43,16 @@ export async function GET(request: NextRequest) {
     const { db } = await connectToDatabase();
     const session = await getSession();
     const me = session ? norm(session.handle) : null;
-    const followingSet = new Set(
-      session
-        ? (await listFollowing(db, session.handle)).map((h) => norm(h))
-        : []
-    );
+    const viewer = session?.handle ?? null;
+    const [followingList, requestedList, lockedHidden] = await Promise.all([
+      viewer ? listFollowing(db, viewer) : [],
+      viewer ? listRequested(db, viewer) : [],
+      // Locked accounts are invisible to everyone but themselves and followers.
+      hiddenHandles(db, viewer, ["locked"]),
+    ]);
+    const followingSet = new Set(followingList.map((h) => norm(h)));
+    const requestedSet = new Set(requestedList.map((h) => norm(h)));
+    const lockedSet = new Set(lockedHidden.map((h) => norm(h)));
 
     const people: PersonRow[] = [];
     const seen = new Set<string>();
@@ -60,7 +67,7 @@ export async function GET(request: NextRequest) {
     }) => {
       const handle = withAt(String(p.handle || ""));
       const key = norm(handle);
-      if (!key || (me && key === me) || seen.has(key)) return;
+      if (!key || (me && key === me) || seen.has(key) || lockedSet.has(key)) return;
       seen.add(key);
       people.push({
         handle,
@@ -68,6 +75,7 @@ export async function GET(request: NextRequest) {
         bio: String(p.bio || "").slice(0, 160),
         avatarUrl: String(p.avatar_url || p.avatarUrl || ""),
         following: followingSet.has(key),
+        requested: requestedSet.has(key),
       });
     };
 

@@ -8,6 +8,8 @@ export interface UserPrefs {
   email_digest: boolean;
   weekly_digest: boolean;
   push_enabled: boolean;
+  /** First-run guided onboarding — shown once for brand-new accounts. */
+  onboarded: boolean;
   updated_at: Date;
 }
 
@@ -38,6 +40,9 @@ export async function getPrefs(db: Db, handle: string): Promise<UserPrefs> {
     email_digest: Boolean(row?.email_digest),
     weekly_digest: Boolean(row?.weekly_digest),
     push_enabled: Boolean(row?.push_enabled),
+    // Legacy accounts have no row yet → treat as already onboarded so the
+    // wizard only appears for new accounts (who get a row created at sign-in).
+    onboarded: row?.onboarded !== undefined ? Boolean(row.onboarded) : true,
     updated_at: row?.updated_at instanceof Date ? row.updated_at : new Date(),
   };
 }
@@ -45,7 +50,7 @@ export async function getPrefs(db: Db, handle: string): Promise<UserPrefs> {
 export async function upsertPrefs(
   db: Db,
   handle: string,
-  patch: Partial<Pick<UserPrefs, "email" | "email_digest" | "weekly_digest" | "push_enabled">>
+  patch: Partial<Pick<UserPrefs, "email" | "email_digest" | "weekly_digest" | "push_enabled" | "onboarded">>
 ): Promise<UserPrefs> {
   const $set: Record<string, unknown> = {
     handle,
@@ -64,11 +69,13 @@ export async function upsertPrefs(
   if (patch.email_digest !== undefined) $set.email_digest = patch.email_digest;
   if (patch.weekly_digest !== undefined) $set.weekly_digest = patch.weekly_digest;
   if (patch.push_enabled !== undefined) $set.push_enabled = patch.push_enabled;
+  if (patch.onboarded !== undefined) $set.onboarded = patch.onboarded;
 
   const $setOnInsert: Record<string, unknown> = {};
   if (patch.email_digest === undefined) $setOnInsert.email_digest = false;
   if (patch.weekly_digest === undefined) $setOnInsert.weekly_digest = false;
   if (patch.push_enabled === undefined) $setOnInsert.push_enabled = false;
+  if (patch.onboarded === undefined) $setOnInsert.onboarded = false;
 
   await db.collection("user_prefs").updateOne(
     { handle },

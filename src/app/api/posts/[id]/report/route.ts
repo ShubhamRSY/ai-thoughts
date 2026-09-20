@@ -3,6 +3,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
 import { redactForStorage } from "@/lib/privacy";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { postHiddenFrom } from "@/lib/visibility";
 
 const IP_REPORT_LIMIT = 20;
 const IP_REPORT_WINDOW_MS = 10 * 60_000;
@@ -38,6 +39,9 @@ export async function POST(
         ? body.reason
         : "other";
     const { db } = await connectToDatabase();
+    if (await postHiddenFrom(db, session.handle, id)) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
 
     await db.collection("reports").insertOne({
       post_id: id,

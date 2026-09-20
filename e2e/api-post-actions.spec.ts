@@ -6,6 +6,12 @@ import { test, expect, type APIRequestContext } from "@playwright/test";
 // and exercises exactly the logic that's new: toggle idempotency and the
 // view-count dedup upsert.
 
+// Playwright's request context isn't a browser: it sends the session cookie but
+// no Origin, which src/proxy.ts's CSRF check (correctly) rejects. Send the one
+// a real same-origin fetch would.
+const ORIGIN = process.env.E2E_BASE_URL ?? `http://localhost:${process.env.PORT ?? "3000"}`;
+test.use({ extraHTTPHeaders: { Origin: new URL(ORIGIN).origin } });
+
 async function signIn(request: APIRequestContext): Promise<void> {
   const email = `e2e-actions-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
   const signInRes = await request.post("/api/auth/sign-in", { data: { email } });
@@ -27,6 +33,15 @@ async function createPost(request: APIRequestContext): Promise<string> {
 }
 
 test.describe("post actions: repost, bookmark, views", () => {
+  test("cookie-authenticated mutation from a foreign origin is blocked", async ({ request }) => {
+    await signIn(request);
+    const res = await request.post("/api/posts", {
+      headers: { Origin: "https://evil.example" },
+      data: { content: "csrf probe", media_type: "text" },
+    });
+    expect(res.status()).toBe(403);
+  });
+
   test("repost and bookmark toggle idempotently and independently", async ({ request }) => {
     await signIn(request);
     const postId = await createPost(request);

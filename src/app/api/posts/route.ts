@@ -12,6 +12,14 @@ import { dailyPromptForDay, promptDayKeyUTC } from "@/lib/daily-prompt";
 import { LIKE_REACTION, BOOST_REACTION, BOOKMARK_REACTION, buildLikedBy } from "@/lib/likes";
 import { assertCanPost, contentFingerprint } from "@/lib/anti-abuse";
 import { extractMentions } from "@/lib/mentions";
+import {
+  canBeReposted,
+  canViewPosts,
+  getPrivacy,
+  hiddenAuthorFilter,
+  hiddenHandles,
+} from "@/lib/visibility";
+import { blockedHandles } from "@/lib/blocks";
 
 function normHandle(h: string) {
   return h.trim().toLowerCase().replace(/^@/, "");
@@ -52,6 +60,9 @@ interface PostDoc {
   mentioned_handles?: string[];
   /** Set when this take is a quote-repost — the original take's _id as a string. */
   quoted_post_id?: string | null;
+  /** Author-hidden: visible to the author only (see canViewPost). */
+  archived?: boolean;
+  archived_at?: Date;
   content_fp?: string;
   author_joined_at?: string | null;
   abuse_flags?: string[];
@@ -142,6 +153,25 @@ export async function GET(request: NextRequest) {
       filter = { prompt_day: promptDay };
       limit = 60;
     }
+    const session = await getSession();
+    const viewerHandle = session?.handle ?? null;
+    if (request.nextUrl.searchParams.get("archived") === "1") {
+      // The caller's own archive: only ever their own takes, newest first.
+      filter = viewerHandle
+        ? { handle: { $in: handleVariants(viewerHandle) }, archived: true }
+        : { _id: { $in: [] } };
+      limit = 100;
+    } else {
+      const hiddenFilter = await hiddenAuthorFilter(db, viewerHandle);
+      filter = {
+        $and: [
+          filter,
+          { archived: { $ne: true } },
+          ...(Object.keys(hiddenFilter).length ? [hiddenFilter] : []),
+        ],
+      };
+    }
+
     const posts = await db
       .collection<PostDoc>("posts")
       .find(filter)
@@ -149,7 +179,6 @@ export async function GET(request: NextRequest) {
       .limit(limit)
       .toArray();
 
-    const session = await getSession();
     const me = session?.handle?.trim().toLowerCase().replace(/^@/, "") ?? null;
 
     const postIds = posts.map((p) => p._id?.toString() ?? "");
@@ -225,10 +254,16 @@ export async function GET(request: NextRequest) {
         .filter((v): v is ObjectId => v !== null);
       const quoted = await db
         .collection<PostDoc>("posts")
-        .find({ _id: { $in: objIds } })
+        .find({ _id: { $in: objIds }, archived: { $ne: true } })
         .project({ handle: 1, author: 1, content: 1, media_type: 1, media_url: 1, feeling: 1 })
         .toArray();
+      const hiddenSet = new Set(
+        (await hiddenHandles(db, viewerHandle)).map((h) => normHandle(h))
+      );
       for (const q of quoted) {
+        // A quote of a take this viewer can't see resolves to null, same as a
+        // deleted original.
+        if (hiddenSet.has(normHandle(String(q.handle)))) continue;
         quotedPostsMap.set(String(q._id), {
           id: String(q._id),
           handle: q.handle,
@@ -267,12 +302,19 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Names of blocked users are dropped from "liked by"; the counts are left alone.
+    const blockedSet = new Set((await blockedHandles(db, viewerHandle)).map(normHandle));
+
     const result = posts.map((p) => {
       const id = p._id?.toString() ?? "";
       const reacts = reactMap[id] ?? {};
       const rows = rowsByPost[id] ?? [];
       const heartRows = rows.filter((r) => r.reaction === LIKE_REACTION);
-      const likedBy = buildLikedBy(heartRows, nameByHandle, 5);
+      const likedBy = buildLikedBy(
+        heartRows.filter((r) => !blockedSet.has(normHandle(String(r.handle ?? "")))),
+        nameByHandle,
+        5
+      );
       const unique = new Set(
         heartRows
           .map((r) => r.handle?.trim().toLowerCase().replace(/^@/, ""))
@@ -468,6 +510,20 @@ export async function POST(request: NextRequest) {
         quotedPostId = new ObjectId(body.quoted_post_id.trim()).toString();
       } catch {
         quotedPostId = null;
+      }
+    }
+
+    if (quotedPostId) {
+      const orig = await db
+        .collection<PostDoc>("posts")
+        .findOne({ _id: new ObjectId(quotedPostId) }, { projection: { handle: 1, archived: 1 } });
+      if (
+        orig &&
+        (orig.archived === true ||
+          !canBeReposted(await getPrivacy(db, String(orig.handle))) ||
+          !(await canViewPosts(db, session.handle, String(orig.handle))))
+      ) {
+        return NextResponse.json({ error: "This take can't be quoted" }, { status: 403 });
       }
     }
 
