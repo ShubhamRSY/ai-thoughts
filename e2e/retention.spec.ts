@@ -4,6 +4,8 @@ const tapRow = (page: Page) => page.getByRole("group", { name: "Pick a feeling" 
 
 // The retention loop: anyone can browse, the daily tap asks for sign-in only
 // when tapped, and a signed-in tap sticks. Also the public trust page.
+// GitHub runners are slow and `next dev` compiles on demand: give every wait real headroom.
+const SLOW = { timeout: 30_000 };
 let ip = 60;
 async function signIn(page: Page) {
   ip = (ip + 1) % 250;
@@ -16,28 +18,30 @@ async function signIn(page: Page) {
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page).toHaveURL(/\/app$/);
   // First-run wizard covers the page for brand-new accounts: pick, Next, Skip, Start.
-  await page.getByRole("button", { name: /I use it every day/ }).click({ timeout: 10000 });
+  await page.getByRole("button", { name: /I use it every day/ }).click({ timeout: 30_000 });
   await page.getByRole("button", { name: "Next" }).click();
   await page.getByRole("button", { name: "Skip for now" }).click();
   await page.getByRole("button", { name: "Start exploring" }).click();
 }
 
 test("a guest sees the daily tap and is only sent to sign-in when they use it", async ({ page }) => {
+  test.setTimeout(120_000);
   await page.goto("/app");
-  await expect(page.getByText("How does AI feel today?")).toBeVisible();
+  await expect(page.getByText("How does AI feel today?")).toBeVisible(SLOW);
   await page.waitForLoadState("networkidle"); // let React hydrate the handler
   await tapRow(page).getByRole("button", { name: "Worried" }).click();
-  await expect(page).toHaveURL(/\/sign-in\?next=(%2F|\/)app$/, { timeout: 20000 });
+  await expect(page).toHaveURL(/\/sign-in\?next=(%2F|\/)app$/, { timeout: 30_000 });
 });
 
 test("a signed-in tap is saved and survives a reload", async ({ page }) => {
+  test.setTimeout(120_000);
   await signIn(page);
   const worried = tapRow(page).getByRole("button", { name: "Worried" });
   await worried.click();
-  await expect(worried).toHaveAttribute("aria-pressed", "true");
+  await expect(worried).toHaveAttribute("aria-pressed", "true", SLOW);
   await page.reload();
-  await expect(tapRow(page).getByRole("button", { name: "Worried" })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByLabel("Your last 7 days")).toBeVisible();
+  await expect(tapRow(page).getByRole("button", { name: "Worried" })).toHaveAttribute("aria-pressed", "true", SLOW);
+  await expect(page.getByLabel("Your last 7 days")).toBeVisible(SLOW);
 });
 
 test("mood API requires sign-in", async ({ request }) => {
@@ -47,7 +51,7 @@ test("mood API requires sign-in", async ({ request }) => {
 
 test("trust page shows numbers, support page is hidden without a payment link", async ({ page }) => {
   await page.goto("/trust");
-  await expect(page.getByText("Reports received")).toBeVisible();
+  await expect(page.getByText("Reports received")).toBeVisible(SLOW);
   const res = await page.goto("/support");
   expect(res?.status()).toBe(404);
 });
