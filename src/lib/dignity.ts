@@ -12,12 +12,67 @@ const BLOCKED_PATTERNS: RegExp[] = [
   /\b(rape|raping|molest|behead|lynch)\b/i,
   // Extreme harassment patterns
   /\b(kill\s+yourself|kys\b|go\s+die)\b/i,
+  // Compact variants (matched against spaces/punctuation-stripped input):
+  // "killyourself", "kill me"/"killme", "sextape", "nakedpics"
+  /killyourself|kill\s*me\b/i,
+  /\bsextape\b|\bnakedpics?\b/i,
 ];
 
 /** Soften common false positives for AI critique contexts */
 const ALLOW_IF_CONTEXT: RegExp[] = [
   /\b(sexism|sexual harassment|consent|abuse of power)\b/i,
 ];
+
+// Terms even a "context"-backed post can never use.
+const HARD_ABUSE_SOURCE =
+  /porn|xxx|nigg|faggot|retard|tranny|blowjob|handjob|cumshot|pussy|hentai|kill|sex|naked/i;
+
+/** Common leetspeak substitutions (covers the vast majority of bot spam). */
+const LEET_MAP: Record<string, string> = {
+  "0": "o",
+  "2": "z",
+  "3": "e",
+  "4": "a",
+  "5": "s",
+  "6": "g",
+  "7": "t",
+  "8": "b",
+  "9": "g",
+  "@": "a",
+  $: "s",
+  "!": "i",
+  "|": "i",
+};
+
+/**
+ * Collapse common leetspeak so the filters catch disguised spam.
+ * "1" is ambiguous (reads as "i" in "k1ll" or "l" in "ki11"), so callers can
+ * pick either reading — checkDignity runs both.
+ */
+export function deobfuscate(
+  text: string,
+  opts: { oneAs?: "i" | "l" } = {}
+): string {
+  const one = opts.oneAs ?? "i";
+  return text.replace(/[0-9@$!|]/g, (c) => {
+    if (c === "1") return one;
+    return LEET_MAP[c] ?? c;
+  });
+}
+
+/** Would this single variant violate the dignity filter? */
+function isVariantBlocked(v: string): boolean {
+  if (ALLOW_IF_CONTEXT.some((r) => r.test(v))) {
+    for (const p of BLOCKED_PATTERNS) {
+      if (HARD_ABUSE_SOURCE.test(p.source) && p.test(v)) return true;
+    }
+  } else {
+    for (const p of BLOCKED_PATTERNS) {
+      if (p.test(v)) return true;
+    }
+  }
+  return false;
+}
 
 export type DignityResult =
   | { ok: true }
@@ -27,26 +82,20 @@ export function checkDignity(text: string): DignityResult {
   const raw = text.trim();
   if (!raw) return { ok: true };
 
-  if (ALLOW_IF_CONTEXT.some((r) => r.test(raw))) {
-    // Still block hard sexual/slur terms even in “context” phrases
-    const hard = BLOCKED_PATTERNS.filter((p) =>
-      /porn|xxx|nigg|faggot|retard|tranny|blowjob|handjob|cumshot|pussy|hentai/i.test(
-        p.source
-      )
-    );
-    for (const p of hard) {
-      if (p.test(raw)) {
-        return {
-          ok: false,
-          reason:
-            "Please keep this respectful. Strong opinions about AI are welcome — sexual content and slurs are not.",
-        };
-      }
-    }
+  // The same abuse written with digits swapped in ("k1ll y0urs3lf") or with
+  // separators between letters ("po rn") is caught by re-scanning the
+  // deobfuscated and punctuation-free forms alongside the original. "1" is
+  // tested as both "i" and "l" because leetspeak is ambiguous ("k1ll" vs
+  // "ki11").
+  const candidates: string[] = [raw];
+  for (const oneAs of ["i", "l"] as const) {
+    const leet = deobfuscate(raw, { oneAs });
+    candidates.push(leet, leet.replace(/[^a-zA-Z0-9]/g, ""));
   }
+  const variants = Array.from(new Set(candidates));
 
-  for (const p of BLOCKED_PATTERNS) {
-    if (p.test(raw)) {
+  for (const v of variants) {
+    if (isVariantBlocked(v)) {
       return {
         ok: false,
         reason:

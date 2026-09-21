@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { ShieldCheck } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import BrandMark from "@/components/BrandMark";
 import { BRAND } from "@/lib/brand";
@@ -222,7 +223,12 @@ function SignInFormInner({}: { total: number }) {
           </form>
         )}
 
-        <p className="mt-8 text-center text-[11px] text-[var(--muted)]">
+        <div className="mt-8 flex items-start justify-center gap-2 rounded-xl border border-[var(--border-base)] bg-[var(--surface)]/60 px-3 py-2.5">
+          <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--accent-2)]" />
+          <p className="text-[11px] leading-relaxed text-[var(--muted)]">{BRAND.trustLine}</p>
+        </div>
+
+        <p className="mt-5 text-center text-[11px] text-[var(--muted)]">
           <Link href="/" className="hover:text-[var(--foreground)]">
             ← Back
           </Link>

@@ -143,15 +143,19 @@ export async function postHiddenFrom(
 export async function hiddenHandles(
   db: Db,
   viewer: string | null,
-  levels: Privacy[] = ["private", "locked"]
+  levels: Privacy[] = ["private", "locked"],
+  /** Pass an in-flight blockedHandles() to share that lookup instead of repeating it. */
+  blockedIn?: string[] | Promise<string[]>
 ): Promise<string[]> {
   // Blocked users are hidden regardless of which privacy levels the caller asks about.
-  const blocked = await blockedHandles(db, viewer);
-  const restricted = await db
-    .collection("profiles")
-    .find({ privacy: { $in: levels } })
-    .project({ handle: 1 })
-    .toArray();
+  const [blocked, restricted] = await Promise.all([
+    blockedIn ?? blockedHandles(db, viewer),
+    db
+      .collection("profiles")
+      .find({ privacy: { $in: levels } })
+      .project({ handle: 1 })
+      .toArray(),
+  ]);
   if (!restricted.length) return blocked;
   const names = restricted.map((r) => norm(String(r.handle)));
   const visible = new Set<string>();

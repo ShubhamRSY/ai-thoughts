@@ -143,7 +143,7 @@ test.describe("account privacy: posts", () => {
     ).toBe(404);
     expect((await B.api.post(`/api/posts/${postId}/view`)).status()).toBe(404);
     expect(
-      (await B.api.post(`/api/posts/${postId}/report`, { data: { reason: "other" } })).status()
+      (await B.api.post(`/api/posts/${postId}/report`, { data: { reason: "Spam or coordinated accounts" } })).status()
     ).toBe(404);
 
     // The author still sees it.

@@ -1,5 +1,5 @@
 // AI·Thoughts service worker — shell only; never cache the feed.
-const CACHE = "aithoughts-v7";
+const CACHE = "aithoughts-v8";
 const CORE = ["/offline.html", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {

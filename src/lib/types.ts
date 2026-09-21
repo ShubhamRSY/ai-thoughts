@@ -1,8 +1,11 @@
 export type MediaType = "audio" | "video" | "text";
 
+/** Takes per page of the main feed — GET /api/posts returns this many, `before=` fetches the next page. */
+export const FEED_PAGE_SIZE = 40;
+
 /** Result of attempting to publish a take onto the pulse. */
 export type PublishResult =
-  | { ok: true }
+  | { ok: true; thought?: Thought }
   | { ok: false; reason: "cooldown"; retryInSec: number }
   | { ok: false; reason: "empty" }
   | { ok: false; reason: "too_long"; max: number }

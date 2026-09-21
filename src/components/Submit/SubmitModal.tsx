@@ -14,6 +14,7 @@ import MediaRecorderView, { type CapturedClip } from "@/components/Submit/MediaR
 import TextForm from "@/components/Submit/TextForm";
 import FeelWithPeers from "@/components/FeelWithPeers";
 import SharedSpectrum from "@/components/SharedSpectrum";
+import PublishSuccessActions from "@/components/Submit/PublishSuccessActions";
 
 type Tab = MediaType;
 
@@ -59,7 +60,7 @@ function fmtDur(s: number) {
 
 export default function SubmitModal({
   open,
-  initialTab = "video",
+  initialTab = "text",
   onClose,
   onPublish,
   presetHandle = "",
@@ -81,6 +82,7 @@ export default function SubmitModal({
   const [feeling, setFeeling] = useState<FeelingId | undefined>(presetFeeling);
   const [published, setPublished] = useState(false);
   const [publishedAsPrompt, setPublishedAsPrompt] = useState(false);
+  const [publishedThought, setPublishedThought] = useState<Thought | null>(null);
   const [captured, setCaptured] = useState<CapturedClip | null>(null);
   const [image, setImage] = useState<File | null>(null);
   const [publishError, setPublishError] = useState<string | null>(null);
@@ -207,6 +209,7 @@ export default function SubmitModal({
       return;
     }
     setPublishedAsPrompt(Boolean(fromDailyPrompt));
+    setPublishedThought(result.thought ?? null);
     setPublished(true);
   };
 
@@ -231,18 +234,25 @@ export default function SubmitModal({
 
       {published ? (
         publishedAsPrompt && onFeelWith && onBrowseToday ? (
-          <FeelWithPeers
-            day={todayKey()}
-            signedIn={signedIn}
-            onFeelWith={onFeelWith}
-            onDone={onClose}
-            onBrowseToday={() => {
-              onBrowseToday();
-              onClose();
-            }}
-          />
+          <div className="flex flex-1 flex-col overflow-y-auto">
+            {publishedThought && (
+              <div className="flex justify-center border-b border-[var(--border-base)] px-4 py-3">
+                <PublishSuccessActions thought={publishedThought} compact />
+              </div>
+            )}
+            <FeelWithPeers
+              day={todayKey()}
+              signedIn={signedIn}
+              onFeelWith={onFeelWith}
+              onDone={onClose}
+              onBrowseToday={() => {
+                onBrowseToday();
+                onClose();
+              }}
+            />
+          </div>
         ) : (
-          <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 overflow-y-auto px-6 py-8 text-center">
             <span className="text-4xl text-[var(--accent)]" aria-hidden>
               ◌
             </span>
@@ -253,6 +263,7 @@ export default function SubmitModal({
             <div className="w-full max-w-sm text-left">
               <SharedSpectrum />
             </div>
+            {publishedThought && <PublishSuccessActions thought={publishedThought} />}
             <button
               type="button"
               onClick={onClose}

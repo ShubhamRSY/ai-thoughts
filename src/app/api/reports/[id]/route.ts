@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { getSession, isKeeperHandle } from "@/lib/auth";
+import { logSecurityEvent } from "@/lib/audit";
+import { clientIp } from "@/lib/rate-limit";
+
+const VALID_ACTIONS = new Set(["resolve", "dismiss", "ignore", "remove"]);
 
 export async function POST(
   request: NextRequest,
@@ -22,11 +26,46 @@ export async function POST(
       return NextResponse.json({ error: "Invalid id" }, { status: 400 });
     }
 
-    const action = new URL(request.url).searchParams.get("action");
+    const action = new URL(request.url).searchParams.get("action") ?? "";
+    if (!VALID_ACTIONS.has(action)) {
+      return NextResponse.json(
+        { error: "Invalid action", allowed: [...VALID_ACTIONS] },
+        { status: 400 }
+      );
+    }
+
     const { db } = await connectToDatabase();
-    await db
-      .collection("reports")
-      .updateOne({ _id: objectId }, { $set: { status: "resolved" } });
+    const report = await db.collection("reports").findOne(
+      { _id: objectId },
+      { projection: { post_id: 1, status: 1 } }
+    );
+    if (!report) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    const resolvedAt = new Date();
+    await db.collection("reports").updateOne(
+      { _id: objectId },
+      {
+        $set: {
+          status: "resolved",
+          resolution: action,
+          resolved_by: session.handle,
+          resolved_at: resolvedAt,
+        },
+      }
+    );
+
+    // Keep an audit trail: keepers are privileged, so who did what and when
+    // must be reconstructable after the fact.
+    await logSecurityEvent(db, {
+      action: "resolve_report",
+      actorHandle: session.handle,
+      via: "session",
+      ip: clientIp(request),
+      detail: { report_id: id, post_id: report.post_id, resolution: action },
+    });
+
     return NextResponse.json({ ok: true, action });
   } catch (error) {
     console.error(error);

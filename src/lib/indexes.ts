@@ -1,4 +1,4 @@
-import type { Db } from "mongodb";
+import type { Db, ObjectId } from "mongodb";
 
 let ensured = false;
 
@@ -62,6 +62,12 @@ export async function ensureCoreIndexes(db: Db): Promise<void> {
       { recipient_handle: 1, created_at: -1 },
       { name: "notifications_recipient_created" }
     ),
+    // The inbox only shows the latest 40, so notifications older than 90 days are dead weight.
+    // Also serves the created_at-sorted scan in GET /api/activity.
+    db.collection("notifications").createIndex(
+      { created_at: 1 },
+      { expireAfterSeconds: 60 * 60 * 24 * 90, name: "notifications_ttl" }
+    ),
     db.collection("reactions").createIndex(
       { post_id: 1, handle_norm: 1, reaction: 1 },
       { unique: true, sparse: true, name: "reactions_post_handle_reaction" }
@@ -79,6 +85,37 @@ export async function ensureCoreIndexes(db: Db): Promise<void> {
       // Index already exists with different options, or duplicate key on unique — log, don't crash health.
       console.warn("ensureCoreIndexes:", msg);
     }
+  }
+
+  // One report queue entry per (post, reporter): collapse legacy duplicates
+  // first so the unique index can be built, then enforce it going forward.
+  // Best-effort — a failure here must not break boot (the report route also
+  // guards against duplicates on its own).
+  try {
+    const reports = db.collection("reports");
+    const groups = await reports
+      .aggregate<{ ids: ObjectId[] }>([
+        {
+          $group: {
+            _id: { post_id: "$post_id", reporter_handle: "$reporter_handle" },
+            ids: { $push: "$_id" },
+          },
+        },
+        { $match: { $expr: { $gt: [{ $size: "$ids" }, 1] } } },
+      ])
+      .toArray();
+    // Keep one row per duplicate group and drop only that group's extras —
+    // never touch other groups' rows.
+    const surplus = groups.flatMap((g) => g.ids.slice(1));
+    if (surplus.length > 0) {
+      await reports.deleteMany({ _id: { $in: surplus } });
+    }
+    await reports.createIndex(
+      { post_id: 1, reporter_handle: 1 },
+      { unique: true, name: "reports_post_reporter_unique" }
+    );
+  } catch (e) {
+    console.warn("ensureCoreIndexes reports:", (e as Error)?.message || e);
   }
 
   ensured = true;

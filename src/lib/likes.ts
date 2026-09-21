@@ -5,6 +5,17 @@ export const BOOST_REACTION = "🔁" as const;
 /** Bookmark — private; see shouldNotifyOwner. */
 export const BOOKMARK_REACTION = "🔖" as const;
 
+/** Every reaction the product recognizes. Anything else is junk data. */
+export const VALID_REACTIONS: readonly string[] = [
+  LIKE_REACTION,
+  BOOST_REACTION,
+  BOOKMARK_REACTION,
+];
+
+export function isValidReaction(reaction: string): boolean {
+  return VALID_REACTIONS.includes(reaction);
+}
+
 /** Bookmarking must stay private — the post owner never learns who saved it. */
 export function shouldNotifyOwner(reaction: string): boolean {
   return reaction !== BOOKMARK_REACTION;

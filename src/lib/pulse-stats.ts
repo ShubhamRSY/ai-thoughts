@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { connectToDatabase, isMongoConfigured } from "@/lib/mongodb";
 import { INITIAL_THOUGHTS } from "@/lib/mock-data";
 import type { FeelingId } from "@/lib/types";
@@ -48,10 +49,11 @@ export function crowdCountLabel(total: number): string {
   return `${bucket.toLocaleString()}+ people already expressing themselves.`;
 }
 
-export async function getPulseStats(): Promise<PulseStats> {
-  if (!isMongoConfigured()) return FALLBACK_STATS;
-
-  try {
+// Landing / sign-in are hit by every visitor (and every shared link), so the
+// two queries run at most once a minute per deployment instead of per request.
+// Throws on a DB error so a failure is never cached — the caller falls back.
+const loadPulseStats = unstable_cache(
+  async (): Promise<PulseStats> => {
     const { db } = await connectToDatabase();
     const [total, recent] = await Promise.all([
       db.collection("posts").countDocuments(),
@@ -76,6 +78,15 @@ export async function getPulseStats(): Promise<PulseStats> {
         timeLabel: timeAgo(p.created_at instanceof Date ? p.created_at : new Date(p.created_at as string)),
       })),
     };
+  },
+  ["pulse-stats"],
+  { revalidate: 60 }
+);
+
+export async function getPulseStats(): Promise<PulseStats> {
+  if (!isMongoConfigured()) return FALLBACK_STATS;
+  try {
+    return await loadPulseStats();
   } catch {
     return FALLBACK_STATS;
   }

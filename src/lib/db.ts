@@ -140,10 +140,13 @@ function toThought(r: RawPost): Thought {
 
 export async function fetchPulsePosts(opts?: {
   promptDay?: string;
+  /** ISO timestamp — return only takes older than this (next page of the feed). */
+  before?: string;
 }): Promise<Thought[] | null> {
   try {
     const q = new URLSearchParams({ t: String(Date.now()) });
     if (opts?.promptDay) q.set("prompt_day", opts.promptDay);
+    if (opts?.before) q.set("before", opts.before);
     const rows = await jsonFetch<RawPost[]>(`${API}/posts?${q}`);
     return rows.map(toThought);
   } catch (e) {

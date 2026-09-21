@@ -21,11 +21,14 @@ import { useActivity } from "@/components/ActivityPanel";
 import ActivityView from "@/components/ActivityView";
 import PeopleSearchView from "@/components/PeopleSearchView";
 import MaintenanceBanner, { useSiteFlags } from "@/components/MaintenanceBanner";
+import OnboardingWizard from "@/components/OnboardingWizard";
+import PulseMoved from "@/components/PulseMoved";
 import { digestBytes } from "@/lib/integrity";
 import { useLocalProfile } from "@/hooks/useLocalProfile";
 import { useAuth } from "@/hooks/useAuth";
 import { useFeelingStreak } from "@/hooks/useFeelingStreak";
 import type { MediaType, Thought, FeelingId, Reaction, PublishResult } from "@/lib/types";
+import { FEED_PAGE_SIZE } from "@/lib/types";
 import {
   fetchPulsePosts,
   isLive,
@@ -54,6 +57,9 @@ export default function Home() {
   const { streak, bump } = useFeelingStreak();
   const [thoughts, setThoughts] = useState<Thought[]>([]);
   const [feedStatus, setFeedStatus] = useState<"loading" | "ready" | "error">("loading");
+  /** Timestamp of the oldest take loaded from the main feed; null = nothing older to load. */
+  const [feedCursor, setFeedCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [focusPostId, setFocusPostId] = useState<string | null>(null);
   const [mine, setMine] = useState<Thought[]>([]);
   const [media, setMedia] = useState<MediaFilter>("all");
@@ -68,6 +74,8 @@ export default function Home() {
   const [undoId, setUndoId] = useState<string | null>(null);
   const [following, setFollowing] = useState<string[]>([]);
   const [shareFromDaily, setShareFromDaily] = useState(false);
+  /** null = not loaded yet (wizard hidden to avoid flash); true = already onboarded. */
+  const [onboarded, setOnboarded] = useState<boolean | null>(null);
   /** Handle whose profile the "You" tab is currently showing (null = your own). */
   const [viewProfileHandle, setViewProfileHandle] = useState<string | null>(null);
   const [showAccount, setShowAccount] = useState(false);
@@ -87,6 +95,26 @@ export default function Home() {
         if (!cancelled && data?.following) setFollowing(data.following);
       })
       .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  // First-run onboarding: only new accounts have onboarded=false in prefs.
+  useEffect(() => {
+    if (!user) {
+      setOnboarded(null);
+      return;
+    }
+    let cancelled = false;
+    fetch("/api/prefs", { credentials: "include", cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled) setOnboarded(data ? Boolean(data.onboarded) : true);
+      })
+      .catch(() => {
+        if (!cancelled) setOnboarded(true);
+      });
     return () => {
       cancelled = true;
     };
@@ -224,7 +252,7 @@ export default function Home() {
   }, []);
 
   const openShare = (
-    tabPref: MediaType = "video",
+    tabPref: MediaType = "text",
     presetFeeling?: FeelingId,
     fromDaily = false
   ) => {
@@ -249,6 +277,20 @@ export default function Home() {
     setRegionScope("today");
   }, []);
 
+  const finishOnboarding = useCallback(async () => {
+    setOnboarded(true);
+    try {
+      await fetch("/api/prefs", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ onboarded: true }),
+      });
+    } catch {
+      /* Session-local flag already covers it. */
+    }
+  }, []);
+
   const handleOpenRoom = (id: FeelingId) => {
     setFeeling(id);
     setRoom(id);
@@ -260,7 +302,7 @@ export default function Home() {
   };
 
   const handleShareInRoom = (id: FeelingId) => {
-    openShare("video", id);
+    openShare("text", id);
   };
 
   const onReport = useCallback(
@@ -359,7 +401,7 @@ export default function Home() {
         setUndoId(posted.thought.id);
         setFocusPostId(posted.thought.id);
         bump(data.feeling);
-        return { ok: true };
+        return { ok: true, thought: posted.thought };
       }
 
       markPublished();
@@ -377,7 +419,7 @@ export default function Home() {
       setMine((prev) => [newThought, ...prev]);
       setUndoId(newThought.id);
       bump(data.feeling);
-      return { ok: true };
+      return { ok: true, thought: newThought };
     },
     [profile, save, bump, user]
   );
@@ -446,12 +488,36 @@ export default function Home() {
         }
         return;
       }
-      setThoughts(posts);
+      const last = posts.length >= FEED_PAGE_SIZE ? posts[posts.length - 1].timestamp : null;
+      if (silent && last) {
+        // Quiet refresh: refresh the newest page but keep older pages the reader already loaded.
+        const oldest = Date.parse(last);
+        setThoughts((prev) => [...posts, ...prev.filter((t) => Date.parse(t.timestamp) < oldest)]);
+        setFeedCursor((prev) => (prev && Date.parse(prev) < oldest ? prev : last));
+      } else {
+        setThoughts(posts);
+        setFeedCursor(last);
+      }
       setMine(posts.filter((t) => sameAuthor(t.handle, identityHandle)));
       setFeedStatus("ready");
     },
     [identityHandle]
   );
+
+  const loadOlder = useCallback(async () => {
+    if (!feedCursor || loadingMore) return;
+    setLoadingMore(true);
+    const rows = await fetchPulsePosts({ before: feedCursor });
+    setLoadingMore(false);
+    if (!rows) return;
+    setThoughts((prev) => {
+      const seen = new Set(prev.map((t) => t.id));
+      return [...prev, ...rows.filter((t) => !seen.has(t.id))].sort(
+        (a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp)
+      );
+    });
+    setFeedCursor(rows.length >= FEED_PAGE_SIZE ? rows[rows.length - 1].timestamp : null);
+  }, [feedCursor, loadingMore]);
 
   // First load + when signed-in identity changes
   useEffect(() => {
@@ -526,12 +592,12 @@ export default function Home() {
           setViewProfileHandle(null);
           if (t === "activity") void refreshActivity();
         }}
-        onCreate={() => openShare("video")}
+        onCreate={() => openShare("text")}
         activityCount={activityUnread}
       />
       <div className="app-frame flex-1">
       <MaintenanceBanner />
-      <Header onShare={() => openShare("video")} />
+      <Header onShare={() => openShare("text")} />
 
       <main className="flex-1 pb-nav">
         {tab === "home" && (
@@ -572,6 +638,8 @@ export default function Home() {
                   }}
                   onAnswerToday={() => openShare("text", undefined, true)}
                 />
+
+                <PulseMoved />
 
                 <FilterBar
                   media={media}
@@ -634,6 +702,18 @@ export default function Home() {
                               : "Be the first to share how AI makes you feel."
                     }
                   />
+                  {feedCursor && feedStatus === "ready" && (
+                    <div className="mt-6 flex justify-center">
+                      <button
+                        type="button"
+                        onClick={() => void loadOlder()}
+                        disabled={loadingMore}
+                        className="rounded-full border border-[var(--border-base)] px-5 py-2 text-sm font-semibold text-[var(--foreground)] hover:border-[var(--accent)] disabled:opacity-60"
+                      >
+                        {loadingMore ? "Loading…" : "Load older takes"}
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-8">
@@ -693,7 +773,7 @@ export default function Home() {
                 myThoughts={mine}
                 savedThoughts={saved}
                 repostedThoughts={reposted}
-                onCreate={() => openShare("video")}
+                onCreate={() => openShare("text")}
                 onDelete={user ? onDelete : undefined}
                 onArchive={user ? onArchive : undefined}
                 onUnsave={onUnsave}
@@ -708,7 +788,7 @@ export default function Home() {
                     count={streak.count}
                     todayFeeling={streak.todayFeeling}
                     checkedInToday={streak.last === todayKey()}
-                    onCreate={() => openShare("video")}
+                    onCreate={() => openShare("text")}
                   />
                   <DailyHabits
                     checkedInToday={streak.last === todayKey()}
@@ -765,6 +845,16 @@ export default function Home() {
         }}
         onPublish={publish}
       />
+
+      {user && onboarded === false && (
+        <OnboardingWizard
+          identityHandle={identityHandle}
+          identityAuthor={identityAuthor}
+          onPublish={publish}
+          onFeelWith={onFeelWith}
+          onDone={finishOnboarding}
+        />
+      )}
     </div>
   );
 }

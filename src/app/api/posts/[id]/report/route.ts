@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ObjectId } from "mongodb";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
 import { redactForStorage } from "@/lib/privacy";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
-import { postHiddenFrom } from "@/lib/visibility";
+import { canViewPost } from "@/lib/visibility";
 
 const IP_REPORT_LIMIT = 20;
 const IP_REPORT_WINDOW_MS = 10 * 60_000;
@@ -17,6 +18,8 @@ const VALID_REASONS = new Set([
   "Impersonation",
   "Harms someone",
 ]);
+
+const MAX_REPORTED_HANDLE = 64;
 
 export async function POST(
   request: NextRequest,
@@ -33,30 +36,74 @@ export async function POST(
     }
 
     const { id } = await params;
+    let objectId: ObjectId;
+    try {
+      objectId = new ObjectId(id);
+    } catch {
+      return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+    }
     const body = await request.json();
     const reason =
-      typeof body.reason === "string" && VALID_REASONS.has(body.reason)
-        ? body.reason
-        : "other";
+      typeof body.reason === "string" ? body.reason.trim() : "";
+    if (!VALID_REASONS.has(reason)) {
+      return NextResponse.json(
+        { error: "Invalid report reason", allowed: [...VALID_REASONS] },
+        { status: 400 }
+      );
+    }
     const { db } = await connectToDatabase();
-    if (await postHiddenFrom(db, session.handle, id)) {
+    const post = await db
+      .collection("posts")
+      .findOne({ _id: objectId }, { projection: { handle: 1, archived: 1 } });
+    // A report must point at a real, currently-viewable take — otherwise the
+    // reports queue fills with junk aimed at ghosts.
+    if (!post || !(await canViewPost(db, session.handle, post))) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    await db.collection("reports").insertOne({
+    const reports = db.collection("reports");
+    // One report per (post, reporter) keeps the desk free of duplicate noise
+    // and stops one user from farming fake heat onto a single take.
+    const existing = await reports.findOne({
       post_id: id,
-      reason,
       reporter_handle: session.handle,
-      reported_handle:
-        typeof body.reported_handle === "string" ? body.reported_handle : null,
-      // Short, PII-scrubbed hint for keepers — never raw emails/phones.
-      content_snippet:
-        typeof body.content_snippet === "string"
-          ? redactForStorage(body.content_snippet, 120)
-          : null,
-      status: "open",
-      created_at: new Date(),
     });
+    if (existing) {
+      return NextResponse.json({ ok: true, alreadyReported: true });
+    }
+
+    try {
+      await reports.insertOne({
+        post_id: id,
+        reason,
+        reporter_handle: session.handle,
+        // The reported author comes from the post itself — never trust the
+        // client with who "owned" the content.
+        reported_handle:
+          typeof post.handle === "string"
+            ? post.handle
+            : typeof body.reported_handle === "string"
+              ? body.reported_handle.slice(0, MAX_REPORTED_HANDLE)
+              : null,
+        // Short, PII-scrubbed hint for keepers — never raw emails/phones.
+        content_snippet:
+          typeof body.content_snippet === "string"
+            ? redactForStorage(body.content_snippet, 120)
+            : null,
+        status: "open",
+        created_at: new Date(),
+      });
+    } catch (error) {
+      // Another request won the (post, reporter) dedupe race.
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        (error as { code?: number }).code === 11000
+      ) {
+        return NextResponse.json({ ok: true, alreadyReported: true });
+      }
+      throw error;
+    }
 
     return NextResponse.json({ ok: true });
   } catch (error) {

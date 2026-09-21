@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { connectToDatabase } from "@/lib/mongodb";
-import { ObjectId } from "mongodb";
+import { ObjectId, type Document } from "mongodb";
 import { getSession } from "@/lib/auth";
 import { FEELINGS } from "@/lib/feelings";
+import { FEED_PAGE_SIZE } from "@/lib/types";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { checkDignity, normalizeTag } from "@/lib/dignity";
 import { GLOBAL_SEED_POSTS } from "@/lib/seed-posts";
@@ -16,7 +17,6 @@ import {
   canBeReposted,
   canViewPosts,
   getPrivacy,
-  hiddenAuthorFilter,
   hiddenHandles,
 } from "@/lib/visibility";
 import { blockedHandles } from "@/lib/blocks";
@@ -76,8 +76,25 @@ function hash(s: string) {
   return createHash("sha256").update(s).digest("hex").slice(0, 16);
 }
 
+let lastSeedCheck = 0;
+const SEED_CHECK_EVERY_MS = 5 * 60_000;
+
 /** Idempotent: fill any missing global sample takes so the feed never looks empty. */
 async function ensureSamplePosts(
+  db: Awaited<ReturnType<typeof connectToDatabase>>["db"]
+) {
+  // Steady state is "nothing missing" — don't spend two DB round trips on it every request.
+  if (Date.now() - lastSeedCheck < SEED_CHECK_EVERY_MS) return;
+  lastSeedCheck = Date.now();
+  try {
+    await seedSamplePosts(db);
+  } catch (e) {
+    lastSeedCheck = 0; // retry on the next request
+    throw e;
+  }
+}
+
+async function seedSamplePosts(
   db: Awaited<ReturnType<typeof connectToDatabase>>["db"]
 ) {
   try {
@@ -135,14 +152,19 @@ async function ensureSamplePosts(
 export async function GET(request: NextRequest) {
   try {
     const { db } = await connectToDatabase();
-    await ensureSamplePosts(db);
 
     const promptDay = request.nextUrl.searchParams.get("prompt_day")?.trim();
     const handleParam = request.nextUrl.searchParams.get("handle")?.trim();
     const taggedParam = request.nextUrl.searchParams.get("tagged")?.trim();
+    // Cursor for "load older": only takes strictly older than this ISO timestamp.
+    const beforeRaw = request.nextUrl.searchParams.get("before")?.trim();
+    const before = beforeRaw ? new Date(beforeRaw) : null;
+    if (before && Number.isNaN(before.getTime())) {
+      return NextResponse.json({ error: "Invalid before" }, { status: 400 });
+    }
 
     let filter: Record<string, unknown> = {};
-    let limit = 40;
+    let limit = FEED_PAGE_SIZE;
     if (handleParam) {
       filter = { handle: { $in: handleVariants(handleParam) } };
       limit = 200;
@@ -153,8 +175,13 @@ export async function GET(request: NextRequest) {
       filter = { prompt_day: promptDay };
       limit = 60;
     }
-    const session = await getSession();
+    // Independent of each other — run together.
+    const [session] = await Promise.all([getSession(), ensureSamplePosts(db)]);
     const viewerHandle = session?.handle ?? null;
+    // Shared by the author filter, the quote previews and the liked-by list below.
+    const blockedP = blockedHandles(db, viewerHandle);
+    void blockedP.catch(() => {}); // awaited below; avoids an unhandled rejection if we bail out first
+    let hidden: string[] | null = null;
     if (request.nextUrl.searchParams.get("archived") === "1") {
       // The caller's own archive: only ever their own takes, newest first.
       filter = viewerHandle
@@ -162,12 +189,13 @@ export async function GET(request: NextRequest) {
         : { _id: { $in: [] } };
       limit = 100;
     } else {
-      const hiddenFilter = await hiddenAuthorFilter(db, viewerHandle);
+      hidden = await hiddenHandles(db, viewerHandle, undefined, blockedP);
       filter = {
         $and: [
           filter,
           { archived: { $ne: true } },
-          ...(Object.keys(hiddenFilter).length ? [hiddenFilter] : []),
+          ...(before ? [{ created_at: { $lt: before } }] : []),
+          ...(hidden.length ? [{ handle: { $nin: hidden } }] : []),
         ],
       };
     }
@@ -182,15 +210,53 @@ export async function GET(request: NextRequest) {
     const me = session?.handle?.trim().toLowerCase().replace(/^@/, "") ?? null;
 
     const postIds = posts.map((p) => p._id?.toString() ?? "");
-    const reactions = await db
-      .collection<{
-        post_id: string;
-        reaction: string;
-        handle?: string;
-        created_at?: Date;
-      }>("reactions")
-      .find({ post_id: { $in: postIds } })
-      .toArray();
+
+    // Hydrate embedded quote-repost previews. A missing entry (original
+    // deleted) just resolves to null — the client shows "removed" instead.
+    const quotedIds = [
+      ...new Set(posts.map((p) => p.quoted_post_id).filter((v): v is string => Boolean(v))),
+    ];
+    const quotedObjIds = quotedIds
+      .map((id) => {
+        try {
+          return new ObjectId(id);
+        } catch {
+          return null;
+        }
+      })
+      .filter((v): v is ObjectId => v !== null);
+    const countBy = (collection: string) =>
+      postIds.length > 0
+        ? db
+            .collection(collection)
+            .aggregate<{ _id: string; n: number }>([
+              { $match: { post_id: { $in: postIds } } },
+              { $group: { _id: "$post_id", n: { $sum: 1 } } },
+            ])
+            .toArray()
+        : Promise.resolve([] as { _id: string; n: number }[]);
+
+    // None of these depend on each other — one round trip instead of four.
+    const [reactions, quoted, messageRows, viewRows] = await Promise.all([
+      db
+        .collection<{
+          post_id: string;
+          reaction: string;
+          handle?: string;
+          created_at?: Date;
+        }>("reactions")
+        .find({ post_id: { $in: postIds } })
+        .toArray(),
+      quotedObjIds.length > 0
+        ? db
+            .collection<PostDoc>("posts")
+            .find({ _id: { $in: quotedObjIds }, archived: { $ne: true } })
+            .project({ handle: 1, author: 1, content: 1, media_type: 1, media_url: 1, feeling: 1 })
+            .toArray()
+        : Promise.resolve([] as Document[]),
+      countBy("messages"),
+      countBy("post_views"),
+    ]);
 
     const reactMap: Record<string, Record<string, number>> = {};
     const rowsByPost: Record<
@@ -225,11 +291,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Hydrate embedded quote-repost previews. A missing entry (original
-    // deleted) just resolves to null — the client shows "removed" instead.
-    const quotedIds = [
-      ...new Set(posts.map((p) => p.quoted_post_id).filter((v): v is string => Boolean(v))),
-    ];
     const quotedPostsMap = new Map<
       string,
       {
@@ -242,23 +303,11 @@ export async function GET(request: NextRequest) {
         feeling: string | null;
       }
     >();
-    if (quotedIds.length > 0) {
-      const objIds = quotedIds
-        .map((id) => {
-          try {
-            return new ObjectId(id);
-          } catch {
-            return null;
-          }
-        })
-        .filter((v): v is ObjectId => v !== null);
-      const quoted = await db
-        .collection<PostDoc>("posts")
-        .find({ _id: { $in: objIds }, archived: { $ne: true } })
-        .project({ handle: 1, author: 1, content: 1, media_type: 1, media_url: 1, feeling: 1 })
-        .toArray();
+    if (quoted.length > 0) {
       const hiddenSet = new Set(
-        (await hiddenHandles(db, viewerHandle)).map((h) => normHandle(h))
+        (hidden ?? (await hiddenHandles(db, viewerHandle, undefined, blockedP))).map((h) =>
+          normHandle(h)
+        )
       );
       for (const q of quoted) {
         // A quote of a take this viewer can't see resolves to null, same as a
@@ -277,33 +326,12 @@ export async function GET(request: NextRequest) {
     }
 
     const messageCounts = new Map<string, number>();
+    for (const row of messageRows) if (row._id) messageCounts.set(String(row._id), row.n);
     const viewCounts = new Map<string, number>();
-    if (postIds.length > 0) {
-      const counts = await db
-        .collection("messages")
-        .aggregate<{ _id: string; n: number }>([
-          { $match: { post_id: { $in: postIds } } },
-          { $group: { _id: "$post_id", n: { $sum: 1 } } },
-        ])
-        .toArray();
-      for (const row of counts) {
-        if (row._id) messageCounts.set(String(row._id), row.n);
-      }
-
-      const views = await db
-        .collection("post_views")
-        .aggregate<{ _id: string; n: number }>([
-          { $match: { post_id: { $in: postIds } } },
-          { $group: { _id: "$post_id", n: { $sum: 1 } } },
-        ])
-        .toArray();
-      for (const row of views) {
-        if (row._id) viewCounts.set(String(row._id), row.n);
-      }
-    }
+    for (const row of viewRows) if (row._id) viewCounts.set(String(row._id), row.n);
 
     // Names of blocked users are dropped from "liked by"; the counts are left alone.
-    const blockedSet = new Set((await blockedHandles(db, viewerHandle)).map(normHandle));
+    const blockedSet = new Set((await blockedP).map(normHandle));
 
     const result = posts.map((p) => {
       const id = p._id?.toString() ?? "";

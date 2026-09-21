@@ -36,6 +36,25 @@ Use the **same Microsoft account** for Partner Center that owns the developer en
 
 Keep `"applicationId": "AiTo"`. Commit and push **before** building.
 
+## Tile images (required for certification 10.1.1.11)
+
+Custom tiles live in `desktop/build/appx/` — electron-builder packs every PNG there into
+`assets/` and references them from the manifest. Without them it ships electron-builder's
+**default sample tiles**, which Microsoft rejects. Do not delete this folder.
+
+| File | Purpose |
+|------|---------|
+| `StoreLogo.png` (50×50) | Store logo |
+| `Square44x44Logo.png` | Small (44×44) tile |
+| `SmallTile.png` (71×71) | Square71x71 tile |
+| `Square150x150Logo.png` | Medium (default) tile |
+| `LargeTile.png` (310×310) | Wide/large tile support |
+| `Wide310x150Logo.png` | Wide tile |
+| `SplashScreen.png` (620×300) | Splash screen |
+| `BadgeLogo.png` (24×24) | Notification badge |
+
+Regenerate from `public/icons/app-icon.svg` with `scripts/gen-appx-tiles.mjs` if branding changes.
+
 ## 3. Build the APPX (GitHub Actions — works from a Mac)
 
 1. After identity values are pushed:

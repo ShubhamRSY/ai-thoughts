@@ -76,7 +76,10 @@ export function decodeSessionPayload(encoded: string): unknown {
     const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
     return JSON.parse(new TextDecoder().decode(bytes));
   } catch {
-    return JSON.parse(atob(encoded));
+    // Never throw from here — callers (e.g. verifySessionToken) treat a
+    // malformed payload as "no session". The old `atob` fallback always threw
+    // on url-safe input anyway.
+    return null;
   }
 }
 

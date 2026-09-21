@@ -13,6 +13,11 @@ const EMAIL_OTP_WINDOW_MS = 15 * 60_000;
 const GLOBAL_OTP_LIMIT = 40;
 const GLOBAL_OTP_WINDOW_MS = 60 * 60_000;
 
+// Codes are only ever handed back to the requester when dev mode is on
+// (see `devCode` below) — no provider is being used, so the global cap that
+// exists to protect a real email quota only applies once one is configured.
+const isDevCodeMode = process.env.NODE_ENV !== "production" && !process.env.RESEND_API_KEY;
+
 export async function POST(request: Request) {
   try {
     const existing = await getSession();
@@ -45,16 +50,18 @@ export async function POST(request: Request) {
       );
     }
 
-    const { ok: globalOk, retryInSec: globalRetry } = await rateLimit(
-      "sign-in:global",
-      GLOBAL_OTP_LIMIT,
-      GLOBAL_OTP_WINDOW_MS
-    );
-    if (!globalOk) {
-      return NextResponse.json(
-        { error: "Sign-in is temporarily busy — try again soon", retry_in_sec: globalRetry },
-        { status: 429 }
+    if (!isDevCodeMode) {
+      const { ok: globalOk, retryInSec: globalRetry } = await rateLimit(
+        "sign-in:global",
+        GLOBAL_OTP_LIMIT,
+        GLOBAL_OTP_WINDOW_MS
       );
+      if (!globalOk) {
+        return NextResponse.json(
+          { error: "Sign-in is temporarily busy — try again soon", retry_in_sec: globalRetry },
+          { status: 429 }
+        );
+      }
     }
 
     const body = await request.json();
@@ -112,7 +119,7 @@ export async function POST(request: Request) {
       message: "Check your email for a 6-digit code",
     };
 
-    if (process.env.NODE_ENV !== "production" && !process.env.RESEND_API_KEY) {
+    if (isDevCodeMode) {
       payload.devCode = code;
     }
 

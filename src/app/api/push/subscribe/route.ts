@@ -42,7 +42,9 @@ export async function DELETE(request: NextRequest) {
     const body = await request.json().catch(() => ({}));
     const endpoint = typeof body.endpoint === "string" ? body.endpoint : "";
     const { db } = await connectToDatabase();
-    if (endpoint) await removePushSubscription(db, endpoint);
+    // Only remove the caller's own subscription, never someone else's by
+    // guessing their (non-secret) endpoint URL.
+    if (endpoint) await removePushSubscription(db, endpoint, session.handle);
     await upsertPrefs(db, session.handle, { push_enabled: false, email: session.email });
     return NextResponse.json({ ok: true });
   } catch (error) {

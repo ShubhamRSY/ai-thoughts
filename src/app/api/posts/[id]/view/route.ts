@@ -4,9 +4,14 @@ import { ObjectId } from "mongodb";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
 import { canViewPost } from "@/lib/visibility";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 const ANON_ID_COOKIE = "aithoughts.anon";
 const ANON_ID_MAX_AGE = 400 * 24 * 3600; // ~13 months, well past any session
+// Views write a deduped row per (post, viewer) — generous but bounded so a
+// script can't churn unbounded rows into post_views.
+const IP_VIEW_LIMIT = 300;
+const IP_VIEW_WINDOW_MS = 10 * 60_000;
 
 /**
  * POST /api/posts/[id]/view — record that the current viewer has seen this
@@ -32,6 +37,18 @@ export async function POST(
     }
 
     const session = await getSession();
+    const ip = clientIp(request);
+    const { ok: ipOk, retryInSec } = await rateLimit(
+      `view:${ip}`,
+      IP_VIEW_LIMIT,
+      IP_VIEW_WINDOW_MS
+    );
+    if (!ipOk) {
+      return NextResponse.json(
+        { error: "Too many requests — slow down", retry_in_sec: retryInSec },
+        { status: 429 }
+      );
+    }
     const existingAnonId = request.cookies.get(ANON_ID_COOKIE)?.value;
     const anonId = session ? null : (existingAnonId ?? randomUUID());
     const viewerKey = session ? `user:${session.handle}` : `anon:${anonId}`;
