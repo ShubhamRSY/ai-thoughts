@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 // P1 (security-relevant): a signed-out visitor must never see admin controls
 // or admin data. `src/proxy.ts` (Next's edge middleware) redirects
-// unauthenticated requests to /admin, /app, and /keeper to /sign-in before
+// unauthenticated requests to /admin and /keeper to /sign-in before
 // any page code runs — stronger than a client-side check, since no admin
 // markup is ever sent to the browser. Regressions here leak moderation
 // tooling / metrics to the public internet.

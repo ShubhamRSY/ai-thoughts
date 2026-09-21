@@ -10,6 +10,7 @@ import { checkDignity, normalizeTag } from "@/lib/dignity";
 import { GLOBAL_SEED_POSTS } from "@/lib/seed-posts";
 import { notifyFollowersOfPost, notifyMentions, notifyPostOwner } from "@/lib/activity";
 import { dailyPromptForDay, promptDayKeyUTC } from "@/lib/daily-prompt";
+import { setMood } from "@/lib/mood";
 import { LIKE_REACTION, BOOST_REACTION, BOOKMARK_REACTION, buildLikedBy } from "@/lib/likes";
 import { assertCanPost, contentFingerprint } from "@/lib/anti-abuse";
 import { extractMentions } from "@/lib/mentions";
@@ -585,6 +586,9 @@ export async function POST(request: NextRequest) {
 
     const result = await db.collection<PostDoc>("posts").insertOne(doc);
     const postId = result.insertedId.toString();
+    if (feeling) {
+      await setMood(db, session.handle, promptDay ?? promptDayKeyUTC(), feeling, "post").catch(() => {});
+    }
 
     // A quote-repost is a repost — keep boost count / boostedByMe / the
     // Reposts profile tab in sync with what a plain repost would do.

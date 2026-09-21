@@ -134,12 +134,15 @@ export type SiteSettings = {
   maintenance: boolean;
   maintenanceMessage: string;
   invitesOpen: boolean;
+  /** Post id a human picked to sit at the top of Voices. "" = none. */
+  featuredPostId: string;
 };
 
 const DEFAULT_SETTINGS: SiteSettings = {
   maintenance: false,
   maintenanceMessage: "Voices is pausing briefly — check back soon.",
   invitesOpen: true,
+  featuredPostId: "",
 };
 
 export async function getSiteSettings(): Promise<SiteSettings> {
@@ -153,6 +156,7 @@ export async function getSiteSettings(): Promise<SiteSettings> {
         ? row.maintenanceMessage.trim().slice(0, 280)
         : DEFAULT_SETTINGS.maintenanceMessage,
     invitesOpen: row.invitesOpen !== false,
+    featuredPostId: typeof row.featuredPostId === "string" ? row.featuredPostId : "",
   };
 }
 
@@ -165,6 +169,8 @@ export async function setSiteSettings(patch: Partial<SiteSettings>): Promise<Sit
         ? patch.maintenanceMessage.trim().slice(0, 280) || current.maintenanceMessage
         : current.maintenanceMessage,
     invitesOpen: patch.invitesOpen ?? current.invitesOpen,
+    featuredPostId:
+      typeof patch.featuredPostId === "string" ? patch.featuredPostId.trim() : current.featuredPostId,
   };
   const { db } = await connectToDatabase();
   await db.collection("site_settings").updateOne(

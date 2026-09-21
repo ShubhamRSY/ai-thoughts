@@ -52,3 +52,8 @@ next-env.d.ts
 /android/build
 /ios/App/Pods
 /ios/DerivedData
+
+# Promo video build output
+marketing/out/
+marketing/.work/
+marketing/vo/

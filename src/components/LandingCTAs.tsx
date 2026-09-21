@@ -19,14 +19,12 @@ interface LandingCTAsProps {
   ctaHref: string;
   ctaLabel: string;
   installHref: string;
-  showEmailNote?: boolean;
 }
 
 export default function LandingCTAs({
   ctaHref,
   ctaLabel,
   installHref,
-  showEmailNote = false,
 }: LandingCTAsProps) {
   const [desktop, setDesktop] = useState(false);
   const [showPcNotice, setShowPcNotice] = useState(false);
@@ -55,7 +53,6 @@ export default function LandingCTAs({
           </Link>
         )}
       </div>
-      {showEmailNote && <p className="landing-note">Email code · no password</p>}
 
       {showPcNotice && (
         <div

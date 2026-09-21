@@ -72,6 +72,10 @@ export async function ensureCoreIndexes(db: Db): Promise<void> {
       { post_id: 1, handle_norm: 1, reaction: 1 },
       { unique: true, sparse: true, name: "reactions_post_handle_reaction" }
     ),
+    db.collection("moods").createIndex(
+      { handle_norm: 1, day: 1 },
+      { unique: true, name: "moods_handle_day_unique" }
+    ),
     db.collection("post_views").createIndex(
       { post_id: 1, viewer_key: 1 },
       { unique: true, name: "post_views_post_viewer_unique" }

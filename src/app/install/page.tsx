@@ -89,18 +89,20 @@ export default function InstallPage() {
             </section>
           )}
 
-          <section className="rounded-2xl border border-[var(--border-base)] bg-white p-5 shadow-sm shadow-slate-900/5">
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
-              <Laptop className="h-4 w-4 text-[var(--accent)]" /> Windows
-            </h2>
-            <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
-              Get AiTo from the <span className="text-[var(--foreground)]">Microsoft Store</span> —
-              install like any Windows app, updates through the Store.
-            </p>
-            <div className="mt-4">
-              <WindowsStoreCta buttonClassName="flex w-full items-center justify-center rounded-xl bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-2)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-70" />
-            </div>
-          </section>
+          {BRAND.windowsStoreUrl && (
+            <section className="rounded-2xl border border-[var(--border-base)] bg-white p-5 shadow-sm shadow-slate-900/5">
+              <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
+                <Laptop className="h-4 w-4 text-[var(--accent)]" /> Windows
+              </h2>
+              <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
+                Get AiTo from the <span className="text-[var(--foreground)]">Microsoft Store</span> —
+                install like any Windows app, updates through the Store.
+              </p>
+              <div className="mt-4">
+                <WindowsStoreCta buttonClassName="flex w-full items-center justify-center rounded-xl bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-2)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-70" />
+              </div>
+            </section>
+          )}
 
           <section className="rounded-2xl border border-[var(--border-base)] bg-white p-5 shadow-sm shadow-slate-900/5">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
@@ -266,10 +268,12 @@ export default function InstallPage() {
             Phone: home-screen web app for{" "}
             <span className="text-[var(--foreground)]">aito.social</span> — no App Store fee
           </li>
-          <li className="flex gap-2">
-            <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
-            Windows: Microsoft Store (updates via the Store)
-          </li>
+          {BRAND.windowsStoreUrl && (
+            <li className="flex gap-2">
+              <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
+              Windows: Microsoft Store (updates via the Store)
+            </li>
+          )}
           <li className="flex gap-2">
             <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
             Sign in once — the app opens logged in

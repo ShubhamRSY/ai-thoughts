@@ -10,6 +10,10 @@ export default function Footer() {
         <Link href="/terms" className="hover:text-[var(--foreground)]">Terms</Link>
         <Link href="/privacy" className="hover:text-[var(--foreground)]">Privacy</Link>
         <Link href="/guidelines" className="hover:text-[var(--foreground)]">Guidelines</Link>
+        <Link href="/trust" className="hover:text-[var(--foreground)]">Trust</Link>
+        {BRAND.supportUrl && (
+          <Link href="/support" className="hover:text-[var(--foreground)]">Support</Link>
+        )}
         <Link href="/contact" className="hover:text-[var(--foreground)]">Contact</Link>
         <Link href="/install" className="hover:text-[var(--foreground)]">Install</Link>
         <Link href="/keeper" className="hover:text-[var(--muted)]">Keepers</Link>

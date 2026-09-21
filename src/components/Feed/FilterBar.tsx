@@ -13,9 +13,15 @@ interface FilterBarProps {
   onFeelingChange: (f: FeelingFilter) => void;
   regionScope: RegionScope;
   onRegionScopeChange: (s: RegionScope) => void;
+  /** Active topic (e.g. "#Jobs"), null = all topics. */
+  tag: string | null;
+  onTagChange: (t: string | null) => void;
   circleCount?: number;
   todayCount?: number;
 }
+
+// Topic rooms: a second reason to open the app beyond the daily prompt.
+const TOPICS = ["#Jobs", "#Tools", "#Ethics", "#Future"] as const;
 
 const MEDIA_FILTERS: { id: MediaFilter; label: string }[] = [
   { id: "all", label: "All" },
@@ -29,6 +35,8 @@ export default function FilterBar({
   onMediaChange,
   regionScope,
   onRegionScopeChange,
+  tag,
+  onTagChange,
   circleCount = 0,
   todayCount = 0,
 }: FilterBarProps) {
@@ -44,7 +52,7 @@ export default function FilterBar({
               : "border border-[var(--border-base)] text-[var(--muted)] hover:text-[var(--foreground)]"
           }`}
         >
-          Worldwide
+          All voices
         </button>
         <button
           type="button"
@@ -81,6 +89,24 @@ export default function FilterBar({
           Only answers to today&apos;s prompt — eavesdrop, then join.
         </p>
       )}
+
+      <div className="flex gap-2 overflow-x-auto" aria-label="Topics">
+        {TOPICS.map((t) => (
+          <button
+            key={t}
+            type="button"
+            aria-pressed={tag === t}
+            onClick={() => onTagChange(tag === t ? null : t)}
+            className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold transition ${
+              tag === t
+                ? "bg-[var(--foreground)] text-[var(--surface)]"
+                : "border border-[var(--border-base)] text-[var(--muted)] hover:text-[var(--foreground)]"
+            }`}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
 
       <div className="flex gap-5 overflow-x-auto" role="tablist" aria-label="Format">
         {MEDIA_FILTERS.map((f) => {

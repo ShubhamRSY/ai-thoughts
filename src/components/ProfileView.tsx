@@ -552,7 +552,7 @@ export default function ProfileView({
             <Download className="h-3.5 w-3.5 text-[var(--accent)]" /> Get the app
           </p>
           <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">
-            Install {BRAND.shortName} on your phone, or get it on the Microsoft Store for Windows.
+            Install {BRAND.shortName} on your phone.
           </p>
           <Link
             href="/install"

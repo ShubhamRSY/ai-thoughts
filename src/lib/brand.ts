@@ -18,16 +18,17 @@ export const BRAND = {
   shareCta: "Share your feeling",
   shareTitle: "Share your feeling",
   shareSuccess: "Your feeling is live.",
-  shareSuccessSub: "It’s in Worldwide — open Voices to see it with replies and reactions.",
-  joinCta: "Start expressing",
+  shareSuccessSub: "It’s in Voices — open it to see it with replies and reactions.",
   openCta: "Open Voices",
   homeNav: "Voices",
   /**
    * Microsoft Store listing for Windows.
    * Set NEXT_PUBLIC_MS_STORE_URL after Partner Center publishes the app.
-   * Empty = show “Coming soon on Microsoft Store” (no GitHub).
+   * Empty = no Windows mention anywhere in the UI (no “coming soon”, no GitHub).
    */
   windowsStoreUrl: (process.env.NEXT_PUBLIC_MS_STORE_URL || "").trim(),
+  /** Payment link (Stripe Payment Link / Ko-fi / GitHub Sponsors). Empty = no Support page or footer link. */
+  supportUrl: (process.env.NEXT_PUBLIC_SUPPORT_URL || "").trim(),
   windowsStoreLabel: "Get it on Microsoft Store",
   dignityNote:
     "Be honest about how AI feels — love it or critique it. Personal attacks, hate speech, and sexual content don’t belong here.",
@@ -47,6 +48,9 @@ export const BRAND = {
     },
   ],
 } as const;
+
+/** Launch goal shown as a progress bar on the landing page. */
+export const FIRST_VOICES = 1000;
 
 export const SUGGESTED_TAGS = [
   "#Sleek",

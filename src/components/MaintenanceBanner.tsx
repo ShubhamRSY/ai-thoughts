@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
+import type { FeaturedVoiceData } from "@/components/FeaturedVoice";
 
 export function useSiteFlags() {
   const [maintenance, setMaintenance] = useState(false);
   const [message, setMessage] = useState("");
   const [invitesOpen, setInvitesOpen] = useState(true);
+  const [featured, setFeatured] = useState<FeaturedVoiceData | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -17,6 +19,7 @@ export function useSiteFlags() {
         setMaintenance(Boolean(data.maintenance));
         setMessage(typeof data.maintenanceMessage === "string" ? data.maintenanceMessage : "");
         setInvitesOpen(data.invitesOpen !== false);
+        setFeatured(data.featured ?? null);
       })
       .catch(() => {});
     return () => {
@@ -24,7 +27,7 @@ export function useSiteFlags() {
     };
   }, []);
 
-  return { maintenance, message, invitesOpen };
+  return { maintenance, message, invitesOpen, featured };
 }
 
 export default function MaintenanceBanner() {

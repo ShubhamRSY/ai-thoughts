@@ -3,18 +3,18 @@ import BrandMark from "@/components/BrandMark";
 import LandingCTAs from "@/components/LandingCTAs";
 import { getPulseStats, crowdCountLabel } from "@/lib/pulse-stats";
 import { getSession } from "@/lib/auth";
-import { BRAND } from "@/lib/brand";
+import { BRAND, FIRST_VOICES } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
 
 export default async function LandingPage() {
-  const [{ total }, session] = await Promise.all([
+  const [{ total, voices }, session] = await Promise.all([
     getPulseStats(),
     getSession(),
   ]);
 
-  const ctaHref = session ? "/app" : "/sign-in";
-  const ctaLabel = session ? BRAND.openCta : BRAND.joinCta;
+  const ctaHref = "/app";
+  const ctaLabel = BRAND.openCta;
   const installHref = "/install";
   const crowdLine = session
     ? `Welcome back${session.displayName ? `, ${session.displayName}` : ""}.`
@@ -37,12 +37,22 @@ export default async function LandingPage() {
             <p className="landing-headline">{BRAND.tagline}</p>
             <p className="landing-support">{BRAND.promise}</p>
             <p className="landing-crowd">{crowdLine}</p>
+            {voices < FIRST_VOICES && (
+              <div className="landing-progress">
+                <div className="landing-progress-bar" aria-hidden>
+                  <span style={{ width: `${Math.max(2, (voices / FIRST_VOICES) * 100)}%` }} />
+                </div>
+                <p>
+                  {voices.toLocaleString()} of the first {FIRST_VOICES.toLocaleString()} voices — add
+                  yours.
+                </p>
+              </div>
+            )}
 
             <LandingCTAs
               ctaHref={ctaHref}
               ctaLabel={ctaLabel}
               installHref={installHref}
-              showEmailNote={!session}
             />
           </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { Plus, LogOut } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { BRAND } from "@/lib/brand";
@@ -38,6 +39,14 @@ export default function Header({ onShare }: HeaderProps) {
             <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
             Share
           </button>
+          {!user && (
+            <Link
+              href="/sign-in?next=/app"
+              className="flex h-9 items-center rounded-full px-3 text-xs font-semibold text-[var(--muted)] transition hover:text-[var(--foreground)]"
+            >
+              Sign in
+            </Link>
+          )}
           {user && (
             <>
               <span
