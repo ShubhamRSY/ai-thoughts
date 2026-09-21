@@ -1,7 +1,9 @@
 /** Extract @handles from comment text (without leading @). */
 export function extractMentions(text: string): string[] {
   const found = new Set<string>();
-  const re = /@([a-zA-Z0-9_.-]{1,40})/g;
+  // A mention must start its own token — the negative lookbehind keeps email
+  // addresses like user@example.com and mid-word "@" from becoming mentions.
+  const re = /(?<![\w])@([a-zA-Z0-9_.-]{1,40})/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
     const h = m[1].toLowerCase();
@@ -20,10 +22,10 @@ export function mentionQueryAt(
   caret: number
 ): { query: string; start: number; end: number } | null {
   const before = text.slice(0, caret);
-  const match = before.match(/@([a-zA-Z0-9_.-]{0,40})$/);
+  const match = before.match(/(?:^|\W)(@[a-zA-Z0-9_.-]{0,40})$/);
   if (!match) return null;
-  const start = caret - match[0].length;
-  return { query: match[1].toLowerCase(), start, end: caret };
+  const at = match.index! + match[0].indexOf("@");
+  return { query: match[1].slice(1).toLowerCase(), start: at, end: caret };
 }
 
 export type MentionPerson = {
@@ -36,7 +38,7 @@ export function splitMentionParts(
   body: string
 ): { type: "text" | "mention"; value: string }[] {
   const parts: { type: "text" | "mention"; value: string }[] = [];
-  const re = /@([a-zA-Z0-9_.-]{1,40})/g;
+  const re = /(?<![\w])@([a-zA-Z0-9_.-]{1,40})/g;
   let last = 0;
   let m: RegExpExecArray | null;
   while ((m = re.exec(body)) !== null) {

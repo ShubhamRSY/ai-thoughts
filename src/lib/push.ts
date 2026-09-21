@@ -78,8 +78,15 @@ export async function savePushSubscription(
   );
 }
 
-export async function removePushSubscription(db: Db, endpoint: string): Promise<void> {
-  await db.collection("push_subscriptions").deleteOne({ endpoint });
+export async function removePushSubscription(
+  db: Db,
+  endpoint: string,
+  handle?: string
+): Promise<boolean> {
+  const filter = handle
+    ? { endpoint, handle: { $in: handleVariants(handle) } }
+    : { endpoint };
+  return (await db.collection("push_subscriptions").deleteOne(filter)).deletedCount > 0;
 }
 
 export async function sendPushToHandle(

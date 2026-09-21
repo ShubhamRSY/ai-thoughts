@@ -2,7 +2,20 @@ import { test, expect } from "@playwright/test";
 
 // P0: passwordless email-OTP sign-in is the only way into the product.
 // If any step of this breaks, nobody can create an account or sign in.
+//
+// The browser sends no x-forwarded-for, so without the header below every UI
+// sign-in would share the anonymous rate-limit bucket (8/15min). A unique
+// synthetic IP per test keeps the bucket from starving mid-suite.
+let ipCounter = 10;
+async function isolateIp(page: import("@playwright/test").Page): Promise<void> {
+  ipCounter = (ipCounter + 1) % 250;
+  await page.context().setExtraHTTPHeaders({
+    "X-Forwarded-For": `194.4.0.${ipCounter}`,
+  });
+}
+
 test("a new visitor can sign in end-to-end with the emailed code", async ({ page }) => {
+  await isolateIp(page);
   const email = `e2e-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
 
   await page.goto("/sign-in");
@@ -30,6 +43,7 @@ test("a new visitor can sign in end-to-end with the emailed code", async ({ page
 });
 
 test("an unrecognized code is rejected with an error, not a silent sign-in", async ({ page }) => {
+  await isolateIp(page);
   const email = `e2e-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
 
   await page.goto("/sign-in");

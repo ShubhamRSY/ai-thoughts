@@ -3,7 +3,7 @@ import { ObjectId } from "mongodb";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
 import { notifyPostOwner } from "@/lib/activity";
-import { BOOST_REACTION, shouldNotifyOwner } from "@/lib/likes";
+import { BOOST_REACTION, isValidReaction, shouldNotifyOwner } from "@/lib/likes";
 import { canBeReposted, canViewPost, getPrivacy } from "@/lib/visibility";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 
@@ -43,8 +43,10 @@ export async function POST(
     }
 
     const body = await request.json();
-    const reaction = typeof body.reaction === "string" ? body.reaction.slice(0, 8) : "";
-    if (!reaction) return NextResponse.json({ error: "Invalid reaction" }, { status: 400 });
+    const reaction = typeof body.reaction === "string" ? body.reaction : "";
+    if (!isValidReaction(reaction)) {
+      return NextResponse.json({ error: "Invalid reaction" }, { status: 400 });
+    }
 
     const { db } = await connectToDatabase();
     const post = await db.collection("posts").findOne({ _id: objectId });
@@ -83,15 +85,27 @@ export async function POST(
       reaction,
     });
 
-    await db.collection("reactions").insertOne({
-      post_id: id,
-      handle: storeHandle,
-      handle_norm: normHandle(session.handle),
-      reaction,
-      created_at: new Date(),
-    });
+    let inserted = false;
+    try {
+      const res = await db.collection("reactions").insertOne({
+        post_id: id,
+        handle: storeHandle,
+        handle_norm: normHandle(session.handle),
+        reaction,
+        created_at: new Date(),
+      });
+      inserted = res.acknowledged;
+    } catch (err: unknown) {
+      // Two rapid taps raced the toggle and the second insert hit the unique
+      // (post_id, handle_norm, reaction) index. Treat it as the toggle
+      // flicking back off — never a 500.
+      if ((err as { code?: number })?.code === 11000) {
+        return NextResponse.json({ ok: true, action: "removed" });
+      }
+      throw err;
+    }
 
-    if (shouldNotifyOwner(reaction)) {
+    if (inserted && shouldNotifyOwner(reaction)) {
       await notifyPostOwner(db, {
         postId: id,
         actorHandle: storeHandle,

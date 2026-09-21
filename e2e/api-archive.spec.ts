@@ -78,7 +78,7 @@ test("an archived take disappears for everyone but its author, and comes back on
   expect((await B.api.post(`/api/posts/${postId}/messages`, { data: { body: "hello there" } })).status()).toBe(404);
   expect((await B.api.post(`/api/posts/${postId}/reactions`, { data: { reaction: "❤️" } })).status()).toBe(404);
   expect((await B.api.post(`/api/posts/${postId}/view`)).status()).toBe(404);
-  expect((await B.api.post(`/api/posts/${postId}/report`, { data: { reason: "other" } })).status()).toBe(404);
+  expect((await B.api.post(`/api/posts/${postId}/report`, { data: { reason: "Spam or coordinated accounts" } })).status()).toBe(404);
   const quote = await B.api.post("/api/posts", {
     data: { content: "quoting an archived take", media_type: "text", quoted_post_id: postId },
   });

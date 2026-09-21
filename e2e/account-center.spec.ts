@@ -168,7 +168,13 @@ test("search shows Requested for a private account, not Following", async ({ pag
     await page.getByRole("button", { name: "Search", exact: true }).first().click();
     await page.getByPlaceholder("Search people").fill(norm(ownerHandle));
     const row = page.getByRole("listitem").filter({ hasText: norm(ownerHandle) });
-    await row.getByRole("button", { name: "Follow", exact: true }).click();
+    const [followRes] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().endsWith("/api/follows") && r.request().method() === "POST"
+      ),
+      row.getByRole("button", { name: "Follow", exact: true }).click(),
+    ]);
+    expect(followRes.ok()).toBeTruthy();
     await expect(row.getByRole("button", { name: "Requested" })).toBeVisible();
     await expect(row.getByRole("button", { name: "Following" })).toHaveCount(0);
   } finally {

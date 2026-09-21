@@ -25,6 +25,21 @@ export async function followUser(
   const b = withAt(following);
   if (!a || !b) return { ok: false, error: "Invalid handle" };
   if (normHandle(a) === normHandle(b)) return { ok: false, error: "Can't follow yourself" };
+
+  // The target must actually be an account — a real user row, or a seeded
+  // "Sample voice" that lives as a post with no users row. Without this,
+  // anyone could follow arbitrary ghost handles and pollute the graph.
+  const bVariants = [b, `@${normHandle(b)}`, b.toLowerCase(), normHandle(b)];
+  const exists =
+    (await db.collection("users").countDocuments({ handle: { $in: bVariants } }, { limit: 1 })) >
+    0 ||
+    (await db
+      .collection("posts")
+      .countDocuments({ handle: { $in: bVariants } }, { limit: 1 })) > 0;
+  if (!exists) {
+    return { ok: false, error: "That account doesn't exist" };
+  }
+
   // Same message as a locked account, so a block isn't revealed to the blocked side.
   if (await isBlockedPair(db, a, b)) {
     return { ok: false, error: "This account isn't accepting followers" };
