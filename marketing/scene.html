@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AiTo promo scene</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f2f0eb;--fg:#1a1a1a;--surface:#faf9f7;--surface2:#ebe8e2;--border:#ddd8d0;--muted:#6b6560;--accent:#1f4d45;--accent2:#163832;--soft:#dce8e5}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;overflow:hidden;background:var(--bg);font-family:Manrope,system-ui,sans-serif;color:var(--fg)}
+#stage{position:relative;width:1920px;height:1080px;overflow:hidden}
+.d{font-family:Fraunces,Georgia,serif;font-weight:500;letter-spacing:-.02em}
+.scene{position:absolute;inset:0;opacity:0}
+.abs{position:absolute}
+.blob{position:absolute;border-radius:50%;filter:blur(90px)}
+.card{background:var(--surface);border:2px solid var(--border);border-radius:32px;box-shadow:0 24px 60px rgba(26,26,26,.08)}
+.chip{display:inline-flex;align-items:center;border-radius:999px;font-weight:700;padding:14px 26px;font-size:26px;border:2px solid var(--border);color:var(--fg);background:var(--surface);position:relative}
+.eyebrow{font-size:22px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.w{display:inline-block;white-space:pre}
+.take{width:430px;padding:22px 26px;border-radius:26px;background:var(--surface);border:2px solid var(--border);box-shadow:0 16px 40px rgba(26,26,26,.07)}
+.take .row{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+.av{width:38px;height:38px;border-radius:50%;background:var(--surface2)}
+.ln{height:12px;border-radius:6px;background:var(--surface2)}
+.take p{font-size:26px;line-height:1.3;color:#8a847d;font-weight:600}
+svg.i{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.voice{padding:24px 32px;width:840px}
+.voice .h{display:flex;align-items:center;gap:16px}
+.voice .av{width:54px;height:54px;background:var(--soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:28px}
+.voice .who{font-weight:700;font-size:26px}.voice .when{color:var(--muted);font-size:22px}
+.voice p{font-family:Fraunces,Georgia,serif;font-size:31px;line-height:1.28;margin:12px 0 14px;letter-spacing:-.01em}
+.voice .f{display:flex;gap:28px;color:var(--muted);font-size:24px;font-weight:600;align-items:center}
+.voice .f span{display:inline-flex;align-items:center;gap:8px}
+.bar{height:26px;border-radius:13px;background:var(--surface2);overflow:hidden}
+.bar>i{display:block;height:100%;width:100%;border-radius:13px;background:var(--accent);transform-origin:left}
+.pill{width:520px;height:390px;padding:44px 40px;text-align:left}
+.pill .ic{width:96px;height:96px;border-radius:28px;background:var(--soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:52px;margin-bottom:26px}
+.pill h3{font-family:Fraunces,Georgia,serif;font-weight:500;font-size:52px;line-height:1.05;letter-spacing:-.02em}
+.pill p{margin-top:14px;font-size:26px;color:var(--muted);line-height:1.4}
+.note{position:absolute;bottom:34px;left:0;right:0;text-align:center;font-size:20px;color:var(--muted);letter-spacing:.06em}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="blob" id="b1" style="width:760px;height:760px;left:-160px;top:-200px;background:#dce8e5;opacity:.9"></div>
+  <div class="blob" id="b2" style="width:640px;height:640px;right:-120px;bottom:-220px;background:#e9dccb;opacity:.8"></div>
+</div>
+
+<script>
+const ANIMS = [], FLOATS = [];
+let CUR = null, SC = null;   // CUR = scene being built (null = real time); SC = timeline scenes
+const warp = (i, t) => (i == null ? t : SC[i].start + (t - SC[i].start) / SC[i].k);
+const EASE = 'cubic-bezier(.2,.8,.2,1)';
+const $ = (h) => { const t = document.createElement('template'); t.innerHTML = h.trim(); return t.content.firstElementChild; };
+// Paused, fill-both Web Animation: seek(t) sets every one to the same global clock.
+function A(el, kf, at, dur = .6, ease = EASE) {
+  const a = el.animate(kf, { duration: dur * 1000, delay: at * 1000, easing: ease, fill: 'both' });
+  a.pause(); ANIMS.push([CUR, a]); return a;
+}
+const rise = (el, at, dur = .7, y = 36) => A(el, [{ opacity: 0, transform: `translateY(${y}px)` }, { opacity: 1, transform: 'none' }], at, dur);
+const pop = (el, at, dur = .55) => A(el, [{ opacity: 0, transform: 'scale(.82)' }, { opacity: 1, transform: 'none' }], at, dur, 'cubic-bezier(.3,1.4,.5,1)');
+const words = (parent, text, at, gap = .16, cls = '') => text.split(' ').map((w, i) => {
+  const s = $(`<span class="w ${cls}">${w} </span>`); parent.appendChild(s); rise(s, at + i * gap, .6, 28); return s;
+});
+const ease = (x) => 1 - Math.pow(1 - Math.min(1, Math.max(0, x)), 3);
+const ICON = {
+  mic: '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/>',
+  video: '<path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/>',
+  pen: '<path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/>',
+  heart: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
+  msg: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+  ban: '<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',
+  shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+  users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+};
+const svg = (n) => `<svg class="i" viewBox="0 0 24 24">${ICON[n]}</svg>`;
+
+window.build = (TL) => {
+  const stage = document.getElementById('stage');
+  const S = SC = TL.scenes;       // [{start,dur,k}] x8
+  const sfx = [];
+  const sx = (...hits) => hits.forEach((h) => sfx.push({ ...h, t: S[CUR].start + (h.t - S[CUR].start) * S[CUR].k }));
+  const FL = (fn) => FLOATS.push([CUR, fn]);
+  const mk = (i, extraStyle = '') => {
+    const sc = $(`<div class="scene" style="${extraStyle}"></div>`); stage.appendChild(sc);
+    CUR = null; // fades run in real time
+    const { start, dur } = S[i], last = i === S.length - 1;
+    const fi = .5 / dur, fo = (dur - .4) / dur;
+    A(sc, [{ opacity: 0, offset: 0 }, { opacity: 1, offset: fi }, { opacity: 1, offset: last ? 1 : fo }, { opacity: last ? 1 : 0, offset: 1 }], start, dur, 'linear');
+    CUR = i;
+    return sc;
+  };
+  FL((t) => {
+    document.getElementById('b1').style.transform = `translate(${Math.sin(t * .35) * 60}px,${Math.cos(t * .28) * 40}px)`;
+    document.getElementById('b2').style.transform = `translate(${Math.cos(t * .3) * 70}px,${Math.sin(t * .33) * 50}px)`;
+  });
+
+  /* ---------- Act 1+2: the noise ---------- */
+  {
+    const t0 = S[0].start, t2 = S[1].start;
+    const layer = $('<div class="scene"></div>'); stage.appendChild(layer);
+    CUR = null;
+    const end = t2 + 3.5 * S[1].k, total = end - t0;
+    A(layer, [{ opacity: 0, offset: 0 }, { opacity: 1, offset: .01 }, { opacity: 1, offset: (total - .7) / total }, { opacity: 0, offset: 1 }], t0, total, 'linear');
+    const takes = [
+      ['10 prompts that will 10x your workflow', 60, 90, -4], ['AI will replace all of us. Thread.', 70, 470, 3],
+      ['Unpopular opinion: it is just autocomplete', 90, 800, -2], ['Best AI tools of 2026 (save this)', 1420, 70, 3],
+      ['This changes EVERYTHING', 1470, 430, -3], ['Overhyped. Wake up.', 1440, 760, 2],
+      ['I let AI write my whole week', 640, 30, 2], ['Why every startup is wrong about AI', 1010, 20, -2],
+      ['Stop using it like this', 560, 900, -3], ['Hot take: prompts are dead', 1010, 910, 2],
+    ];
+    takes.forEach(([txt, x, y, r], i) => {
+      const c = $(`<div class="take abs" style="left:${x}px;top:${y}px;transform:rotate(${r}deg)"><div class="row"><div class="av"></div><div style="flex:1"><div class="ln" style="width:55%"></div></div></div><p>${txt}</p></div>`);
+      layer.appendChild(c);
+      A(c, [{ opacity: 0, scale: .8 }, { opacity: .8, scale: 1 }], t0 + (.25 + i * .2) * S[0].k, .6);
+      FL((t) => { c.style.translate = `0 ${Math.sin(t * .9 + i) * 9}px`; });
+    });
+  }
+  { // S1 headline
+    const sc = mk(0), h = $('<h1 class="d abs" style="left:0;right:0;top:390px;text-align:center;font-size:118px;line-height:1.05;padding:0 200px;text-wrap:balance"></h1>');
+    sc.appendChild(h); words(h, 'Everyone has an opinion about AI.', .5, .2);
+    A(h, [{ filter: 'blur(0px)' }, { filter: 'blur(0px)' }], 0, 1);
+  }
+  { // S2 tips / debates / hot takes -> the question
+    const sc = mk(1), row = $('<div class="abs" style="left:0;right:0;top:420px;display:flex;justify-content:center;gap:70px"></div>');
+    sc.appendChild(row);
+    ['Tips.', 'Debates.', 'Hot takes.'].forEach((w, i) => {
+      const s = $(`<span class="d" style="position:relative;font-size:128px;color:#8a847d">${w}<i style="position:absolute;left:-8px;right:-8px;top:56%;height:9px;background:var(--accent);border-radius:5px;transform-origin:left;transform:scaleX(0)"></i></span>`);
+      row.appendChild(s); const at = S[1].start;
+      rise(s, at + .7 + i * 1.0, .6, 30);
+      A(s.querySelector('i'), [{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], at + 3.6 + i * .3, .35);
+    });
+    const at = S[1].start;
+    A(row, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-30px)' }], at + 4.6, .5);
+    const q = $('<h2 class="d abs" style="left:0;right:0;top:340px;text-align:center;font-size:132px;line-height:1.08;padding:0 200px;text-wrap:balance"></h2>');
+    sc.appendChild(q);
+    words(q, 'How does AI', at + 5.1, .14); const sp = words(q, 'actually', at + 5.1 + .42, .14);
+    words(q, 'make you', at + 5.1 + .56, .14);
+    const f = words(q, 'feel?', at + 5.1 + .84, .14)[0]; f.style.cssText += ';color:var(--accent);font-style:italic';
+    sp[0].style.color = 'var(--muted)';
+  }
+
+  /* ---------- S3: meet AiTo ---------- */
+  {
+    const sc = mk(2), at = S[2].start;
+    const logo = $('<img class="abs" src="../public/icons/icon-512.png" style="width:230px;height:230px;border-radius:56px;left:845px;top:150px;box-shadow:0 30px 70px rgba(31,77,69,.35)">');
+    const name = $('<div class="d abs" style="left:0;right:0;top:400px;text-align:center;font-size:190px;line-height:1">AiTo</div>');
+    const tag = $('<div class="abs" style="left:0;right:0;top:620px;text-align:center;font-size:44px;color:var(--muted);font-weight:500">Say how AI makes you feel — love it, fear it, or both.</div>');
+    sc.append(logo, name, tag);
+    pop(logo, at + .35, .7); rise(name, at + .8, .8); rise(tag, at + 1.6, .8, 24);
+    sx({ t: at + .3, type: 'whoosh' }, { t: at + .55, type: 'pop' });
+    const chips = [['Love it', 210, 760], ['Amazed', 500, 880], ['Worried', 830, 800], ['Hurts', 1150, 890], ['Confused', 1390, 780], ['I use it every day', 1180, 130], ['Need help', 310, 190]];
+    chips.forEach(([txt, x, y], i) => {
+      const c = $(`<span class="chip abs" style="left:${x}px;top:${y}px">${txt}</span>`); sc.appendChild(c);
+      pop(c, at + 3.2 + i * .18, .5);
+      FL((t) => { c.style.translate = `${Math.sin(t * .7 + i * 1.7) * 10}px ${Math.cos(t * .8 + i) * 12}px`; });
+    });
+  }
+
+  /* ---------- S4: the 5-second tap ---------- */
+  {
+    const sc = mk(3), at = S[3].start;
+    const left = $('<div class="abs" style="left:150px;top:330px;width:760px"></div>');
+    left.innerHTML = '<div class="d" style="font-size:132px;line-height:1.02">5 seconds<br>a day.</div><div style="margin-top:34px;font-size:40px;color:var(--muted);line-height:1.35;font-weight:500">Tap one feeling.<br>Watch your week take shape.</div>';
+    sc.appendChild(left); rise(left, at + .5, .8);
+    const wrap = $('<div class="abs" style="left:1000px;top:230px;width:780px"></div>');
+    const card = $('<div class="card" style="position:relative;padding:44px 46px 40px"></div>');
+    wrap.appendChild(card); sc.appendChild(wrap);
+    card.innerHTML = '<div class="eyebrow">How does AI feel today?</div><div id="chips" style="display:flex;flex-wrap:wrap;gap:16px;margin-top:26px"></div><div id="wk" style="margin-top:34px;padding-top:30px;border-top:2px solid var(--border)"><div id="dots" style="display:flex;gap:30px"></div><div id="cap" style="margin-top:22px;font-size:30px;color:var(--muted)">Your week: mostly <b style="color:var(--fg)">worried</b> (5 of 7 days).</div></div>';
+    rise(wrap, at + .3, .8);
+    const chipsEl = card.querySelector('#chips');
+    ['I use it every day', 'Love it', 'Amazed', 'Hurts', 'Worried', 'Confused', 'Need help'].forEach((t) => chipsEl.appendChild($(`<span class="chip" data-t="${t}">${t}</span>`)));
+    const target = [...chipsEl.children].find((c) => c.dataset.t === 'Worried');
+    const dots = card.querySelector('#dots'), wk = card.querySelector('#wk');
+    const filled = [1, 0, 1, 1, 0, 1, 1]; // last = today, filled by the tap
+    'MTWTFSS'.split('').forEach((d, i) => dots.appendChild($(`<div style="text-align:center"><i class="dot" style="display:block;width:38px;height:38px;border-radius:50%;background:var(--surface2);margin:0 auto 8px"></i><span style="font-size:22px;color:var(--muted);font-weight:600">${d}</span></div>`)));
+    A(wk, [{ opacity: 0 }, { opacity: 1 }], at + 3.2, .5);
+    const ds = [...dots.querySelectorAll('.dot')];
+    ds.forEach((d, i) => {
+      if (!filled[i]) return;
+      const when = at + 3.5 + i * .16;
+      A(d, [{ background: '#ebe8e2', transform: 'scale(.7)' }, { background: '#1f4d45', transform: 'scale(1)' }], when, .3, 'cubic-bezier(.3,1.5,.5,1)');
+      if (i < 6) sx({ t: when, type: 'tick' });
+    });
+    A(card.querySelector('#cap'), [{ opacity: 0 }, { opacity: 1 }], at + 4.7, .6);
+    // cursor + tap
+    const cx = target.offsetLeft + target.offsetWidth * .72, cy = target.offsetTop + target.offsetHeight * .7;
+    const cur = $('<svg class="abs" viewBox="0 0 24 24" style="left:0;top:0;width:54px;height:54px;filter:drop-shadow(0 4px 6px rgba(0,0,0,.3));z-index:5"><path d="M4 2l16 9-7 2-3 7z" fill="#1a1a1a" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/></svg>');
+    card.appendChild(cur);
+    A(cur, [{ opacity: 0, transform: `translate(${cx + 340}px,${cy + 300}px)` }, { opacity: 1, transform: `translate(${cx + 340}px,${cy + 300}px)`, offset: .15 }, { opacity: 1, transform: `translate(${cx}px,${cy}px)`, offset: 1 }], at + 1.2, 1.3, 'cubic-bezier(.5,0,.2,1)');
+    A(cur, [{ scale: 1 }, { scale: .8, offset: .5 }, { scale: 1 }], at + 2.55, .25);
+    A(target, [{ background: '#faf9f7', color: '#1a1a1a', borderColor: '#ddd8d0', transform: 'scale(1)' }, { background: '#1f4d45', color: '#faf9f7', borderColor: '#1f4d45', transform: 'scale(.94)', offset: .4 }, { background: '#1f4d45', color: '#faf9f7', borderColor: '#1f4d45', transform: 'scale(1)' }], at + 2.6, .4);
+    const ring = $(`<i class="abs" style="left:${cx - 70}px;top:${cy - 70}px;width:140px;height:140px;border-radius:50%;border:5px solid #1f4d45;pointer-events:none"></i>`);
+    card.appendChild(ring); A(ring, [{ opacity: .55, transform: 'scale(.2)' }, { opacity: 0, transform: 'scale(1.5)' }], at + 2.6, .8, 'ease-out');
+    A(ds[6], [{ background: '#ebe8e2', transform: 'scale(.7)' }, { background: '#1f4d45', transform: 'scale(1.15)', offset: .6 }, { background: '#1f4d45', transform: 'scale(1)' }], at + 4.4, .5);
+    sx({ t: at + 2.62, type: 'pop' }, { t: at + 4.4, type: 'pop' });
+  }
+
+  /* ---------- S5: say it your way ---------- */
+  {
+    const sc = mk(4), at = S[4].start;
+    const h = $('<div class="d abs" style="left:0;right:0;top:120px;text-align:center;font-size:104px">Say it your way.</div>'); sc.appendChild(h); rise(h, at + .4, .8);
+    const mkCard = (x, ic, label, inner, when) => {
+      const c = $(`<div class="card abs" style="left:${x}px;top:330px;width:500px;height:560px;padding:40px"><div style="display:flex;align-items:center;gap:20px"><div style="width:84px;height:84px;border-radius:26px;background:var(--soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:46px">${svg(ic)}</div><div class="d" style="font-size:54px">${label}</div></div><div class="in" style="margin-top:38px">${inner}</div></div>`);
+      sc.appendChild(c); rise(c, at + when, .8); sx({ t: at + when + .1, type: 'tick' }); return c;
+    };
+    const bars = Array.from({ length: 22 }, () => '<i style="display:block;width:12px;border-radius:6px;background:var(--accent);height:40px"></i>').join('');
+    const c1 = mkCard(140, 'mic', 'Voice', `<div class="wave" style="display:flex;align-items:center;justify-content:space-between;height:220px;padding:0 6px">${bars}</div><div style="margin-top:26px;color:var(--muted);font-size:26px;font-weight:600">Recording… 0:18</div>`, 2.2);
+    const c2 = mkCard(710, 'video', 'Video', `<div style="position:relative;height:260px;border-radius:26px;background:linear-gradient(135deg,#1f4d45,#163832);display:flex;align-items:center;justify-content:center"><div style="width:0;height:0;border-left:48px solid #faf9f7;border-top:30px solid transparent;border-bottom:30px solid transparent;margin-left:12px"></div><span style="position:absolute;left:20px;top:18px;color:#faf9f7;font-weight:700;font-size:22px;display:flex;align-items:center;gap:10px"><i class="rec" style="width:14px;height:14px;border-radius:50%;background:#e5484d;display:block"></i>REC</span><span style="position:absolute;right:20px;bottom:16px;color:#faf9f7;font-weight:700;font-size:22px">0:24</span></div><div style="margin-top:26px;color:var(--muted);font-size:26px;font-weight:600">No polish required.</div>`, 3.4);
+    const txt = 'Honestly? I feel relieved, and a little scared.';
+    const c3 = mkCard(1280, 'pen', 'Words', `<div class="typed d" style="font-size:44px;line-height:1.25;min-height:230px;font-weight:400"></div><div style="margin-top:26px;color:var(--muted);font-size:26px;font-weight:600">A few honest words is plenty.</div>`, 4.5);
+    const typed = c3.querySelector('.typed'), wave = [...c1.querySelectorAll('.wave i')], rec = c2.querySelector('.rec');
+    FL((t) => {
+      wave.forEach((b, i) => { const on = t > at + 2.4; b.style.height = (on ? 30 + 90 * Math.abs(Math.sin(t * 5 + i * .7) * Math.cos(t * 1.7 + i)) : 24) + 'px'; });
+      rec.style.opacity = Math.sin(t * 6) > 0 ? 1 : .25;
+      const n = Math.floor(Math.max(0, t - (at + 4.9)) * 16);
+      typed.textContent = txt.slice(0, n) + (Math.floor(t * 2) % 2 && n < txt.length + 4 && t > at + 4.8 ? '|' : '');
+    });
+  }
+
+  /* ---------- S6: feel with others ---------- */
+  {
+    const sc = mk(5), at = S[5].start;
+    const h = $('<div class="d abs" style="left:140px;top:84px;font-size:96px">Feel with others.</div>'); sc.appendChild(h); rise(h, at + .4, .8);
+    const voices = [['P', 'Priya', '2h', 'Amazed', 'It helped me finally write to my dad. I cried a little.', 12, 4], ['M', 'Marcus', '5h', 'Worried', 'I love the speed. I hate that I can’t tell what’s real anymore.', 31, 9], ['L', 'Lena', '1d', 'Confused', 'Everyone says learn it or get left behind. I just want to understand it first.', 18, 6]];
+    const col = $('<div class="abs" style="left:140px;top:240px;display:flex;flex-direction:column;gap:22px"></div>'); sc.appendChild(col);
+    voices.forEach(([ini, n, w, f, body, hearts, rep], i) => {
+      const c = $(`<div class="card voice"><div class="h"><div class="av">${ini}</div><div><div class="who">${n}</div><div class="when">${w}</div></div><span class="chip" style="margin-left:auto;padding:8px 20px;font-size:22px;background:var(--surface2)">${f}</span></div><p>${body}</p><div class="f"><span style="color:var(--accent)">${svg('heart')}&nbsp;${hearts}</span><span>${svg('msg')}&nbsp;${rep}</span></div></div>`);
+      col.appendChild(c); A(c, [{ opacity: 0, transform: 'translateX(-70px)' }, { opacity: 1, transform: 'none' }], at + .6 + i * .5, .8);
+    });
+    const side = $('<div class="card abs" style="left:1060px;top:240px;width:720px;padding:46px 48px"></div>');
+    side.innerHTML = '<div class="eyebrow">This week, the community feels…</div><div id="rows" style="margin-top:34px;display:flex;flex-direction:column;gap:30px"></div><div id="cap" class="d" style="margin-top:38px;font-size:46px;line-height:1.15;font-style:italic;color:var(--accent)">You’re not the only one.</div>';
+    sc.appendChild(side); rise(side, at + 2.6, .9);
+    const rows = side.querySelector('#rows'), data = [['Worried', 38], ['Amazed', 27], ['Love it', 21], ['Hurts', 14]], nums = [];
+    data.forEach(([l, p], i) => {
+      const r = $(`<div><div style="display:flex;justify-content:space-between;font-size:30px;font-weight:700;margin-bottom:10px"><span>${l}</span><span class="n">0%</span></div><div class="bar"><i style="opacity:${i === 0 ? 1 : .55}"></i></div></div>`);
+      rows.appendChild(r); const b = r.querySelector('i'), st = at + 3.4 + i * .25;
+      A(b, [{ transform: 'scaleX(0)' }, { transform: `scaleX(${p / 38})` }], st, 1.1);
+      nums.push([r.querySelector('.n'), p, st]);
+    });
+    A(side.querySelector('#cap'), [{ opacity: 0 }, { opacity: 1 }], at + 5.8, .7);
+    FL((t) => nums.forEach(([el, p, st]) => { el.textContent = Math.round(p * ease((t - st) / 1.1)) + '%'; }));
+    const fn = $('<div class="note">Illustrative voices and numbers</div>'); sc.appendChild(fn);
+    sx({ t: at + .7, type: 'tick' }, { t: at + 1.2, type: 'tick' }, { t: at + 1.7, type: 'tick' }, { t: at + 2.6, type: 'whoosh' });
+  }
+
+  /* ---------- S7: trust ---------- */
+  {
+    const sc = mk(6), at = S[6].start;
+    const h = $('<div class="d abs" style="left:0;right:0;top:120px;text-align:center;font-size:100px">Built on trust.</div>'); sc.appendChild(h); rise(h, at + .3, .8);
+    [['ban', 'No ads', 'Never. Not now, not later.', .7], ['shield', 'Your data stays yours', 'We never sell it. Ever.', 1.9], ['users', 'Real humans moderate', 'People review every report.', 4.0]].forEach(([ic, t, s, w], i) => {
+      const p = $(`<div class="card pill abs" style="left:${140 + i * 580}px;top:360px"><div class="ic">${svg(ic)}</div><h3>${t}</h3><p>${s}</p></div>`);
+      sc.appendChild(p); rise(p, at + w, .8); sx({ t: at + w + .1, type: 'pop' });
+    });
+    const f = $('<div class="d abs" style="left:0;right:0;top:850px;text-align:center;font-size:64px;font-style:italic;color:var(--accent)">A place worth speaking in.</div>');
+    sc.appendChild(f); rise(f, at + 6.3, .9);
+  }
+
+  /* ---------- S8: CTA ---------- */
+  {
+    const sc = mk(7), at = S[7].start;
+    sc.appendChild($('<div class="abs" style="inset:0;background:radial-gradient(ellipse at 50% 35%,#2a6357 0%,#1f4d45 45%,#163832 100%)"></div>'));
+    const logo = $('<img class="abs" src="../public/icons/icon-512.png" style="width:190px;height:190px;border-radius:46px;left:865px;top:110px;box-shadow:0 24px 60px rgba(0,0,0,.35)">');
+    const h = $('<div class="d abs" style="left:0;right:0;top:350px;text-align:center;font-size:130px;line-height:1.05;color:#faf9f7;padding:0 300px"></div>');
+    const btn = $('<div class="abs" style="left:0;right:0;top:700px;text-align:center"><span style="display:inline-block;background:#faf9f7;color:#1f4d45;font-weight:800;font-size:44px;padding:28px 76px;border-radius:999px">Open Voices</span></div>');
+    const url = $('<div class="d abs" style="left:0;right:0;top:860px;text-align:center;font-size:72px;color:#dce8e5;font-weight:400">aito.social</div>');
+    const fine = $('<div class="abs" style="left:0;right:0;top:970px;text-align:center;font-size:26px;color:#a9c4be;letter-spacing:.04em">Free · sign in with an email code, no password</div>');
+    sc.append(logo, h, btn, url, fine);
+    pop(logo, at + .3, .7); words(h, 'Say how AI makes you feel.', at + .9, .16, ''); pop(btn, at + 2.6, .6); rise(url, at + 3.0, .7, 20); rise(fine, at + 3.5, .7, 16);
+    sx({ t: at + .25, type: 'whoosh' }, { t: at + 2.6, type: 'pop' });
+  }
+  return { sfx };
+};
+
+window.seek = (t) => { ANIMS.forEach(([i, a]) => { a.currentTime = warp(i, t) * 1000; }); FLOATS.forEach(([i, f]) => f(warp(i, t))); };
+</script>
+</body>
+</html>
