@@ -39,6 +39,7 @@ type AdminData = {
     maintenance: boolean;
     maintenanceMessage: string;
     invitesOpen: boolean;
+    featuredPostId: string;
   };
   admins: { handle: string; source: "env" | "db" }[];
   keepers: string[];
@@ -512,6 +513,17 @@ export default function AdminPage() {
                     </p>
                     <p className="mt-0.5 line-clamp-2 text-sm text-[var(--muted)]">{p.content}</p>
                   </div>
+                  <button
+                    type="button"
+                    className="shrink-0 rounded-lg px-2 py-2 text-xs font-semibold text-[var(--accent)] hover:bg-[var(--surface-2)]"
+                    onClick={() =>
+                      void act("settings", {
+                        featuredPostId: data.settings.featuredPostId === p.id ? "" : p.id,
+                      })
+                    }
+                  >
+                    {data.settings.featuredPostId === p.id ? "Unfeature" : "Feature"}
+                  </button>
                   <button
                     type="button"
                     title="Delete take"

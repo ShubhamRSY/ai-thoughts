@@ -352,6 +352,28 @@ html[data-pwa-banner="1"] .pb-nav {
   color: var(--muted);
 }
 
+.landing-progress {
+  margin-top: 0.9rem;
+  max-width: 22rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.landing-progress-bar {
+  height: 0.35rem;
+  margin-bottom: 0.4rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+
+.landing-progress-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
 .landing-ctas {
   display: flex;
   flex-direction: column;
@@ -406,12 +428,6 @@ html[data-pwa-banner="1"] .pb-nav {
 
 .landing-btn-ghost:hover {
   background: var(--surface);
-}
-
-.landing-note {
-  margin-top: 0.75rem;
-  font-size: 0.75rem;
-  color: var(--muted);
 }
 
 .landing-btn:disabled {

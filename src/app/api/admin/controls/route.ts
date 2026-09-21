@@ -190,11 +190,15 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ ok: true, admins: await listAdmins() });
       }
       case "settings": {
+        if (typeof body.featuredPostId === "string" && body.featuredPostId && !ObjectId.isValid(body.featuredPostId)) {
+          return NextResponse.json({ error: "Invalid post id" }, { status: 400 });
+        }
         const settings = await setSiteSettings({
           maintenance: typeof body.maintenance === "boolean" ? body.maintenance : undefined,
           maintenanceMessage:
             typeof body.maintenanceMessage === "string" ? body.maintenanceMessage : undefined,
           invitesOpen: typeof body.invitesOpen === "boolean" ? body.invitesOpen : undefined,
+          featuredPostId: typeof body.featuredPostId === "string" ? body.featuredPostId : undefined,
         });
         await audit("settings", settings);
         return NextResponse.json({ ok: true, settings });

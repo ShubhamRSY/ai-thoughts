@@ -14,6 +14,7 @@ import type { CapturedClip } from "@/components/Submit/MediaRecorderView";
 import FeelingRoom from "@/components/Pulse/FeelingRoom";
 import StreakCard from "@/components/StreakCard";
 import DailyCheckIn from "@/components/DailyCheckIn";
+import DailyPulse from "@/components/DailyPulse";
 import DailyHabits from "@/components/DailyHabits";
 import AccountCenter from "@/components/AccountCenter";
 import MissedYesterday from "@/components/MissedYesterday";
@@ -21,6 +22,7 @@ import { useActivity } from "@/components/ActivityPanel";
 import ActivityView from "@/components/ActivityView";
 import PeopleSearchView from "@/components/PeopleSearchView";
 import MaintenanceBanner, { useSiteFlags } from "@/components/MaintenanceBanner";
+import FeaturedVoice from "@/components/FeaturedVoice";
 import OnboardingWizard from "@/components/OnboardingWizard";
 import PulseMoved from "@/components/PulseMoved";
 import { digestBytes } from "@/lib/integrity";
@@ -64,6 +66,7 @@ export default function Home() {
   const [mine, setMine] = useState<Thought[]>([]);
   const [media, setMedia] = useState<MediaFilter>("all");
   const [feeling, setFeeling] = useState<FeelingFilter>("all");
+  const [tag, setTag] = useState<string | null>(null);
   const [tab, setTab] = useState<TabId>("home");
   const [shareOpen, setShareOpen] = useState(false);
   const [initialTab, setInitialTab] = useState<MediaType>("video");
@@ -81,7 +84,7 @@ export default function Home() {
   const [showAccount, setShowAccount] = useState(false);
   const { items: activityItems, unread: activityUnread, markAllRead, refresh: refreshActivity } =
     useActivity(!!user);
-  const { maintenance, message: maintenanceMessage } = useSiteFlags();
+  const { maintenance, message: maintenanceMessage, featured } = useSiteFlags();
 
   useEffect(() => {
     if (!user) {
@@ -135,7 +138,8 @@ export default function Home() {
     let base = thoughts.filter((t) => {
       const mOk = media === "all" || t.mediaType === media;
       const fOk = feeling === "all" || t.feeling === feeling;
-      return mOk && fOk;
+      const tOk = !tag || t.tags?.some((x) => x.toLowerCase() === tag.toLowerCase());
+      return mOk && fOk && tOk;
     });
 
     if (regionScope === "today") {
@@ -151,7 +155,7 @@ export default function Home() {
     }
 
     return base;
-  }, [thoughts, media, feeling, regionScope, followingSet]);
+  }, [thoughts, media, feeling, tag, regionScope, followingSet]);
 
   const todayAnswerCount = useMemo(() => {
     const day = promptTodayKey();
@@ -629,6 +633,14 @@ export default function Home() {
                   onBrowseToday={browseToday}
                 />
 
+                <DailyPulse
+                  signedIn={!!user}
+                  onNeedSignIn={() => router.push("/sign-in?next=/app")}
+                  onTap={bump}
+                />
+
+                {featured && <FeaturedVoice voice={featured} />}
+
                 <MissedYesterday
                   signedIn={!!user}
                   hasCircle={following.length > 0}
@@ -650,6 +662,8 @@ export default function Home() {
                   onRegionScopeChange={(scope) => {
                     setRegionScope(scope);
                   }}
+                  tag={tag}
+                  onTagChange={setTag}
                   circleCount={following.length}
                   todayCount={todayAnswerCount}
                 />
@@ -667,7 +681,7 @@ export default function Home() {
                             ? following.length
                               ? "People you follow · Translate anytime"
                               : "Follow someone from ··· on a take"
-                            : "Voices from everywhere · tap Translate on any language"}
+                            : "The newest voices · tap Translate on any language"}
                       </p>
                     </div>
                     <span className="text-[11px] tabular-nums text-[var(--muted)]">

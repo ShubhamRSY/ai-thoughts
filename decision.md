@@ -312,4 +312,41 @@ Format: **Decision → Why → Alternatives considered → Libraries / stack**.
 
 ---
 
+## Retention pass (sign-in friction, platform hints)
+
+### Guests can browse `/app`
+- **Decision:** Drop `/app` from `PROTECTED_PATHS` in `proxy.ts`; landing CTA is “Open Voices” → `/app` for everyone; Header shows “Sign in” for guests. OTP stays, but it now fires at the first write (share/react/reply/report), which the app and API already gate.
+- **Why:** A sign-in wall before anyone has seen a voice reads as “this place needs defending” and kills spontaneous use.
+- **Alternatives:** Silent device-binding instead of OTP — rejected: email OTP is the only identity proof we have; skipping it would weaken the anti-abuse caps.
+- **Stack:** No new lib.
+
+### Kill “Coming soon on Microsoft Store” until it ships
+- **Decision:** `WindowsStoreCta` renders nothing when `NEXT_PUBLIC_MS_STORE_URL` is empty; install page, profile copy and landing PC notice drop all Windows mentions with it. Setting the env var brings everything back.
+- **Why:** An unshipped-store teaser devalues the product.
+
+### “Worldwide” → “All voices”; Featured Voice
+- **Decision:** Rename the filter chip and copy; add `featuredPostId` to site settings, `featured` in `/api/site`, a `FeaturedVoice` card on Voices, and a Feature/Unfeature button in Admin → Recent takes.
+- **Why:** A quiet global feed looks empty; one human-picked voice is always alive.
+- **Stack:** Existing `site_settings` + admin controls route (audit-logged via the `settings` action).
+
+### Daily mood tap + weekly recap (`DailyPulse`)
+- **Decision:** One-tap “How does AI feel today?” row on Voices → `POST /api/mood` (one row per person per day, `moods` collection, unique index). Shows your last 7 days and the community line (`SharedSpectrum`). Posting a labelled take also records that day’s mood. Community pulse = takes + tap check-ins.
+- **Why:** The feed had no 5-second daily act; feelings alone are one-shot content.
+- **Alternatives:** Re-adding chips inside `DailyCheckIn` — kept separate, because the owner removed that row earlier as noisy; this one is a single compact card that can be removed on its own.
+- **Stack:** Existing Mongo + `feelings.ts`; no new lib. Streak count is still the localStorage one (per device).
+
+### Public trust page
+- **Decision:** `/trust` shows 7-day counts only (reports received, takes removed, reviewed and left up) and the number of keepers. Keeper handles stay private.
+- **Why:** Makes “real humans moderate” checkable without making moderators targets (see the comment in `/api/keepers`).
+
+### Support link, not billing
+- **Decision:** `NEXT_PUBLIC_SUPPORT_URL` (Stripe Payment Link / Ko-fi). Set → `/support` page + footer link; unset → both absent.
+- **Why:** Funds the human moderators without building billing or accounts for it.
+
+### Cold start
+- **Decision:** “N of the first 1,000 voices” bar on the landing page (real takes only, seeds excluded); topic chips #Jobs #Tools #Ethics #Future on the feed.
+- **Why:** A visible goal and a second reason to open the feed.
+
+---
+
 *Last updated: 2026-09-16 (Microsoft Store for Windows).*

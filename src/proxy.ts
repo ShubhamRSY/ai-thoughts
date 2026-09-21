@@ -3,7 +3,9 @@ import type { NextRequest } from "next/server";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
 
-const PROTECTED_PATHS = ["/app", "/keeper", "/admin"];
+// /app is open to guests: reading needs no account. The API asks for sign-in at the
+// first write (share, react, reply, report), so the OTP happens when it has a reason to.
+const PROTECTED_PATHS = ["/keeper", "/admin"];
 const AUTH_PAGES = ["/sign-in"];
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
