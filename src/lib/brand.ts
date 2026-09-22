@@ -11,8 +11,8 @@ export const BRAND = {
   community: "Voices",
   communityShort: "Voices",
   footerLine: "Every feeling about AI belongs here — the good and the hard.",
-  /** Trust line shown at sign-in and in the footer — no ads, no data sales. */
-  trustLine: "No ads. We never sell your data. Real humans moderate.",
+  /** Trust line shown at sign-in and in the footer. */
+  trustLine: "Real humans moderate.",
   /** Who runs the place — small, human, accountable. */
   runBy: "AiTo · made by Aito Social",
   shareCta: "Share your feeling",
@@ -48,9 +48,6 @@ export const BRAND = {
     },
   ],
 } as const;
-
-/** Launch goal shown as a progress bar on the landing page. */
-export const FIRST_VOICES = 1000;
 
 export const SUGGESTED_TAGS = [
   "#Sleek",

@@ -19,8 +19,6 @@ export interface PulseSample {
 
 export interface PulseStats {
   total: number;
-  /** Real takes only — sample seeds excluded. Drives the "first 1,000 voices" bar. */
-  voices: number;
   samples: PulseSample[];
 }
 
@@ -42,7 +40,7 @@ const FALLBACK_SAMPLES: PulseSample[] = INITIAL_THOUGHTS.slice(0, 3).map((t) => 
   timeLabel: t.timeLabel,
 }));
 
-const FALLBACK_STATS: PulseStats = { total: INITIAL_THOUGHTS.length, voices: 0, samples: FALLBACK_SAMPLES };
+const FALLBACK_STATS: PulseStats = { total: INITIAL_THOUGHTS.length, samples: FALLBACK_SAMPLES };
 
 /** Soft social proof — 38 → "30+", 41 → "40+", never an exact headcount. */
 export function crowdCountLabel(total: number): string {
@@ -57,9 +55,8 @@ export function crowdCountLabel(total: number): string {
 const loadPulseStats = unstable_cache(
   async (): Promise<PulseStats> => {
     const { db } = await connectToDatabase();
-    const [total, voices, recent] = await Promise.all([
+    const [total, recent] = await Promise.all([
       db.collection("posts").countDocuments(),
-      db.collection("posts").countDocuments({ is_seed: { $ne: true } }),
       db
         .collection("posts")
         .find({}, { projection: { handle: 1, author: 1, content: 1, feeling: 1, created_at: 1 } })
@@ -68,11 +65,10 @@ const loadPulseStats = unstable_cache(
         .toArray(),
     ]);
 
-    if (recent.length === 0) return { total: total || FALLBACK_STATS.total, voices, samples: FALLBACK_SAMPLES };
+    if (recent.length === 0) return { total: total || FALLBACK_STATS.total, samples: FALLBACK_SAMPLES };
 
     return {
       total,
-      voices,
       samples: recent.map((p) => ({
         id: p._id.toString(),
         author: (p.author as string) || (p.handle as string)?.replace(/^@/, "") || "Anonymous",

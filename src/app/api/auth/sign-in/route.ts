@@ -3,8 +3,14 @@ import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { generateOtpCode, storeOtp } from "@/lib/otp";
 import { EmailDeliveryError, sendOtpEmail } from "@/lib/email";
 import { getSession } from "@/lib/auth";
-import { checkDisposableEmail, checkDisplayNameAllowed } from "@/lib/anti-abuse";
+import {
+  checkDisposableEmail,
+  checkDisplayNameAllowed,
+  checkHandleAllowed,
+} from "@/lib/anti-abuse";
 import { getSiteSettings } from "@/lib/admin";
+import { connectToDatabase } from "@/lib/mongodb";
+import { hashEmail } from "@/lib/secure";
 
 const SIGN_IN_LIMIT = 8;
 const SIGN_IN_WINDOW_MS = 15 * 60_000;
@@ -65,7 +71,11 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { email, displayName } = body as { email?: string; displayName?: string };
+    const { email, displayName, username } = body as {
+      email?: string;
+      displayName?: string;
+      username?: string;
+    };
 
     if (!email || typeof email !== "string" || email.length > 254) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
@@ -104,8 +114,46 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: nameCheck.reason, code: nameCheck.code }, { status: 400 });
     }
 
+    // Optional chosen username: a real handle instead of an email-derived one.
+    // Used only for brand-new accounts at verify time; existing accounts keep
+    // their handle (so a returning member is never tripped by a "taken" check).
+    // Kept valid + unique here so new sign-ups fail fast.
+    let chosenHandle: string | undefined;
+    if (typeof username === "string" && username.trim()) {
+      const norm = username.trim().toLowerCase().replace(/^@/, "").replace(/\s+/g, "");
+      const { db } = await connectToDatabase();
+      const existing = await db.collection("users").findOne({
+        $or: [{ emailHash: hashEmail(normalized) }, { email: normalized }],
+      });
+      if (!existing) {
+        if (norm.length < 3 || norm.length > 30 || !/^[a-z0-9_]+$/.test(norm)) {
+          return NextResponse.json(
+            {
+              error:
+                "Username must be 3–30 letters, numbers, or underscores (no spaces, dots, or @).",
+            },
+            { status: 400 }
+          );
+        }
+        const handleCheck = checkHandleAllowed(`@${norm}`);
+        if (!handleCheck.ok) {
+          return NextResponse.json({ error: handleCheck.reason, code: handleCheck.code }, { status: 400 });
+        }
+        const taken = await db.collection("users").findOne({
+          handle: { $in: [`@${norm}`, norm, `@${norm}`.toLowerCase()] },
+        });
+        if (taken) {
+          return NextResponse.json(
+            { error: `@${norm} is already taken — try another username.` },
+            { status: 409 }
+          );
+        }
+        chosenHandle = norm;
+      }
+    }
+
     const code = generateOtpCode();
-    await storeOtp(normalized, code, name);
+    await storeOtp(normalized, code, name, chosenHandle);
     await sendOtpEmail(normalized, code);
 
     const payload: {

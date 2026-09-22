@@ -4,7 +4,7 @@ import { BRAND } from "@/lib/brand";
 
 export const metadata: Metadata = {
   title: "Support — AI·Thoughts",
-  description: "Supporters pay for the people who moderate, so there are never ads.",
+  description: "Supporters pay for the people who moderate.",
 };
 
 export default function SupportPage() {
@@ -15,8 +15,8 @@ export default function SupportPage() {
     <div className="app-rail min-h-dvh py-8">
       <h1 className="font-display text-2xl font-bold text-[var(--foreground)]">Support {BRAND.shortName}</h1>
       <p className="mt-3 text-sm leading-relaxed text-[var(--muted)]">
-        {BRAND.shortName} has no ads and never sells your data. Real people review every report, and
-        that costs money. Supporters cover it — so the promise stays true and the place stays around.
+        Real people review every report, and
+        that costs money. Supporters cover it — so the place stays around.
       </p>
       <a
         href={BRAND.supportUrl}

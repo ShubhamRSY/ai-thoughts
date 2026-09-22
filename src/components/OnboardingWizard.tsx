@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Check, HeartHandshake, Send } from "lucide-react";
+import { Check, HeartHandshake, Send, UserRound } from "lucide-react";
 import { FEELINGS, feelingOf } from "@/lib/feelings";
 import { LANGS } from "@/lib/mock-data";
 import { checkDignity } from "@/lib/dignity";
@@ -13,6 +13,7 @@ import type { SharePayload } from "@/components/Submit/SubmitModal";
 import type { CapturedClip } from "@/components/Submit/MediaRecorderView";
 import BrandMark from "@/components/BrandMark";
 import SharedSpectrum from "@/components/SharedSpectrum";
+import { useAuth } from "@/hooks/useAuth";
 
 interface OnboardingPeer {
   handle: string;
@@ -30,7 +31,7 @@ interface OnboardingWizardProps {
   onDone: () => void;
 }
 
-type Step = "feeling" | "words" | "together";
+type Step = "profile" | "feeling" | "words" | "together";
 
 function detectDefaultLanguage(): string {
   if (typeof navigator === "undefined") return "en";
@@ -43,9 +44,10 @@ function detectDefaultLanguage(): string {
 }
 
 const STEP_LABEL: Record<Step, string> = {
-  feeling: "1 of 3",
-  words: "2 of 3",
-  together: "3 of 3",
+  profile: "1 of 4",
+  feeling: "2 of 4",
+  words: "3 of 4",
+  together: "4 of 4",
 };
 
 /** Guided first-run: pick a feeling → say it in words → feel with others. */
@@ -56,7 +58,8 @@ export default function OnboardingWizard({
   onFeelWith,
   onDone,
 }: OnboardingWizardProps) {
-  const [step, setStep] = useState<Step>("feeling");
+  const { refresh } = useAuth();
+  const [step, setStep] = useState<Step>("profile");
   const [feeling, setFeeling] = useState<FeelingId | undefined>(undefined);
   const [text, setText] = useState("");
   const [publishing, setPublishing] = useState(false);
@@ -65,6 +68,13 @@ export default function OnboardingWizard({
   const [peers, setPeers] = useState<OnboardingPeer[]>([]);
   const [peersLoading, setPeersLoading] = useState(true);
   const [felt, setFelt] = useState<Set<string>>(() => new Set());
+  // Mandatory profile step (the "proper username" instead of an email-derived one).
+  const [profileName, setProfileName] = useState(() => identityAuthor || "");
+  const [profileUsername, setProfileUsername] = useState(() =>
+    identityHandle.replace(/^@/, "").replace(/[^a-z0-9_]/g, "")
+  );
+  const [profileBusy, setProfileBusy] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   // Prefetch the "feel with" suggestions so step 3 is instant.
   useEffect(() => {
@@ -86,6 +96,40 @@ export default function OnboardingWizard({
       cancelled = true;
     };
   }, [step]);
+
+  const saveProfile = useCallback(async () => {
+    const name = profileName.trim().slice(0, 80);
+    const norm = profileUsername.trim().toLowerCase().replace(/^@/, "").replace(/\s+/g, "");
+    if (!name) {
+      setProfileError("Add your display name — the name people see on your takes.");
+      return;
+    }
+    if (norm.length < 3 || norm.length > 30 || !/^[a-z0-9_]+$/.test(norm)) {
+      setProfileError("Username must be 3–30 letters, numbers, or underscores (no spaces, dots, or @).");
+      return;
+    }
+    setProfileBusy(true);
+    setProfileError(null);
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ handle: `@${norm}`, author: name }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setProfileError(data.error || "Couldn’t save your profile — try again.");
+        return;
+      }
+      await refresh();
+      setStep("feeling");
+    } catch {
+      setProfileError("Couldn’t save your profile — check your connection and try again.");
+    } finally {
+      setProfileBusy(false);
+    }
+  }, [profileName, profileUsername, refresh]);
 
   const submit = useCallback(async () => {
     if (!feeling) return;
@@ -179,6 +223,69 @@ export default function OnboardingWizard({
       </header>
 
       <main className="app-rail flex-1 px-4 py-6">
+        {step === "profile" && (
+          <section className="mx-auto w-full max-w-md">
+            <h1 className="font-display text-2xl font-medium leading-snug text-[var(--foreground)]">
+              Set up your profile.
+            </h1>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
+              This is how people find and recognize you. Your email is never shown —
+              instead you get a username you choose, not one built from your address.
+            </p>
+
+            <label className="mt-6 block">
+              <span className="mb-1.5 block text-xs font-medium text-[var(--muted)]">Display name</span>
+              <input
+                type="text"
+                autoComplete="name"
+                value={profileName}
+                onChange={(e) => {
+                  setProfileName(e.target.value);
+                  setProfileError(null);
+                }}
+                required
+                className="w-full rounded-xl border border-[var(--border-base)] bg-[var(--surface)] px-4 py-3 text-sm outline-none focus:border-[var(--accent)]"
+                placeholder="Alex"
+              />
+            </label>
+            <label className="mt-4 block">
+              <span className="mb-1.5 block text-xs font-medium text-[var(--muted)]">Username</span>
+              <div className="flex items-center rounded-xl border border-[var(--border-base)] bg-[var(--surface)] focus-within:border-[var(--accent)]">
+                <span className="pl-4 text-sm font-semibold text-[var(--muted)]">@</span>
+                <input
+                  type="text"
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  value={profileUsername}
+                  onChange={(e) => {
+                    setProfileUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_@]/g, ""));
+                    setProfileError(null);
+                  }}
+                  placeholder="alex_writes"
+                  required
+                  className="w-full rounded-r-xl bg-transparent px-3 py-3 text-sm outline-none"
+                />
+              </div>
+              <p className="mt-1 text-[11px] text-[var(--muted)]">
+                Letters, numbers, and underscores only — how people find you in search.
+              </p>
+            </label>
+
+            {profileError && <p className="mt-2 text-xs leading-relaxed text-rose-700">{profileError}</p>}
+
+            <button
+              type="button"
+              disabled={profileBusy || !profileName.trim()}
+              onClick={() => void saveProfile()}
+              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[var(--accent)] py-3.5 text-sm font-semibold text-[var(--surface)] transition hover:bg-[var(--accent-2)] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <UserRound className="h-4 w-4" strokeWidth={2} />
+              {profileBusy ? "Saving…" : "Save & continue"}
+            </button>
+          </section>
+        )}
+
         {step === "feeling" && (
           <section className="mx-auto w-full max-w-md">
             <h1 className="font-display text-2xl font-medium leading-snug text-[var(--foreground)]">

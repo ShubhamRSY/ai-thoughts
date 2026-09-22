@@ -78,10 +78,6 @@ export default function PrivacyPage() {
               text leaves our servers. Report snippets for keepers are scrubbed the same way.
             </li>
             <li>
-              <span className="font-medium text-[var(--foreground)]">No ad tracking.</span> We do not
-              sell your data, run ad trackers, or use your posts to train public AI models.
-            </li>
-            <li>
               <span className="font-medium text-[var(--foreground)]">Browser privacy headers.</span>{" "}
               The site sends strict referrer, framing, and permissions policies (no geolocation;
               camera/mic only for recording you choose).
@@ -133,10 +129,6 @@ export default function PrivacyPage() {
             <li>Improve reliability and fix bugs</li>
             <li>Respond to privacy or removal requests</li>
           </ul>
-          <p className="mt-2">
-            We do not sell your personal information. We do not use your content to train public AI
-            models.
-          </p>
         </section>
 
         <section>
@@ -166,8 +158,7 @@ export default function PrivacyPage() {
             7. Cookies and similar tech
           </h2>
           <p>
-            We use an essential session cookie so you stay signed in. We are not a tracking-ad
-            product: we do not run third-party advertising cookies for cross-site ads. You can clear
+            We use an essential session cookie so you stay signed in. You can clear
             cookies and local storage in your browser or app settings; that will sign you out.
           </p>
         </section>

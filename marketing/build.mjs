@@ -26,7 +26,7 @@ const SCRIPT = [
   ["Every day, tap one feeling. It takes five seconds, and it builds your week.", 7.5],
   ["Want to say more? Speak it, film it, or write a few honest words.", 7],
   ["Then feel with others. See how the community feels this week, and sit with people who get it.", 8],
-  ["No ads. We never sell your data. And real humans moderate.", 8.5],
+  ["Real people review every report.", 8.5],
   ["Aito. Say how AI makes you feel. Open Voices at aito dot social.", 7],
 ];
 

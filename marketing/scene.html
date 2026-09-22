@@ -248,8 +248,8 @@ window.build = (TL) => {
   {
     const sc = mk(6), at = S[6].start;
     const h = $('<div class="d abs" style="left:0;right:0;top:120px;text-align:center;font-size:100px">Built on trust.</div>'); sc.appendChild(h); rise(h, at + .3, .8);
-    [['ban', 'No ads', 'Never. Not now, not later.', .7], ['shield', 'Your data stays yours', 'We never sell it. Ever.', 1.9], ['users', 'Real humans moderate', 'People review every report.', 4.0]].forEach(([ic, t, s, w], i) => {
-      const p = $(`<div class="card pill abs" style="left:${140 + i * 580}px;top:360px"><div class="ic">${svg(ic)}</div><h3>${t}</h3><p>${s}</p></div>`);
+    [['users', 'Real humans moderate', 'People review every report.', 4.0]].forEach(([ic, t, s, w]) => {
+      const p = $(`<div class="card pill abs" style="left:700px;top:360px"><div class="ic">${svg(ic)}</div><h3>${t}</h3><p>${s}</p></div>`);
       sc.appendChild(p); rise(p, at + w, .8); sx({ t: at + w + .1, type: 'pop' });
     });
     const f = $('<div class="d abs" style="left:0;right:0;top:850px;text-align:center;font-size:64px;font-style:italic;color:var(--accent)">A place worth speaking in.</div>');

@@ -94,7 +94,11 @@ export async function POST(request: Request) {
     let user;
     let createdNew = false;
     try {
-      ({ user, createdNew } = await findOrCreateUser(normalized, result.displayName));
+      ({ user, createdNew } = await findOrCreateUser(
+        normalized,
+        result.displayName,
+        result.handle
+      ));
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Could not create account";
       return NextResponse.json({ error: msg }, { status: 400 });

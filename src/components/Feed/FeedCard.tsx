@@ -431,7 +431,7 @@ export default function FeedCard({
         <p
           lang={thought.language}
           dir="auto"
-          className="whitespace-pre-wrap text-[16px] leading-relaxed text-[var(--foreground)]"
+          className="whitespace-pre-wrap text-[17px] leading-relaxed text-[var(--foreground)]"
         >
           {thought.content}
         </p>
@@ -472,18 +472,18 @@ export default function FeedCard({
         )}
       </div>
 
-      <div className="relative z-0 mt-4 flex items-center gap-4 text-[var(--foreground)]/65">
+      <div className="relative z-0 mt-4 flex items-center justify-between gap-3 text-[var(--foreground)]/65">
         <button
           type="button"
           onClick={() => void like()}
           disabled={!currentHandle}
           aria-label={liked ? "Unlike" : "Like"}
           title={!currentHandle ? "Sign in to like" : undefined}
-          className={`flex items-center gap-1.5 text-[13px] font-medium transition disabled:opacity-50 ${
+          className={`flex items-center gap-1.5 text-sm font-medium transition disabled:opacity-50 ${
             liked ? "text-[var(--accent)]" : "hover:text-[var(--foreground)]"
           }`}
         >
-          <Heart className="h-[18px] w-[18px]" fill={liked ? "currentColor" : "none"} strokeWidth={2} />
+          <Heart className="h-5 w-5" fill={liked ? "currentColor" : "none"} strokeWidth={2} />
           {likes > 0 ? likes : null}
         </button>
         <button
@@ -492,11 +492,11 @@ export default function FeedCard({
           disabled={!currentHandle}
           aria-label={boosted ? "Undo repost" : "Repost"}
           title={!currentHandle ? "Sign in to repost" : undefined}
-          className={`flex items-center gap-1.5 text-[13px] font-medium transition disabled:opacity-50 ${
+          className={`flex items-center gap-1.5 text-sm font-medium transition disabled:opacity-50 ${
             boosted ? "text-[var(--accent)]" : "hover:text-[var(--foreground)]"
           }`}
         >
-          <Repeat2 className="h-[18px] w-[18px]" strokeWidth={2} />
+          <Repeat2 className="h-5 w-5" strokeWidth={2} />
           {boosts > 0 ? boosts : null}
         </button>
         {onQuoteRepost && (
@@ -506,24 +506,24 @@ export default function FeedCard({
             disabled={!currentHandle}
             aria-label="Quote repost"
             title={!currentHandle ? "Sign in to repost" : "Repost with a comment"}
-            className="flex items-center gap-1.5 text-[13px] font-medium transition hover:text-[var(--foreground)] disabled:opacity-50"
+            className="flex items-center gap-1.5 text-sm font-medium transition hover:text-[var(--foreground)] disabled:opacity-50"
           >
-            <Quote className="h-[18px] w-[18px]" strokeWidth={2} />
+            <Quote className="h-5 w-5" strokeWidth={2} />
           </button>
         )}
         <button
           type="button"
           onClick={() => setChatOpen((v) => !v)}
-          className={`flex items-center gap-1.5 text-[13px] font-medium transition ${
+          className={`flex items-center gap-1.5 text-sm font-medium transition ${
             chatOpen ? "text-[var(--foreground)]" : "hover:text-[var(--foreground)]"
           }`}
         >
-          <MessageCircle className="h-[18px] w-[18px]" strokeWidth={2} />
+          <MessageCircle className="h-5 w-5" strokeWidth={2} />
           {commentCount != null && commentCount > 0 ? commentCount : "Reply"}
         </button>
         {typeof thought.viewCount === "number" && thought.viewCount > 0 && (
-          <span className="flex items-center gap-1.5 text-[13px] font-medium text-[var(--foreground)]/50">
-            <BarChart2 className="h-[18px] w-[18px]" strokeWidth={2} />
+          <span className="flex items-center gap-1.5 text-sm font-medium text-[var(--foreground)]/50">
+            <BarChart2 className="h-5 w-5" strokeWidth={2} />
             {thought.viewCount}
           </span>
         )}
@@ -537,7 +537,7 @@ export default function FeedCard({
             bookmarked ? "text-[var(--accent)]" : "hover:text-[var(--foreground)]"
           }`}
         >
-          <Bookmark className="h-[18px] w-[18px]" fill={bookmarked ? "currentColor" : "none"} strokeWidth={2} />
+          <Bookmark className="h-5 w-5" fill={bookmarked ? "currentColor" : "none"} strokeWidth={2} />
         </button>
         <ShareCardButton thought={thought} />
       </div>

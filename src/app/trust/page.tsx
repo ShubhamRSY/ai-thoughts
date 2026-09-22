@@ -53,7 +53,7 @@ export default async function TrustPage() {
     <div className="app-rail min-h-dvh py-8">
       <h1 className="font-display text-2xl font-bold text-[var(--foreground)]">Trust &amp; moderation</h1>
       <p className="mt-1 text-sm text-[var(--muted)]">
-        No ads, no data sales. People review every report — here is what happened in the last 7 days.
+        People review every report — here is what happened in the last 7 days.
       </p>
 
       {rows ? (

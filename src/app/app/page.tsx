@@ -82,6 +82,8 @@ export default function Home() {
   /** Handle whose profile the "You" tab is currently showing (null = your own). */
   const [viewProfileHandle, setViewProfileHandle] = useState<string | null>(null);
   const [showAccount, setShowAccount] = useState(false);
+  /** Opt-in: hide the left nav rail (persisted per device — desktop and mobile). */
+  const [railHidden, setRailHidden] = useState(false);
   const { items: activityItems, unread: activityUnread, markAllRead, refresh: refreshActivity } =
     useActivity(!!user);
   const { maintenance, message: maintenanceMessage, featured } = useSiteFlags();
@@ -122,6 +124,29 @@ export default function Home() {
       cancelled = true;
     };
   }, [user]);
+
+  // Restore the per-device "hide left rail" preference once (no flash: starts hidden=false).
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined" && window.localStorage.getItem("ait_rail_hidden") === "1") {
+        setRailHidden(true);
+      }
+    } catch {
+      /* localStorage unavailable — keep the rail visible. */
+    }
+  }, []);
+
+  const toggleRail = useCallback(() => {
+    setRailHidden((hidden) => {
+      const next = !hidden;
+      try {
+        window.localStorage.setItem("ait_rail_hidden", next ? "1" : "0");
+      } catch {
+        /* session-only */
+      }
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     if (!undoId) return;
@@ -589,19 +614,25 @@ export default function Home() {
 
   return (
     <div className="flex min-h-dvh">
-      <NavRail
-        active={tab}
-        onTab={(t) => {
-          setTab(t);
-          setViewProfileHandle(null);
-          if (t === "activity") void refreshActivity();
-        }}
-        onCreate={() => openShare("text")}
-        activityCount={activityUnread}
-      />
-      <div className="app-frame flex-1">
+      {!railHidden && (
+        <NavRail
+          active={tab}
+          onTab={(t) => {
+            setTab(t);
+            setViewProfileHandle(null);
+            if (t === "activity") void refreshActivity();
+          }}
+          onCreate={() => openShare("text")}
+          activityCount={activityUnread}
+        />
+      )}
+      <div className="app-shell">
       <MaintenanceBanner />
-      <Header onShare={() => openShare("text")} />
+      <Header
+        railHidden={railHidden}
+        onToggleRail={toggleRail}
+        onShare={() => openShare("text")}
+      />
 
       <main className="flex-1 pb-nav">
         {tab === "home" && (

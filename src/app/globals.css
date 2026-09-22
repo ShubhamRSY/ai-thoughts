@@ -74,6 +74,28 @@
   }
 }
 
+/* App shell INSIDE the fixed rail layout: fill the *remaining* row width.
+   Unlike .app-frame (which centers a self-sized column and needs body-level
+   centering from a standalone page), this must never be 100% of the page —
+   on mobile that combined with the 64px rail overflowed the viewport and
+   clipped the right edge (e.g. the repost/action row). */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0%;
+  width: auto;
+  min-width: 0;
+  min-height: 100dvh;
+  min-height: var(--app-height, 100dvh);
+  background: var(--surface);
+}
+
+@media (min-width: 640px) {
+  .app-shell {
+    border-inline: 1px solid var(--border-base);
+  }
+}
+
 /* Horizontal padding matching safe areas on both sides */
 .app-pad {
   padding-inline: var(--pad);
@@ -350,28 +372,6 @@ html[data-pwa-banner="1"] .pb-nav {
   margin-top: clamp(0.75rem, 2vw, 1.15rem);
   font-size: clamp(0.85rem, 1.4vw, 0.95rem);
   color: var(--muted);
-}
-
-.landing-progress {
-  margin-top: 0.9rem;
-  max-width: 22rem;
-  font-size: 0.8rem;
-  color: var(--muted);
-}
-
-.landing-progress-bar {
-  height: 0.35rem;
-  margin-bottom: 0.4rem;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--surface-2);
-}
-
-.landing-progress-bar span {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--accent);
 }
 
 .landing-ctas {

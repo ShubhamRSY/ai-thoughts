@@ -11,6 +11,7 @@ import {
   allocateSafeHandle,
   checkDisposableEmail,
   checkDisplayNameAllowed,
+  checkHandleAllowed,
 } from "@/lib/anti-abuse";
 
 export const SESSION_COOKIE = "aithoughts.session";
@@ -268,7 +269,8 @@ export async function clearSessionCookie(): Promise<void> {
 
 export async function findOrCreateUser(
   email: string,
-  displayName: string
+  displayName: string,
+  preferredHandle?: string
 ): Promise<{ user: UserRecord; createdNew: boolean }> {
   const disposable = checkDisposableEmail(email);
   if (!disposable.ok) {
@@ -311,7 +313,21 @@ export async function findOrCreateUser(
     if (displayName.trim()) user.displayName = displayName.trim();
   } else {
     const local = normalizedEmail.split("@")[0] || "user";
-    let handle = allocateSafeHandle(local);
+    // Prefer the username the person chose at sign-in over an email-derived
+    // handle (@<email-prefix><4 digits>) so their address is never guessable.
+    let handle = "";
+    if (preferredHandle && typeof preferredHandle === "string" && preferredHandle.trim()) {
+      const norm = preferredHandle.trim().toLowerCase().replace(/^@/, "").replace(/\s+/g, "");
+      if (
+        norm.length >= 3 &&
+        norm.length <= 30 &&
+        /^[a-z0-9_]+$/.test(norm) &&
+        checkHandleAllowed(`@${norm}`).ok
+      ) {
+        handle = `@${norm}`;
+      }
+    }
+    if (!handle) handle = allocateSafeHandle(local);
     // Extremely unlikely collision — retry a few times
     for (let i = 0; i < 5; i++) {
       const taken = await users.findOne({
@@ -324,7 +340,9 @@ export async function findOrCreateUser(
       emailHash,
       emailEnc,
       handle,
-      displayName: displayName.trim() || local.replace(/[^a-z0-9]/gi, "").slice(0, 12) || "friend",
+      // Never surface the email prefix as a display name.
+      displayName:
+        displayName.trim() || (preferredHandle ? preferredHandle.replace(/^@/, "") : "Voice"),
       createdAt: new Date().toISOString(),
       lastLoginAt: new Date().toISOString(),
     };

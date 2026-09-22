@@ -16,10 +16,13 @@ async function isolateIp(page: import("@playwright/test").Page): Promise<void> {
 
 test("a new visitor can sign in end-to-end with the emailed code", async ({ page }) => {
   await isolateIp(page);
-  const email = `e2e-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
+  const uniq = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  const email = `e2e-${uniq}@example.com`;
 
   await page.goto("/sign-in");
-  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Email", { exact: true }).fill(email);
+  await page.getByLabel("Display name").fill("Test Person");
+  await page.getByLabel("Username").fill(`tester${uniq.slice(-12)}`);
   await page.getByRole("button", { name: "Send sign-in code" }).click();
 
   // Dev-mode-only: the API returns the OTP in-band (no RESEND_API_KEY set),
@@ -44,10 +47,13 @@ test("a new visitor can sign in end-to-end with the emailed code", async ({ page
 
 test("an unrecognized code is rejected with an error, not a silent sign-in", async ({ page }) => {
   await isolateIp(page);
-  const email = `e2e-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
+  const uniq = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  const email = `e2e-${uniq}@example.com`;
 
   await page.goto("/sign-in");
-  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Email", { exact: true }).fill(email);
+  await page.getByLabel("Display name").fill("Test Person");
+  await page.getByLabel("Username").fill(`tester${uniq.slice(-12)}`);
   await page.getByRole("button", { name: "Send sign-in code" }).click();
   await expect(page.getByText("Dev code:")).toBeVisible();
 

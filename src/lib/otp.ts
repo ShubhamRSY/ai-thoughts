@@ -10,6 +10,8 @@ export interface AuthCodeRecord {
   emailHash: string;
   codeHash: string;
   displayName: string;
+  /** Chosen username (handle) captured at sign-in. Only used once, for brand-new accounts. */
+  handle?: string;
   attempts: number;
   createdAt: Date;
   expiresAt: Date;
@@ -48,7 +50,8 @@ export async function hashOtp(email: string, code: string): Promise<string> {
 export async function storeOtp(
   email: string,
   code: string,
-  displayName: string
+  displayName: string,
+  handle?: string
 ): Promise<void> {
   const { db } = await connectToDatabase();
   const normalized = email.toLowerCase().trim();
@@ -68,6 +71,7 @@ export async function storeOtp(
     emailHash,
     codeHash,
     displayName,
+    ...(handle ? { handle } : {}),
     attempts: 0,
     createdAt: now,
     expiresAt: new Date(now.getTime() + OTP_TTL_MS),
@@ -75,7 +79,7 @@ export async function storeOtp(
 }
 
 export type VerifyOtpResult =
-  | { ok: true; displayName: string }
+  | { ok: true; displayName: string; handle?: string }
   | { ok: false; error: string };
 
 export async function verifyAndConsumeOtp(
@@ -119,5 +123,9 @@ export async function verifyAndConsumeOtp(
   }
 
   await codes.deleteMany(matchFilter);
-  return { ok: true, displayName: record.displayName };
+  return {
+    ok: true,
+    displayName: record.displayName,
+    ...(record.handle ? { handle: record.handle } : {}),
+  };
 }

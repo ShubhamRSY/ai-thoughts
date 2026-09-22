@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, LogOut } from "lucide-react";
+import { Plus, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,9 +8,12 @@ import { BRAND } from "@/lib/brand";
 
 interface HeaderProps {
   onShare: () => void;
+  /** Left nav rail is currently hidden — if onToggleRail is set the header shows a toggle. */
+  railHidden?: boolean;
+  onToggleRail?: () => void;
 }
 
-export default function Header({ onShare }: HeaderProps) {
+export default function Header({ onShare, railHidden, onToggleRail }: HeaderProps) {
   const { user, signOut } = useAuth();
   const router = useRouter();
 
@@ -31,6 +34,21 @@ export default function Header({ onShare }: HeaderProps) {
         </div>
 
         <div className="flex shrink-0 items-center gap-1">
+          {onToggleRail && (
+            <button
+              type="button"
+              onClick={onToggleRail}
+              aria-label={railHidden ? "Show sidebar" : "Hide sidebar"}
+              title="Toggle sidebar"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--muted)] transition hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+            >
+              {railHidden ? (
+                <PanelLeftOpen className="h-[18px] w-[18px]" strokeWidth={2} />
+              ) : (
+                <PanelLeftClose className="h-[18px] w-[18px]" strokeWidth={2} />
+              )}
+            </button>
+          )}
           <button
             type="button"
             onClick={onShare}
