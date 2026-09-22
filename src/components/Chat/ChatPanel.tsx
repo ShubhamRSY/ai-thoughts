@@ -351,7 +351,7 @@ export default function ChatPanel({
               {(m.author || m.handle).slice(0, 1).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-[15px] leading-snug text-[var(--foreground)]">
+              <p className="text-[15px] leading-snug text-[var(--user-ink)]">
                 <span className="font-semibold">{m.handle}</span>{" "}
                 <CommentBody body={m.body} />
               </p>

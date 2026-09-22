@@ -431,7 +431,7 @@ export default function FeedCard({
         <p
           lang={thought.language}
           dir="auto"
-          className="whitespace-pre-wrap text-[17px] leading-relaxed text-[var(--foreground)]"
+          className="whitespace-pre-wrap text-[17px] leading-relaxed text-[var(--user-ink)]"
         >
           {thought.content}
         </p>
@@ -460,7 +460,7 @@ export default function FeedCard({
                 </p>
                 <p
                   dir="auto"
-                  className="mt-1 line-clamp-4 whitespace-pre-wrap text-[14px] leading-relaxed text-[var(--foreground)]/85"
+                  className="mt-1 line-clamp-4 whitespace-pre-wrap text-[14px] leading-relaxed text-[var(--user-ink)]/85"
                 >
                   {thought.quotedPost.content}
                 </p>
@@ -600,7 +600,7 @@ export default function FeedCard({
                     {thought.author}{" "}
                     <span className="font-normal text-[var(--foreground)]/60">{thought.handle}</span>
                   </p>
-                  <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-[14px] text-[var(--foreground)]/85">
+                  <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-[14px] text-[var(--user-ink)]/85">
                     {thought.content}
                   </p>
                 </div>

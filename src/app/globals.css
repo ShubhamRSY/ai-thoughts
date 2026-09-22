@@ -23,6 +23,9 @@
   --accent: #1f4d45;
   --accent-2: #163832;
   --accent-soft: #dce8e5;
+  /* User-added text ink: a slight pine tint so people's words read a touch
+     different from the chrome, while still matching the theme. */
+  --user-ink: color-mix(in srgb, var(--accent) 62%, var(--foreground));
 
   --app-vh: 1vh;
   --app-height: 100dvh;
