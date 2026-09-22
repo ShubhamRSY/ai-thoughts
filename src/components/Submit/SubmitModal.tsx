@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X, AudioLines, Video, Type, Send, Globe, ChevronDown } from "lucide-react";
 import { LANGS } from "@/lib/mock-data";
 import { BRAND, SUGGESTED_TAGS } from "@/lib/brand";
@@ -86,6 +86,16 @@ export default function SubmitModal({
   const [captured, setCaptured] = useState<CapturedClip | null>(null);
   const [image, setImage] = useState<File | null>(null);
   const [publishError, setPublishError] = useState<string | null>(null);
+  /** Instagram-style "uploading" state with a progress bar before landing in the feed. */
+  const [publishing, setPublishing] = useState(false);
+  const [publishProgress, setPublishProgress] = useState(0);
+  const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (progressTimer.current) clearInterval(progressTimer.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -182,15 +192,38 @@ export default function SubmitModal({
         : image
           ? { blob: image, duration: 0 }
           : undefined;
+
+    // Instagram-style: upload progress bar, then drop straight into the feed.
+    setPublishing(true);
+    setPublishProgress(5);
+    let progress = 5;
+    progressTimer.current = setInterval(() => {
+      progress = Math.min(88, progress + (progress < 40 ? 5 : 2));
+      setPublishProgress(progress);
+    }, 130);
+
+    const stopLoading = () => {
+      if (progressTimer.current) {
+        clearInterval(progressTimer.current);
+        progressTimer.current = null;
+      }
+    };
+
     let result: PublishResult;
     try {
       result = await onPublish(payload, clip);
     } catch (e) {
       console.error("publish failed:", e);
+      stopLoading();
+      setPublishing(false);
+      setPublishProgress(0);
       setPublishError(e instanceof Error ? e.message : "Couldn’t share right now. Try again.");
       return;
     }
     if (!result.ok) {
+      stopLoading();
+      setPublishing(false);
+      setPublishProgress(0);
       if (result.reason === "cooldown") {
         setPublishError(
           `You just shared — wait ${result.retryInSec}s, then try again.`
@@ -208,9 +241,19 @@ export default function SubmitModal({
       }
       return;
     }
+
+    stopLoading();
+    setPublishProgress(100);
     setPublishedAsPrompt(Boolean(fromDailyPrompt));
     setPublishedThought(result.thought ?? null);
-    setPublished(true);
+    if (fromDailyPrompt) {
+      setPublishing(false);
+      setPublished(true);
+    } else {
+      // Let the bar finish, then close the composer so the focused post shows in the feed.
+      // Keep `publishing` true until then so the "Shared!" state stays on screen.
+      window.setTimeout(onClose, 400);
+    }
   };
 
   return (
@@ -219,8 +262,9 @@ export default function SubmitModal({
         <div className="app-rail flex items-center justify-between py-3">
           <button
             onClick={onClose}
-            className="flex items-center gap-1 rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+            disabled={publishing}
             aria-label="Back"
+            className="flex items-center gap-1 rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-[var(--surface-2)] hover:text-[var(--foreground)] disabled:opacity-40"
           >
             <X className="h-5 w-5" />
             <span className="text-sm font-medium">Cancel</span>
@@ -273,6 +317,25 @@ export default function SubmitModal({
             </button>
           </div>
         )
+      ) : publishing ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-5 overflow-y-auto px-6 py-10 text-center">
+          <span className="relative flex h-14 w-14 items-center justify-center">
+            <span className="absolute inset-0 rounded-full border-2 border-[var(--accent-soft)]" />
+            <span className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-[var(--accent)]" />
+            <Send className="h-5 w-5 text-[var(--accent)]" />
+          </span>
+          <div className="w-full max-w-[15rem]">
+            <div className="h-1.5 overflow-hidden rounded-full bg-[var(--surface-2)]">
+              <div
+                className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-200 ease-out"
+                style={{ width: `${publishProgress}%` }}
+              />
+            </div>
+          </div>
+          <p className="text-sm font-medium text-[var(--muted)]">
+            {publishProgress >= 100 ? "Shared!" : "Sharing your feeling…"}
+          </p>
+        </div>
       ) : (
         <>
           <div className="app-rail flex flex-1 flex-col overflow-y-auto">
