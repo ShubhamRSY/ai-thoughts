@@ -39,6 +39,8 @@
   --pad-x: var(--pad);
   --pad-r: var(--pad);
   --header-h: 3.75rem;
+  /* Instagram-style bottom tab bar height (minus safe area, added by .tab-bar). */
+  --tabbar-h: 3.75rem;
 
   /* Back-compat aliases used by older classNames */
   --shell-pad: var(--pad);
@@ -77,17 +79,17 @@
   }
 }
 
-/* App shell INSIDE the fixed rail layout: fill the *remaining* row width.
-   Unlike .app-frame (which centers a self-sized column and needs body-level
-   centering from a standalone page), this must never be 100% of the page —
-   on mobile that combined with the 64px rail overflowed the viewport and
-   clipped the right edge (e.g. the repost/action row). */
+/* App shell: one centered column (same width as the bottom tab bar and the
+   standalone app-frame). It no longer sits beside a left rail, so it owns
+   the full responsive column and centers itself. */
 .app-shell {
   display: flex;
   flex-direction: column;
-  flex: 1 1 0%;
-  width: auto;
+  flex: 0 1 auto;
+  width: min(100%, var(--shell-max));
+  max-width: 100%;
   min-width: 0;
+  margin-inline: auto;
   min-height: 100dvh;
   min-height: var(--app-height, 100dvh);
   background: var(--surface);
@@ -229,11 +231,29 @@ html.is-app-shell body {
 }
 
 .pb-nav {
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1.5rem);
+  padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 1.25rem);
 }
 
 html[data-pwa-banner="1"] .pb-nav {
-  padding-bottom: calc(6.5rem + env(safe-area-inset-bottom, 0px) + 1.5rem);
+  padding-bottom: calc(6.5rem + var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 1.25rem);
+}
+
+/* Bottom tab bar — hugs the same centered column as .app-shell. */
+.tab-bar {
+  min-height: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
+  width: min(100%, var(--shell-max));
+  max-width: 100%;
+  margin-inline: auto;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  border-top: 1px solid var(--border-base);
+  background: var(--surface);
+}
+
+@media (min-width: 640px) {
+  .tab-bar {
+    border-inline: 1px solid var(--border-base);
+    border-top: 1px solid var(--border-base);
+  }
 }
 
 .feed-grid {

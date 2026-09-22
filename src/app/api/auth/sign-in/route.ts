@@ -104,10 +104,12 @@ export async function POST(request: Request) {
       );
     }
 
+    // Never derive a display name from the email — an empty name falls back
+    // to a neutral default at verify time instead of leaking an address.
     const name =
       displayName && typeof displayName === "string" && displayName.trim()
         ? displayName.trim().slice(0, 80)
-        : normalized.split("@")[0].slice(0, 80);
+        : "";
 
     const nameCheck = checkDisplayNameAllowed(name);
     if (!nameCheck.ok) {

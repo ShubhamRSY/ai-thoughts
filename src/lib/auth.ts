@@ -294,6 +294,19 @@ export async function findOrCreateUser(
   let createdNew = false;
 
   if (user) {
+    // A real, chosen display name always wins. When none is given, drop a
+    // stored name that is just the person's email (legacy fallback) so an
+    // address never shows up on comments or feelings instead of a name.
+    let nextName: string | undefined;
+    if (displayName.trim()) {
+      nextName = displayName.trim();
+    } else {
+      const local = normalizedEmail.split("@")[0].toLowerCase();
+      const storedName = (user.displayName ?? "").trim();
+      const emailDerived =
+        storedName.toLowerCase() === local || storedName.toLowerCase() === normalizedEmail;
+      if (emailDerived) nextName = "Voice";
+    }
     await users.updateOne(
       { _id: user._id },
       {
@@ -301,7 +314,7 @@ export async function findOrCreateUser(
           lastLoginAt: new Date().toISOString(),
           emailHash,
           emailEnc,
-          ...(displayName.trim() ? { displayName: displayName.trim() } : {}),
+          ...(nextName ? { displayName: nextName } : {}),
         },
         $unset: { email: "" },
       }
@@ -310,7 +323,7 @@ export async function findOrCreateUser(
     user.emailHash = emailHash;
     user.emailEnc = emailEnc;
     delete user.email;
-    if (displayName.trim()) user.displayName = displayName.trim();
+    if (nextName) user.displayName = nextName;
   } else {
     const local = normalizedEmail.split("@")[0] || "user";
     // Prefer the username the person chose at sign-in over an email-derived
