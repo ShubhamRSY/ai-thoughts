@@ -1,4 +1,4 @@
-const { chromium } = require("@playwright/test");
+/* eslint-disable @typescript-eslint/no-require-imports -- standalone CommonJS script, run with `node media-pipeline.cjs` */
 const upload = require("@vercel/blob/client").upload;
 const fs = require("fs");
 const cp = require("child_process");
