@@ -467,7 +467,7 @@ export async function deleteUserAccount(session: SessionUser): Promise<void> {
  *  own email local-part (e.g. @siddhisunil16233 from name@example.com). */
 function isEmailDerivedHandle(handle?: string | null, email?: string): boolean {
   const h = (handle ?? "").trim().toLowerCase();
-  if (!/^@[a-z0-9]{3,11}\d{4,}$/.test(h)) return false;
+  if (!/^@[a-z0-9]{3,15}\d{4,}$/.test(h)) return false;
   const local = email?.toLowerCase().split("@")[0] ?? "";
   const base = local.replace(/[^a-z0-9]/gi, "").slice(0, 10).toLowerCase();
   return base.length >= 3 && h.startsWith(`@${base}`);
