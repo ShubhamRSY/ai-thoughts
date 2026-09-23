@@ -261,11 +261,11 @@ export default function FeedCard({
       className="relative isolate border-b border-[var(--border-base)] bg-[var(--surface)] py-4"
     >
       <div className="flex items-start gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-2)] text-[11px] font-semibold text-[var(--foreground)]">
+        <div className="relative mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-2)] text-[11px] font-semibold text-[var(--foreground)]">
           {initials(thought.author)}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-center gap-1.5">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
             {thought.author && (
               <span className="truncate text-sm font-semibold text-[var(--foreground)]">
                 {thought.author}

@@ -17,18 +17,19 @@ export function shiftDay(day: string, delta: number): string {
 }
 
 /** `source: "tap"` counts toward the community pulse; a mood from a post is already counted as that post. */
+/** One row per person per day storing a SET of feelings — you can pick several, or "All" (= everything). */
 export async function setMood(
   db: Db,
   handle: string,
   day: string,
-  feeling: string,
+  feelings: string[],
   source: "tap" | "post"
 ): Promise<void> {
   const handle_norm = handle.trim().toLowerCase().replace(/^@/, "");
-  // ponytail: tap-then-post the same day counts that person twice in the community pulse; dedupe if it shows.
+  // ponytail: tap-then-post the same day counts that person twice; dedupe if it shows.
   await db.collection("moods").updateOne(
     { handle_norm, day },
-    { $set: { feeling }, $setOnInsert: { source, created_at: new Date() } },
+    { $set: { feeling: feelings }, $setOnInsert: { source, created_at: new Date() } },
     { upsert: true }
   );
 }
@@ -38,9 +39,9 @@ export async function weekMoods(db: Db, handle: string, endDay: string) {
   const handle_norm = handle.trim().toLowerCase().replace(/^@/, "");
   const days = Array.from({ length: 7 }, (_, i) => shiftDay(endDay, i - 6));
   const rows = await db
-    .collection<{ day: string; feeling: string }>("moods")
+    .collection<{ day: string; feeling: string[] | null }>("moods")
     .find({ handle_norm, day: { $in: days } })
     .toArray();
-  const by = new Map(rows.map((r) => [r.day, r.feeling]));
+  const by = new Map(rows.map((r) => [r.day, r.feeling ?? null]));
   return days.map((day) => ({ day, feeling: by.get(day) ?? null }));
 }

@@ -626,7 +626,7 @@ export default function Home() {
                 <DailyPulse
                   signedIn={!!user}
                   onNeedSignIn={() => router.push("/sign-in?next=/app")}
-                  onTap={bump}
+                  onTap={(feelings) => bump(feelings[0])}
                 />
 
                 {featured && <FeaturedVoice voice={featured} />}
@@ -721,7 +721,7 @@ export default function Home() {
                 </div>
 
                 <div className="mt-8">
-                  <Footer />
+                  <Footer hideRunBy />
                 </div>
 
                 <p className="app-pad mt-4 flex items-center justify-center gap-1.5 pb-2 text-[11px] font-medium text-[var(--muted)]">

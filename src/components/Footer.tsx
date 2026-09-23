@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { BRAND } from "@/lib/brand";
 
-export default function Footer() {
+export default function Footer({ hideRunBy = false }: { hideRunBy?: boolean }) {
   return (
     <footer className="app-pad border-t border-[var(--border-base)] py-8">
       <p className="font-display text-sm text-[var(--foreground)]">{BRAND.name}</p>
@@ -24,9 +24,11 @@ export default function Footer() {
       <p className="mt-3 text-[11px] leading-relaxed text-[var(--muted)]">
         {BRAND.footerLine}
       </p>
-      <p className="mt-2 text-[10px] uppercase tracking-widest text-[var(--muted)]">
-        {BRAND.runBy}
-      </p>
+      {!hideRunBy && (
+        <p className="mt-2 text-[10px] uppercase tracking-widest text-[var(--muted)]">
+          {BRAND.runBy}
+        </p>
+      )}
     </footer>
   );
 }

@@ -12,7 +12,8 @@ export async function POST(request: NextRequest) {
   if (!session) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
 
   const body = await request.json().catch(() => ({}));
-  if (typeof body.feeling !== "string" || !FEELING_IDS.has(body.feeling)) {
+  const feelings = body.feelings ?? (body.feeling ? [body.feeling] : []);
+  if (!Array.isArray(feelings) || feelings.length === 0 || feelings.some((f) => !FEELING_IDS.has(f))) {
     return NextResponse.json({ error: "Invalid feeling" }, { status: 400 });
   }
   if (!isValidMoodDay(body.day)) {
@@ -20,7 +21,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { db } = await connectToDatabase();
-  await setMood(db, session.handle, body.day, body.feeling, "tap");
+  await setMood(db, session.handle, body.day, feelings, "tap");
   return NextResponse.json({ ok: true, week: await weekMoods(db, session.handle, body.day) });
 }
 

@@ -22,6 +22,7 @@ export async function GET() {
       .collection("moods")
       .aggregate([
         { $match: { source: "tap", created_at: { $gte: since } } },
+        { $unwind: "$feeling" },
         { $group: { _id: "$feeling", count: { $sum: 1 } } },
       ])
       .toArray();

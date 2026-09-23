@@ -108,7 +108,7 @@ export default function FilterBar({
         ))}
       </div>
 
-      <div className="flex gap-5 overflow-x-auto" role="tablist" aria-label="Format">
+      <div className="flex flex-wrap gap-5" role="tablist" aria-label="Format">
         {MEDIA_FILTERS.map((f) => {
           const active = media === f.id;
           return (
