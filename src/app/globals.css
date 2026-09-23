@@ -223,11 +223,11 @@ body {
   background-image: none;
   overscroll-behavior-y: none;
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html.is-app-shell body {
   background-attachment: scroll;
-  -webkit-tap-highlight-color: transparent;
 }
 
 .pb-nav {
@@ -366,7 +366,7 @@ html[data-pwa-banner="1"] .pb-nav {
 
 .landing-name {
   font-family: var(--font-fraunces), Georgia, serif;
-  font-size: clamp(2.35rem, 7vw, 4.25rem);
+  font-size: clamp(2.85rem, 12vw, 4.5rem);
   font-weight: 500;
   line-height: 0.95;
   letter-spacing: -0.03em;
@@ -375,10 +375,10 @@ html[data-pwa-banner="1"] .pb-nav {
 
 .landing-headline {
   margin-top: clamp(1.25rem, 3vw, 2rem);
-  max-width: 18ch;
-  font-size: clamp(1.35rem, 3.6vw, 2.15rem);
+  max-width: 28ch;
+  font-size: clamp(1.5rem, 5vw, 2.15rem);
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1.25;
   letter-spacing: -0.02em;
   color: var(--foreground);
 }

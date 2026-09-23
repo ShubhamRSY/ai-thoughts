@@ -4,7 +4,7 @@ import type { Feeling, FeelingId } from "@/lib/types";
  * Feelings stay emotionally clear in language — chips stay simple
  * (accent / surface only, no rainbow).
  */
-const CHIP_SOFT =
+export const CHIP_SOFT =
   "border-[var(--border-base)] bg-[var(--surface-2)] text-[var(--foreground)]";
 
 export const FEELINGS: Feeling[] = [
@@ -74,8 +74,19 @@ export const FEELING_MAP: Record<FeelingId, Feeling> = FEELINGS.reduce(
   {} as Record<FeelingId, Feeling>
 );
 
+/** Fallback used when someone typed their own feeling instead of picking a preset. */
+export const CUSTOM_FEELING: Feeling = {
+  id: "custom",
+  emoji: "",
+  label: "A feeling of their own",
+  short: "Custom",
+  chip: CHIP_SOFT,
+  tone: "steady",
+};
+
 export function feelingOf(id?: FeelingId | string | null): Feeling | undefined {
   if (!id) return undefined;
+  if (id === "custom") return CUSTOM_FEELING;
   return FEELING_MAP[id as FeelingId];
 }
 

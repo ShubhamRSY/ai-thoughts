@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X, AudioLines, Video, Type, Send, Globe, ChevronDown } from "lucide-react";
+import { X, AudioLines, Video, Type, Send, ChevronDown } from "lucide-react";
 import { LANGS } from "@/lib/mock-data";
 import { BRAND, SUGGESTED_TAGS } from "@/lib/brand";
 import { checkDignity, normalizeTag } from "@/lib/dignity";
 import { checkContentQuality } from "@/lib/anti-abuse";
 import { fakeHash } from "@/lib/integrity";
-import { FEELINGS } from "@/lib/feelings";
+import { FEELINGS, CHIP_SOFT } from "@/lib/feelings";
 import { dailyPrompt, todayKey, weeklyTheme } from "@/lib/daily-prompt";
 import type { FeelingId, MediaType, Thought, PublishResult } from "@/lib/types";
 import MediaRecorderView, { type CapturedClip } from "@/components/Submit/MediaRecorderView";
@@ -78,8 +78,9 @@ export default function SubmitModal({
   const [content, setContent] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [customTag, setCustomTag] = useState("");
-  const [language, setLanguage] = useState(detectDefaultLanguage);
+  const [language] = useState(detectDefaultLanguage);
   const [feeling, setFeeling] = useState<FeelingId | undefined>(presetFeeling);
+  const [customFeeling, setCustomFeeling] = useState("");
   const [published, setPublished] = useState(false);
   const [publishedAsPrompt, setPublishedAsPrompt] = useState(false);
   const [publishedThought, setPublishedThought] = useState<Thought | null>(null);
@@ -100,6 +101,7 @@ export default function SubmitModal({
   useEffect(() => {
     if (!open) return;
     setFeeling(presetFeeling);
+    setCustomFeeling("");
   }, [open, presetFeeling]);
 
   useEffect(() => {
@@ -123,7 +125,6 @@ export default function SubmitModal({
 
   const canSubmit =
     handle.trim().length > 0 &&
-    !!feeling &&
     (tab === "text" ? content.trim().length >= 3 : !!captured?.blob);
 
   const switchTab = (t: Tab) => {
@@ -161,6 +162,17 @@ export default function SubmitModal({
       return;
     }
 
+    const customFeelingValue = feeling === "custom" ? customFeeling.trim() : "";
+    if (customFeelingValue) {
+      const feelingDignity = checkDignity(customFeelingValue);
+      if (!feelingDignity.ok) {
+        setPublishError(feelingDignity.reason);
+        return;
+      }
+    }
+    // A "Custom" pick with nothing typed isn't a real feeling — same as not picking one.
+    const feelingValue = feeling === "custom" && !customFeelingValue ? undefined : feeling;
+
     const seed = `${tab}:${handleValue}:${contentValue.slice(0, 40)}:${Date.now()}`;
     const langInfo = LANGS.find((l) => l.code === language);
     const day = todayKey();
@@ -169,7 +181,8 @@ export default function SubmitModal({
       handle: handleValue,
       content: contentValue,
       mediaType: tab,
-      feeling,
+      feeling: feelingValue,
+      customFeeling: feelingValue === "custom" ? customFeelingValue : undefined,
       mediaDuration: captured && captured.duration > 0 ? fmtDur(captured.duration) : undefined,
       mediaUrl: undefined,
       tags: tags.length ? tags : [],
@@ -402,11 +415,34 @@ export default function SubmitModal({
                       </button>
                     );
                   })}
+                  <button
+                    type="button"
+                    onClick={() => setFeeling("custom")}
+                    className={`shrink-0 rounded-full border px-3 py-2 text-left transition ${
+                      feeling === "custom"
+                        ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-2)]"
+                        : `${CHIP_SOFT} opacity-90 hover:border-[var(--accent)]`
+                    }`}
+                  >
+                    <span className="block text-xs font-semibold">Custom</span>
+                    <span className="mt-0.5 block max-w-[9rem] truncate text-[10px] opacity-80">
+                      Say it your way
+                    </span>
+                  </button>
                 </div>
-                {feeling && (
-                  <p className="mt-2 text-xs font-medium text-[var(--accent)]">
-                    {FEELINGS.find((f) => f.id === feeling)?.label}
-                  </p>
+                {feeling === "custom" ? (
+                  <input
+                    value={customFeeling}
+                    onChange={(e) => setCustomFeeling(e.target.value.slice(0, 40))}
+                    placeholder="Type how AI makes you feel…"
+                    className="mt-2 w-full rounded-lg border border-[var(--border-base)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
+                  />
+                ) : (
+                  feeling && (
+                    <p className="mt-2 text-xs font-medium text-[var(--accent)]">
+                      {FEELINGS.find((f) => f.id === feeling)?.label}
+                    </p>
+                  )
                 )}
               </div>
 
@@ -465,22 +501,6 @@ export default function SubmitModal({
                   <ChevronDown className="h-4 w-4 text-[var(--muted)] transition-transform group-open:rotate-180" />
                 </summary>
                 <div className="space-y-3 px-3 pt-1">
-                  <div className="relative">
-                    <Globe className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
-                    <select
-                      value={language}
-                      onChange={(e) => setLanguage(e.target.value)}
-                      className="w-full cursor-pointer appearance-none rounded-lg border border-[var(--border-base)] bg-white py-2 pl-9 pr-9 text-sm outline-none focus:border-[var(--accent)]"
-                    >
-                      {LANGS.map((l) => (
-                        <option key={l.code} value={l.code}>
-                          {l.flag ? `${l.flag} ${l.label}` : l.label}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
-                  </div>
-
                   <div className="flex flex-wrap gap-1.5">
                     {SUGGESTED_TAGS.map((t) => {
                       const active = tags.includes(t);
@@ -556,11 +576,7 @@ export default function SubmitModal({
                 {BRAND.shareCta}
               </button>
               <p className="text-center text-[11px] text-[var(--muted)]">
-                {!feeling
-                  ? "Choose how this feels"
-                  : tab === "text"
-                    ? "Write at least a few words"
-                    : "Record a short clip"}
+                {tab === "text" ? "Write at least a few words" : "Record a short clip"}
                 {handle.trim() ? "" : " · add a handle"}
               </p>
             </div>

@@ -45,6 +45,7 @@ interface RawPost {
   content: string;
   media_type: "audio" | "video" | "text";
   feeling?: string | null;
+  custom_feeling?: string | null;
   media_url?: string | null;
   media_duration?: string | null;
   stream_url?: string | null;
@@ -89,6 +90,7 @@ function toThought(r: RawPost): Thought {
     content: r.content,
     mediaType: r.media_type,
     feeling: (r.feeling as Thought["feeling"]) || undefined,
+    customFeeling: r.custom_feeling ?? undefined,
     mediaUrl: r.media_url ?? undefined,
     mediaDuration: r.media_duration ?? undefined,
     streamUrl: r.stream_url ?? undefined,
@@ -265,6 +267,7 @@ export async function publishPost(
         content: payload.content,
         media_type: payload.mediaType,
         feeling: payload.feeling ?? null,
+        custom_feeling: payload.customFeeling ?? null,
         media_url: mediaUrl,
         media_duration: payload.mediaDuration ?? null,
         tags: payload.tags,
@@ -558,8 +561,12 @@ function timeLabelFor(iso: string): string {
   const h = Math.floor(m / 60);
   if (h < 24) return `${h}h`;
   const d = Math.floor(h / 24);
-  if (d < 30) return `${d}d`;
-  return new Date(iso).toLocaleDateString();
+  if (d < 7) return `${d}d`;
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 // ---------------------------------------------------------------------------

@@ -45,6 +45,7 @@ interface PostDoc {
   content: string;
   media_type: "audio" | "video" | "text";
   feeling?: string | null;
+  custom_feeling?: string | null;
   media_url?: string | null;
   media_duration?: string | null;
   stream_url?: string | null;
@@ -380,6 +381,7 @@ export async function GET(request: NextRequest) {
         content: p.content,
         media_type: p.media_type,
         feeling: p.feeling ?? null,
+        custom_feeling: p.custom_feeling ?? null,
         media_url: p.media_url ?? null,
         media_duration: p.media_duration ?? null,
         stream_url: p.stream_url ?? null,
@@ -453,10 +455,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid media_type" }, { status: 400 });
     }
 
-    const feeling =
-      typeof body.feeling === "string" && FEELING_IDS.has(body.feeling as never)
+    const feelingRaw =
+      typeof body.feeling === "string" &&
+      (FEELING_IDS.has(body.feeling as never) || body.feeling === "custom")
         ? body.feeling
         : null;
+    const customFeeling =
+      feelingRaw === "custom" && typeof body.custom_feeling === "string"
+        ? body.custom_feeling.trim().slice(0, 40)
+        : "";
+    // A "custom" feeling with nothing typed isn't a real feeling — drop it.
+    const feeling = feelingRaw === "custom" && !customFeeling ? null : feelingRaw;
+    if (customFeeling) {
+      const feelingDignity = checkDignity(customFeeling);
+      if (!feelingDignity.ok) {
+        return NextResponse.json({ error: feelingDignity.reason }, { status: 400 });
+      }
+    }
 
     const tags = Array.isArray(body.tags)
       ? body.tags
@@ -563,6 +578,7 @@ export async function POST(request: NextRequest) {
       content,
       media_type: mediaType as PostDoc["media_type"],
       feeling,
+      custom_feeling: feeling === "custom" ? customFeeling : null,
       media_url: typeof body.media_url === "string" ? body.media_url : null,
       media_duration: typeof body.media_duration === "string" ? body.media_duration : null,
       stream_url: null,

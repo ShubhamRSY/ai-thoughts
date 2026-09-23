@@ -8,16 +8,20 @@ export default function FeelingBadge({
   size = "md",
   showLabel = false,
   onClick,
+  customLabel,
 }: {
   feeling?: Feeling["id"] | FeelingId;
   size?: "sm" | "md" | "lg";
   /** Show the full human sentence (“I worry about people”). */
   showLabel?: boolean;
   onClick?: () => void;
+  /** Free-typed text to show instead of the preset label (feeling "custom"). */
+  customLabel?: string;
 }) {
   if (!feeling) return null;
   const f = feelingOf(feeling);
   if (!f) return null;
+  const text = customLabel?.trim() || (showLabel ? f.label : f.short);
 
   const pad =
     size === "sm"
@@ -34,18 +38,18 @@ export default function FeelingBadge({
       : `inline-flex max-w-full items-center gap-1.5 rounded-full border font-medium transition ${f.chip} ${pad} ${
           onClick ? "cursor-pointer hover:opacity-90" : ""
         }`;
-  const label = <span className="truncate">{showLabel ? f.label : f.short}</span>;
+  const label = <span className="truncate">{text}</span>;
 
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} title={f.label} className={className}>
+      <button type="button" onClick={onClick} title={text} className={className}>
         {label}
       </button>
     );
   }
 
   return (
-    <span title={f.label} className={className}>
+    <span title={text} className={className}>
       {label}
     </span>
   );

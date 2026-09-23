@@ -265,11 +265,8 @@ export default function FeedCard({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-1.5">
-            <span className="truncate text-sm font-semibold text-[var(--foreground)]">
-              {thought.author}
-            </span>
             {thought.handle && (
-              <span className="truncate text-[13px] text-[var(--foreground)]/70">
+              <span className="truncate text-sm font-semibold text-[var(--foreground)]">
                 {thought.handle.startsWith("@") ? thought.handle : `@${thought.handle}`}
               </span>
             )}
@@ -361,8 +358,9 @@ export default function FeedCard({
               <FeelingBadge
                 feeling={thought.feeling}
                 size="sm"
+                customLabel={thought.feeling === "custom" ? thought.customFeeling : undefined}
                 onClick={
-                  onOpenRoom && thought.feeling
+                  onOpenRoom && thought.feeling && thought.feeling !== "custom"
                     ? () => onOpenRoom(thought.feeling!)
                     : undefined
                 }
@@ -453,10 +451,9 @@ export default function FeedCard({
             {thought.quotedPost ? (
               <>
                 <p className="text-[13px] font-semibold text-[var(--foreground)]">
-                  {thought.quotedPost.author}{" "}
-                  <span className="font-normal text-[var(--foreground)]/60">
-                    {thought.quotedPost.handle}
-                  </span>
+                  {thought.quotedPost.handle.startsWith("@")
+                    ? thought.quotedPost.handle
+                    : `@${thought.quotedPost.handle}`}
                 </p>
                 <p
                   dir="auto"
@@ -591,14 +588,12 @@ export default function FeedCard({
                   value={quoteText}
                   onChange={(e) => setQuoteText(e.target.value.slice(0, 500))}
                   rows={3}
-                  autoFocus
                   placeholder="Add a comment…"
                   className="w-full resize-none rounded-xl border border-[var(--border-base)] bg-transparent px-3 py-2.5 text-sm outline-none focus:border-[var(--accent)]"
                 />
                 <div className="mt-3 rounded-xl border border-[var(--border-base)] bg-[var(--surface)]/60 p-3">
                   <p className="text-[13px] font-semibold text-[var(--foreground)]">
-                    {thought.author}{" "}
-                    <span className="font-normal text-[var(--foreground)]/60">{thought.handle}</span>
+                    {thought.handle.startsWith("@") ? thought.handle : `@${thought.handle}`}
                   </p>
                   <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-[14px] text-[var(--user-ink)]/85">
                     {thought.content}

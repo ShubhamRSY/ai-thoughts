@@ -23,7 +23,8 @@ export type FeelingId =
   | "blown-away"
   | "worried"
   | "need-support"
-  | "confused";
+  | "confused"
+  | "custom";
 
 export interface Feeling {
   id: FeelingId;
@@ -92,6 +93,8 @@ export interface Thought {
   mediaType: MediaType;
   /** How the author feels about AI right now (the heart of every take). */
   feeling?: FeelingId;
+  /** Free-typed mood text — set when feeling is "custom". */
+  customFeeling?: string;
   mediaUrl?: string;
   mediaDuration?: string;
   /** HLS manifest URL (.m3u8) once a take has been transcoded for streaming. */
