@@ -21,6 +21,19 @@ export async function GET(request: NextRequest) {
     const vis = await getVisibility(db, session?.handle ?? null, handle);
     if (!vis.profile) return NextResponse.json({ profile: null });
     const profile = await db.collection("profiles").findOne({ handle });
+    // Verified is an account-level flag — resolve it live from the users row.
+    let verified = false;
+    try {
+      const variants = Array.from(
+        new Set([handle, `@${handle.trim().toLowerCase().replace(/^@/, "")}`])
+      );
+      const userRow = await db
+        .collection<{ verified?: boolean }>("users")
+        .findOne({ handle: { $in: variants } }, { projection: { verified: 1 } });
+      verified = Boolean(userRow?.verified);
+    } catch {
+      verified = false;
+    }
     return NextResponse.json({
       profile: profile
         ? {
@@ -30,6 +43,7 @@ export async function GET(request: NextRequest) {
             avatarUrl: profile.avatar_url ?? profile.avatarUrl ?? "",
             privacy: vis.privacy,
             restricted: !vis.posts,
+            verified,
           }
         : null,
     });

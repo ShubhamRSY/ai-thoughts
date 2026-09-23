@@ -23,6 +23,8 @@ export interface SessionUser {
   email: string;
   handle: string;
   displayName: string;
+  /** Whether the account holds the verified checkmark. Loaded fresh from DB each session. */
+  verified?: boolean;
   /** Server-side session id. Missing on legacy cookies until /api/auth/me upgrades them. */
   sid?: string;
 }
@@ -37,6 +39,8 @@ export interface UserRecord {
   displayName: string;
   createdAt: string;
   lastLoginAt: string;
+  /** Blue checkmark — granted by admins via /api/admin/controls. */
+  verified?: boolean;
   /** "Sign out everywhere": tokens issued before this (ms) are rejected. */
   sessions_revoked_before?: number;
 }
@@ -195,6 +199,7 @@ export async function validateSession(token: string): Promise<SessionUser | null
     const { db } = await connectToDatabase();
     let email = "";
     let revokedBefore = 0;
+    let verified = false;
     try {
       const user = await db.collection<UserRecord>("users").findOne({
         _id: new ObjectId(payload.id),
@@ -205,6 +210,7 @@ export async function validateSession(token: string): Promise<SessionUser | null
         payload.email ||
         "";
       revokedBefore = user?.sessions_revoked_before ?? 0;
+      verified = Boolean(user?.verified);
     } catch {
       email = payload.email || "";
     }
@@ -229,6 +235,7 @@ export async function validateSession(token: string): Promise<SessionUser | null
       email,
       handle: payload.handle,
       displayName: payload.displayName,
+      verified,
       sid: payload.sid,
     };
   } catch {

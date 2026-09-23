@@ -22,6 +22,7 @@ import AudioPlayer from "@/components/Player/AudioPlayer";
 import VideoPlayer from "@/components/Player/VideoPlayer";
 import TranscriptPanel from "@/components/Feed/TranscriptPanel";
 import FeelingBadge from "@/components/FeelingBadge";
+import VerifiedBadge from "@/components/VerifiedBadge";
 import ChatPanel from "@/components/Chat/ChatPanel";
 import TranslateToEnglish from "@/components/TranslateToEnglish";
 import ShareCardButton from "@/components/ShareCardButton";
@@ -265,8 +266,18 @@ export default function FeedCard({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-1.5">
-            {thought.handle && (
+            {thought.author && (
               <span className="truncate text-sm font-semibold text-[var(--foreground)]">
+                {thought.author}
+              </span>
+            )}
+            {thought.authorVerified && (
+              <span className="shrink-0 text-sky-500">
+                <VerifiedBadge className="h-4 w-4" />
+              </span>
+            )}
+            {thought.handle && (
+              <span className="truncate text-[13px] font-normal text-[var(--foreground)]/70">
                 {thought.handle.startsWith("@") ? thought.handle : `@${thought.handle}`}
               </span>
             )}
@@ -450,10 +461,22 @@ export default function FeedCard({
           <div className="mt-1 rounded-xl border border-[var(--border-base)] bg-[var(--surface)]/60 p-3">
             {thought.quotedPost ? (
               <>
-                <p className="text-[13px] font-semibold text-[var(--foreground)]">
-                  {thought.quotedPost.handle.startsWith("@")
-                    ? thought.quotedPost.handle
-                    : `@${thought.quotedPost.handle}`}
+                <p className="flex items-center gap-1.5 text-[13px] font-semibold text-[var(--foreground)]">
+                  {thought.quotedPost.author && (
+                    <span className="truncate">
+                      {thought.quotedPost.author || thought.quotedPost.handle.replace(/^@/, "")}
+                    </span>
+                  )}
+                  {thought.quotedPost.authorVerified && (
+                    <span className="shrink-0 text-sky-500">
+                      <VerifiedBadge className="h-3.5 w-3.5" />
+                    </span>
+                  )}
+                  <span className="shrink-0 font-normal text-[var(--foreground)]/60">
+                    {thought.quotedPost.handle.startsWith("@")
+                      ? thought.quotedPost.handle
+                      : `@${thought.quotedPost.handle}`}
+                  </span>
                 </p>
                 <p
                   dir="auto"

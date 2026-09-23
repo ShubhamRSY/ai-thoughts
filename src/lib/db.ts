@@ -31,6 +31,8 @@ export interface ChatMessage {
   post_id: string;
   handle: string;
   author: string;
+  /** Blue verified checkmark on the commenter's account. */
+  authorVerified?: boolean;
   body: string;
   created_at: string;
 }
@@ -42,6 +44,7 @@ interface RawPost {
   id: string;
   handle: string;
   author: string;
+  author_verified?: boolean | null;
   content: string;
   media_type: "audio" | "video" | "text";
   feeling?: string | null;
@@ -75,6 +78,7 @@ interface RawPost {
     id: string;
     handle: string;
     author: string;
+    author_verified?: boolean | null;
     content: string;
     media_type: string;
     media_url?: string | null;
@@ -87,6 +91,7 @@ function toThought(r: RawPost): Thought {
     id: r.id,
     author: r.author || r.handle.replace(/^@/, ""),
     handle: r.handle,
+    authorVerified: Boolean(r.author_verified),
     content: r.content,
     mediaType: r.media_type,
     feeling: (r.feeling as Thought["feeling"]) || undefined,
@@ -129,6 +134,7 @@ function toThought(r: RawPost): Thought {
           id: r.quoted_post.id,
           handle: r.quoted_post.handle,
           author: r.quoted_post.author || r.quoted_post.handle.replace(/^@/, ""),
+          authorVerified: Boolean(r.quoted_post.author_verified),
           content: r.quoted_post.content,
           mediaType: r.quoted_post.media_type as Thought["mediaType"],
           mediaUrl: r.quoted_post.media_url ?? undefined,
@@ -189,6 +195,8 @@ export interface ProfileInfo {
   privacy?: "public" | "private" | "locked";
   /** True when the viewer may see this profile's shell but not its takes. */
   restricted?: boolean;
+  /** Blue verified checkmark on the account. */
+  verified?: boolean;
 }
 
 export async function fetchProfileInfo(handle: string): Promise<ProfileInfo | null> {

@@ -38,6 +38,7 @@ export async function GET(
     const { LIKE_REACTION, buildLikedBy } = await import("@/lib/likes");
     const me = session?.handle?.trim().toLowerCase().replace(/^@/, "") ?? null;
     const nameByHandle = new Map<string, string>();
+    const verifiedByHandle = new Map<string, boolean>();
     const handles = [
       ...new Set(
         reactions
@@ -45,17 +46,19 @@ export async function GET(
           .filter(Boolean) as string[]
       ),
     ];
+    handles.push(normHandle(String(post.handle ?? "")));
     if (handles.length > 0) {
-      const variants = handles.flatMap((h) => [h, `@${h}`]);
+      const variants = [...new Set(handles)].flatMap((h) => [h, `@${h}`]);
       const users = await db
-        .collection<{ handle?: string; displayName?: string }>("users")
+        .collection<{ handle?: string; displayName?: string; verified?: boolean }>("users")
         .find({ handle: { $in: variants } })
-        .project({ handle: 1, displayName: 1 })
+        .project({ handle: 1, displayName: 1, verified: 1 })
         .toArray();
       for (const u of users) {
         if (!u.handle) continue;
         const key = u.handle.trim().toLowerCase().replace(/^@/, "");
         if (u.displayName) nameByHandle.set(key, u.displayName);
+        if (u.verified) verifiedByHandle.set(key, true);
       }
     }
     const heartRows = reactions.filter((r) => r.reaction === LIKE_REACTION);
@@ -82,7 +85,9 @@ export async function GET(
     return NextResponse.json({
       id: post._id.toString(),
       handle: post.handle,
-      author: post.author,
+      author: nameByHandle.get(normHandle(String(post.handle ?? ""))) || post.author,
+      author_verified:
+        verifiedByHandle.get(normHandle(String(post.handle ?? ""))) ?? Boolean(post.author_verified),
       content: post.content,
       media_type: post.media_type,
       feeling: post.feeling ?? null,

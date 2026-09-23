@@ -33,6 +33,7 @@ export async function GET(request: Request) {
 
     const handle = userDoc?.handle || session.handle;
     const displayName = userDoc?.displayName || session.displayName;
+    const verified = Boolean(userDoc?.verified ?? session.verified);
     const email = userDoc?.emailEnc
       ? decryptEmail(userDoc.emailEnc) || session.email
       : session.email;
@@ -49,6 +50,7 @@ export async function GET(request: Request) {
         email,
         handle,
         displayName,
+        verified,
       },
     });
     res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
@@ -66,6 +68,7 @@ export async function GET(request: Request) {
         email: session.email,
         handle: session.handle,
         displayName: session.displayName,
+        verified: Boolean(session.verified),
       },
     });
     res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());

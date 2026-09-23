@@ -105,6 +105,20 @@ export async function removeKeeper(handle: string): Promise<void> {
   await db.collection("keepers").deleteMany({ handle: { $in: handleVariants(handle) } });
 }
 
+/** Grant/revoke the verified checkmark for a registered account. */
+export async function setUserVerified(handle: string, verified: boolean): Promise<void> {
+  const n = normHandle(handle);
+  if (!n) throw new Error("Invalid handle");
+  const { db } = await connectToDatabase();
+  const res = await db.collection("users").updateOne(
+    { handle: { $in: handleVariants(handle) } },
+    { $set: { verified, verified_updated_at: new Date() } }
+  );
+  if (res.matchedCount === 0) {
+    throw new Error(`No registered account matches ${handle}`);
+  }
+}
+
 export async function addAdmin(handle: string): Promise<void> {
   const n = normHandle(handle);
   if (!n) throw new Error("Invalid handle");

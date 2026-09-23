@@ -32,14 +32,28 @@ export async function GET(
       .limit(80)
       .toArray();
 
+    const visible = messages.filter((m) => !blocked.has(normHandle(String(m.handle ?? ""))));
+    const commenterHandles = [...new Set(visible.map((m) => String(m.handle ?? "")))];
+    const verifiedByHandle = new Map<string, boolean>();
+    if (commenterHandles.length > 0) {
+      const variants = commenterHandles.flatMap((h) => [h, `@${normHandle(h)}`]);
+      const users = await db
+        .collection<{ handle?: string; verified?: boolean }>("users")
+        .find({ handle: { $in: variants } })
+        .project({ handle: 1, verified: 1 })
+        .toArray();
+      for (const u of users) {
+        if (u.verified && u.handle) verifiedByHandle.set(normHandle(String(u.handle)), true);
+      }
+    }
+
     return NextResponse.json(
-      messages
-        .filter((m) => !blocked.has(normHandle(String(m.handle ?? ""))))
-        .map((m) => ({
+      visible.map((m) => ({
         id: m._id.toString(),
         post_id: m.post_id,
         handle: m.handle,
         author: m.author,
+        author_verified: verifiedByHandle.get(normHandle(String(m.handle ?? ""))) ?? false,
         body: m.body,
         created_at: m.created_at instanceof Date ? m.created_at.toISOString() : String(m.created_at),
       }))

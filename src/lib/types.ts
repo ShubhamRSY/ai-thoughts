@@ -89,6 +89,8 @@ export interface Thought {
   id: string;
   author: string;
   handle: string;
+  /** Blue verified checkmark — granted by admins to the account. */
+  authorVerified?: boolean;
   content: string;
   mediaType: MediaType;
   /** How the author feels about AI right now (the heart of every take). */
@@ -124,6 +126,7 @@ export interface Thought {
     id: string;
     handle: string;
     author: string;
+    authorVerified?: boolean;
     content: string;
     mediaType: MediaType;
     mediaUrl?: string;

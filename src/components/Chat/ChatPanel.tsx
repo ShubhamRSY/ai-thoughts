@@ -10,6 +10,7 @@ import {
 import { useLocalProfile } from "@/hooks/useLocalProfile";
 import { useAuth } from "@/hooks/useAuth";
 import { checkDignity } from "@/lib/dignity";
+import VerifiedBadge from "@/components/VerifiedBadge";
 import {
   mentionQueryAt,
   normHandle,
@@ -352,7 +353,16 @@ export default function ChatPanel({
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-[15px] leading-snug text-[var(--user-ink)]">
-                <span className="font-semibold">{m.handle}</span>{" "}
+                <span className="font-semibold">{m.author || m.handle}</span>
+                {m.authorVerified && (
+                  <span className="mx-1 inline-flex text-sky-500">
+                    <VerifiedBadge className="h-3.5 w-3.5" />
+                  </span>
+                )}
+                <span className="text-[13px] font-normal text-[var(--foreground)]/60">
+                  {" "}
+                  @{normHandle(m.handle)}
+                </span>{" "}
                 <CommentBody body={m.body} />
               </p>
               <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">

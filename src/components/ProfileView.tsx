@@ -17,6 +17,7 @@ import {
   type ProfileInfo,
   type FollowGraph,
 } from "@/lib/db";
+import VerifiedBadge from "@/components/VerifiedBadge";
 import { BRAND } from "@/lib/brand";
 
 function normHandle(h: string) {
@@ -141,6 +142,7 @@ export default function ProfileView({
     ? user?.displayName || profile.author || profile.handle.replace(/^@/, "") || "You"
     : viewedProfile?.author || viewHandle?.replace(/^@/, "") || "";
   const displayHandle = isOwn ? user?.handle || profile.handle || "@you" : viewHandle || "";
+  const verified = isOwn ? Boolean(user?.verified) : Boolean(viewedProfile?.verified);
   const postsList = isOwn ? myThoughts : viewedPosts;
 
   useEffect(() => {
@@ -347,6 +349,11 @@ export default function ProfileView({
               <h2 className="font-display truncate text-lg font-semibold text-[var(--foreground)]">
                 {name}
               </h2>
+              {verified && (
+                <span className="shrink-0 text-sky-500">
+                  <VerifiedBadge className="h-5 w-5" />
+                </span>
+              )}
               {isOwn ? (
                 <button
                   type="button"

@@ -9,6 +9,7 @@ import {
   removeAdmin,
   addKeeper,
   removeKeeper,
+  setUserVerified,
   getSiteSettings,
   setSiteSettings,
 } from "@/lib/admin";
@@ -60,6 +61,17 @@ export async function GET() {
       .project({ handle: 1, author: 1, content: 1, created_at: 1, feeling: 1 })
       .toArray();
 
+    const verifiedRows = await db
+      .collection<{ handle?: string }>("users")
+      .find({ verified: true })
+      .project({ handle: 1 })
+      .limit(200)
+      .toArray();
+    const verifiedUsers = verifiedRows
+      .map((u) => (u.handle ?? "").trim())
+      .filter(Boolean)
+      .sort();
+
     return NextResponse.json({
       ok: true,
       you: {
@@ -75,6 +87,7 @@ export async function GET() {
       settings,
       admins,
       keepers,
+      verifiedUsers,
       sentiment,
       auditLog: auditRows.map((r) => ({
         id: r._id.toString(),
@@ -171,6 +184,20 @@ export async function POST(request: NextRequest) {
         await removeKeeper(handle);
         await audit("remove_keeper", { handle: `@${normHandle(handle)}` });
         return NextResponse.json({ ok: true, keepers: await listKeepers() });
+      }
+      case "verify_user": {
+        const handle = String(body.handle || "").trim();
+        if (!handle) return NextResponse.json({ error: "handle required" }, { status: 400 });
+        await setUserVerified(handle, true);
+        await audit("verify_user", { handle: `@${normHandle(handle)}` });
+        return NextResponse.json({ ok: true });
+      }
+      case "unverify_user": {
+        const handle = String(body.handle || "").trim();
+        if (!handle) return NextResponse.json({ error: "handle required" }, { status: 400 });
+        await setUserVerified(handle, false);
+        await audit("unverify_user", { handle: `@${normHandle(handle)}` });
+        return NextResponse.json({ ok: true });
       }
       case "add_admin": {
         const handle = String(body.handle || "").trim();

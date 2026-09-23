@@ -12,6 +12,8 @@ import {
   ExternalLink,
   HeartPulse,
   ScrollText,
+  BadgeCheck,
+  ShieldOff,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -43,6 +45,7 @@ type AdminData = {
   };
   admins: { handle: string; source: "env" | "db" }[];
   keepers: string[];
+  verifiedUsers: string[];
   sentiment: SentimentSnapshot;
   auditLog: AuditEntry[];
   recentPosts: {
@@ -63,6 +66,7 @@ export default function AdminPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [keeperInput, setKeeperInput] = useState("");
   const [adminInput, setAdminInput] = useState("");
+  const [verifiedInput, setVerifiedInput] = useState("");
   const [maintMsg, setMaintMsg] = useState("");
 
   const load = useCallback(async () => {
@@ -374,6 +378,58 @@ export default function AdminPage() {
             <p className="mt-2 text-xs text-[var(--muted)]">
               Idempotent — only adds catalog takes that aren’t already live.
             </p>
+          </section>
+
+          <section className="mt-6 rounded-2xl border border-[var(--border-base)] p-4">
+            <div className="flex items-center gap-2">
+              <BadgeCheck className="h-4 w-4 text-sky-600" />
+              <h2 className="text-sm font-semibold">Verified accounts</h2>
+            </div>
+            <ul className="mt-3 space-y-1.5 text-sm">
+              {data.verifiedUsers.length === 0 && (
+                <li className="text-[var(--muted)]">No verified accounts yet.</li>
+              )}
+              {data.verifiedUsers.map((h) => (
+                <li key={h} className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5">
+                    <BadgeCheck className="h-3.5 w-3.5 text-sky-600" />
+                    {h}
+                  </span>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-rose-700"
+                    onClick={() => void act("unverify_user", { handle: h })}
+                  >
+                    <ShieldOff className="h-3.5 w-3.5" />
+                    Remove check
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <form
+              className="mt-3 flex gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!verifiedInput.trim()) return;
+                void act("verify_user", { handle: verifiedInput.trim() }).then(() =>
+                  setVerifiedInput("")
+                );
+              }}
+            >
+              <input
+                value={verifiedInput}
+                onChange={(e) => setVerifiedInput(e.target.value)}
+                placeholder="@handle"
+                className="flex-1 rounded-xl border border-[var(--border-base)] bg-transparent px-3 py-2 text-sm"
+              />
+              <button
+                type="submit"
+                className="inline-flex items-center gap-1 rounded-xl border border-[var(--border-base)] px-3 py-2 text-xs font-semibold"
+              >
+                <BadgeCheck className="h-3.5 w-3.5" />
+                Verify
+              </button>
+            </form>
           </section>
 
           <section className="mt-6 rounded-2xl border border-[var(--border-base)] p-4">

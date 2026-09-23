@@ -7,6 +7,7 @@ export interface AuthUser {
   email: string;
   handle: string;
   displayName: string;
+  verified?: boolean;
 }
 
 interface AuthContextValue {

@@ -42,6 +42,7 @@ interface PostDoc {
   user_id?: string;
   handle: string;
   author: string;
+  author_verified?: boolean | null;
   content: string;
   media_type: "audio" | "video" | "text";
   feeling?: string | null;
@@ -279,17 +280,19 @@ export async function GET(request: NextRequest) {
     }
 
     const nameByHandle = new Map<string, string>();
+    const verifiedByHandle = new Map<string, boolean>();
     if (allHandles.size > 0) {
       const handleVariants = [...allHandles].flatMap((h) => [h, `@${h}`]);
       const users = await db
-        .collection<{ handle?: string; displayName?: string }>("users")
+        .collection<{ handle?: string; displayName?: string; verified?: boolean }>("users")
         .find({ handle: { $in: handleVariants } })
-        .project({ handle: 1, displayName: 1 })
+        .project({ handle: 1, displayName: 1, verified: 1 })
         .toArray();
       for (const u of users) {
         if (!u.handle) continue;
         const key = u.handle.trim().toLowerCase().replace(/^@/, "");
         if (u.displayName) nameByHandle.set(key, u.displayName);
+        if (u.verified) verifiedByHandle.set(key, true);
       }
     }
 
@@ -299,6 +302,7 @@ export async function GET(request: NextRequest) {
         id: string;
         handle: string;
         author: string;
+        author_verified: boolean;
         content: string;
         media_type: string;
         media_url: string | null;
@@ -319,6 +323,7 @@ export async function GET(request: NextRequest) {
           id: String(q._id),
           handle: q.handle,
           author: q.author,
+          author_verified: Boolean(verifiedByHandle.get(normHandle(String(q.handle)))),
           content: q.content,
           media_type: q.media_type,
           media_url: q.media_url ?? null,
@@ -378,6 +383,7 @@ export async function GET(request: NextRequest) {
         id,
         handle: p.handle,
         author: liveAuthor || p.author || p.handle.replace(/^@/, ""),
+        author_verified: verifiedByHandle.get(authorKey) ?? Boolean(p.author_verified),
         content: p.content,
         media_type: p.media_type,
         feeling: p.feeling ?? null,
@@ -484,6 +490,7 @@ export async function POST(request: NextRequest) {
     const { db } = await connectToDatabase();
 
     let createdAt: string | null = null;
+    let verifiedAuthor = Boolean(session.verified);
     try {
       const userDoc = await db.collection("users").findOne({
         _id: new ObjectId(session.id),
@@ -494,6 +501,7 @@ export async function POST(request: NextRequest) {
         null;
       createdAt =
         raw instanceof Date ? raw.toISOString() : typeof raw === "string" ? raw : null;
+      verifiedAuthor = Boolean((userDoc as { verified?: boolean } | null)?.verified ?? session.verified);
     } catch {
       createdAt = null;
     }
@@ -575,6 +583,7 @@ export async function POST(request: NextRequest) {
       user_id: session.id,
       handle: session.handle,
       author: session.displayName || session.handle,
+      author_verified: verifiedAuthor,
       content,
       media_type: mediaType as PostDoc["media_type"],
       feeling,
