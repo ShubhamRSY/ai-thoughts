@@ -380,14 +380,11 @@ export async function assertCanPost(
   return { ok: true, flags: quality.flags };
 }
 
-/** Pick a non-reserved handle; retries with random suffix. */
-export function allocateSafeHandle(emailLocal: string): string {
-  const base =
-    emailLocal.replace(/[^a-z0-9]/gi, "").slice(0, 10).toLowerCase() || "user";
+/** Pick a non-reserved, opaque handle. Never derived from an email or name. */
+export function allocateSafeHandle(): string {
   for (let i = 0; i < 12; i++) {
-    const suffix = Math.floor(Math.random() * 9000 + 1000);
-    const candidate = `@${base}${suffix}`;
+    const candidate = `@v${Math.random().toString(36).slice(2, 10).toLowerCase()}`;
     if (checkHandleAllowed(candidate).ok) return candidate;
   }
-  return `@voice${Math.floor(Math.random() * 900000 + 100000)}`;
+  return `@v${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`;
 }

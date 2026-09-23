@@ -294,6 +294,13 @@ export async function findOrCreateUser(
   let createdNew = false;
 
   if (user) {
+    // Legacy accounts auto-allocated a handle built from the email local-part
+    // (e.g. @siddhisunil16233) before usernames existed — rename to an opaque
+    // handle so an email prefix never appears in public.
+    let healedHandle: string | undefined;
+    if (isEmailDerivedHandle(user.handle, normalizedEmail)) {
+      healedHandle = await renameEmailDerivedHandle(db, user);
+    }
     // A real, chosen display name always wins. When none is given, drop a
     // stored name that is just the person's email (legacy fallback) so an
     // address never shows up on comments or feelings instead of a name.
@@ -324,10 +331,10 @@ export async function findOrCreateUser(
     user.emailEnc = emailEnc;
     delete user.email;
     if (nextName) user.displayName = nextName;
+    if (healedHandle) user.handle = healedHandle;
   } else {
-    const local = normalizedEmail.split("@")[0] || "user";
     // Prefer the username the person chose at sign-in over an email-derived
-    // handle (@<email-prefix><4 digits>) so their address is never guessable.
+    // handle so their address is never guessable.
     let handle = "";
     if (preferredHandle && typeof preferredHandle === "string" && preferredHandle.trim()) {
       const norm = preferredHandle.trim().toLowerCase().replace(/^@/, "").replace(/\s+/g, "");
@@ -340,14 +347,14 @@ export async function findOrCreateUser(
         handle = `@${norm}`;
       }
     }
-    if (!handle) handle = allocateSafeHandle(local);
+    if (!handle) handle = allocateSafeHandle();
     // Extremely unlikely collision — retry a few times
     for (let i = 0; i < 5; i++) {
       const taken = await users.findOne({
         handle: { $in: [handle, handle.toLowerCase()] },
       });
       if (!taken) break;
-      handle = allocateSafeHandle(`${local}${i}`);
+      handle = allocateSafeHandle();
     }
     const newUser: UserRecord = {
       emailHash,
@@ -454,4 +461,99 @@ export async function deleteUserAccount(session: SessionUser): Promise<void> {
   } catch {
     await db.collection("users").deleteMany({ handle: { $in: handleVariants } });
   }
+}
+
+/** True when a handle looks like the legacy auto-allocation from a user's
+ *  own email local-part (e.g. @siddhisunil16233 from name@example.com). */
+function isEmailDerivedHandle(handle?: string | null, email?: string): boolean {
+  const h = (handle ?? "").trim().toLowerCase();
+  if (!/^@[a-z0-9]{3,11}\d{4,}$/.test(h)) return false;
+  const local = email?.toLowerCase().split("@")[0] ?? "";
+  const base = local.replace(/[^a-z0-9]/gi, "").slice(0, 10).toLowerCase();
+  return base.length >= 3 && h.startsWith(`@${base}`);
+}
+
+/** Rename a legacy email-derived handle to an opaque one across every
+ *  collection that references it — same coverage as an account rename. */
+async function renameEmailDerivedHandle(
+  db: Awaited<ReturnType<typeof connectToDatabase>>["db"],
+  user: UserRecord
+): Promise<string> {
+  const oldHandle = user.handle ?? "";
+  const oldVariants = new Set<string>([
+    oldHandle,
+    oldHandle.toLowerCase(),
+    `@${oldHandle.replace(/^@/, "")}`,
+    oldHandle.replace(/^@/, ""),
+  ]);
+  const variants = [...oldVariants];
+
+  let candidate = allocateSafeHandle();
+  for (let i = 0; i < 8; i++) {
+    const taken = await db
+      .collection("users")
+      .findOne({ handle: { $in: [candidate, candidate.toLowerCase()] } });
+    if (!taken) break;
+    candidate = allocateSafeHandle();
+  }
+  const author = user.displayName?.trim() || "Voice";
+
+  await db.collection("users").updateOne(
+    { _id: user._id },
+    { $set: { handle: candidate, displayName: author } }
+  );
+  await db.collection("posts").updateMany(
+    { $or: [{ user_id: user._id }, { handle: { $in: variants } }] },
+    { $set: { handle: candidate, author } }
+  );
+  await db.collection("profiles").updateMany(
+    { handle: { $in: variants } },
+    { $set: { handle: candidate, author } }
+  );
+  await db.collection("user_prefs").updateMany(
+    { handle: { $in: variants } },
+    { $set: { handle: candidate } }
+  );
+  await db.collection("messages").updateMany(
+    { handle: { $in: variants } },
+    { $set: { handle: candidate } }
+  );
+  await db.collection("reactions").updateMany(
+    { handle: { $in: variants } },
+    { $set: { handle: candidate } }
+  );
+  await db.collection("reports").updateMany(
+    { reporter_handle: { $in: variants } },
+    { $set: { reporter_handle: candidate } }
+  );
+  await db.collection("reports").updateMany(
+    { reported_handle: { $in: variants } },
+    { $set: { reported_handle: candidate } }
+  );
+  await db.collection("notifications").updateMany(
+    { recipient_handle: { $in: variants } },
+    { $set: { recipient_handle: candidate } }
+  );
+  await db.collection("notifications").updateMany(
+    { actor_handle: { $in: variants } },
+    { $set: { actor_handle: candidate } }
+  );
+  await db.collection("follows").updateMany(
+    { follower: { $in: variants } },
+    { $set: { follower: candidate } }
+  );
+  await db.collection("follows").updateMany(
+    { following: { $in: variants } },
+    { $set: { following: candidate } }
+  );
+  await db.collection("push_subscriptions").updateMany(
+    { handle: { $in: variants } },
+    { $set: { handle: candidate } }
+  );
+  await db.collection("sessions").updateMany(
+    { user_id: user._id },
+    { $set: { handle: candidate } }
+  );
+
+  return candidate;
 }
