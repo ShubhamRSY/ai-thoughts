@@ -26,7 +26,6 @@ export async function GET() {
     return NextResponse.json({
       requests: rows.map((r) => ({
         id: r._id.toString(),
-        email: r.email,
         message: r.message,
         kind: r.kind,
         createdAt: r.createdAt,
@@ -76,8 +75,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { email, message, kind, website } = body as {
-      email?: string;
+    const { message, kind, website } = body as {
       message?: string;
       kind?: string;
       website?: string;
@@ -93,14 +91,6 @@ export async function POST(request: Request) {
       });
     }
 
-    if (!email || typeof email !== "string" || email.length > 254) {
-      return NextResponse.json({ error: "Email is required" }, { status: 400 });
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
-    }
-
     if (!message || typeof message !== "string" || !message.trim()) {
       return NextResponse.json({ error: "Message is required" }, { status: 400 });
     }
@@ -113,7 +103,6 @@ export async function POST(request: Request) {
 
     const { db } = await connectToDatabase();
     await db.collection("contact_requests").insertOne({
-      email: email.toLowerCase().trim(),
       message: message.trim(),
       kind: requestKind,
       status: "open",

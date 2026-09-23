@@ -3,7 +3,6 @@
 import { useState } from "react";
 
 export default function ContactForm() {
-  const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [kind, setKind] = useState("privacy");
   // Honeypot: real visitors never see or fill this field (aria-hidden +
@@ -28,7 +27,7 @@ export default function ContactForm() {
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, message, kind }),
+        body: JSON.stringify({ message, kind }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
@@ -63,21 +62,6 @@ export default function ContactForm() {
           <option value="removal">Remove my takes or account</option>
           <option value="general">General</option>
         </select>
-      </div>
-
-      <div>
-        <label htmlFor="email" className="mb-1.5 block text-xs font-medium text-[var(--muted)]">
-          Your email
-        </label>
-        <input
-          id="email"
-          type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-xl border border-[var(--border-base)] bg-[var(--surface-2)] px-4 py-2.5 text-sm text-[var(--foreground)] outline-none focus:border-[var(--accent)]"
-          placeholder="you@example.com"
-        />
       </div>
 
       <div>
