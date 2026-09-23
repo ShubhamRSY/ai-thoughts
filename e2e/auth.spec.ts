@@ -21,8 +21,6 @@ test("a new visitor can sign in end-to-end with the emailed code", async ({ page
 
   await page.goto("/sign-in");
   await page.getByLabel("Email", { exact: true }).fill(email);
-  await page.getByLabel("Display name").fill("Test Person");
-  await page.getByLabel("Username").fill(`tester${uniq.slice(-12)}`);
   await page.getByRole("button", { name: "Send sign-in code" }).click();
 
   // Dev-mode-only: the API returns the OTP in-band (no RESEND_API_KEY set),
@@ -52,8 +50,6 @@ test("an unrecognized code is rejected with an error, not a silent sign-in", asy
 
   await page.goto("/sign-in");
   await page.getByLabel("Email", { exact: true }).fill(email);
-  await page.getByLabel("Display name").fill("Test Person");
-  await page.getByLabel("Username").fill(`tester${uniq.slice(-12)}`);
   await page.getByRole("button", { name: "Send sign-in code" }).click();
   await expect(page.getByText("Dev code:")).toBeVisible();
 
@@ -62,4 +58,32 @@ test("an unrecognized code is rejected with an error, not a silent sign-in", asy
 
   await expect(page.getByText(/incorrect code/i)).toBeVisible();
   await expect(page).toHaveURL(/\/sign-in/);
+});
+
+test("a returning member signs in with just their email and is never re-asked for a profile", async ({ page }) => {
+  test.setTimeout(180_000); // two full sign-ins on an on-demand-compiling dev server
+  await isolateIp(page);
+  const uniq = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  const email = `e2e-${uniq}@example.com`;
+  const signIn = async () => {
+    await page.goto("/sign-in");
+    await page.getByLabel("Email", { exact: true }).fill(email);
+    await page.getByRole("button", { name: "Send sign-in code" }).click();
+    const code = (await page.getByText("Dev code:").textContent())?.match(/\d{6}/)?.[0];
+    await page.getByLabel("6-digit code").fill(code!);
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page).toHaveURL(/\/app$/, { timeout: 30_000 });
+  };
+
+  await signIn();
+  // Save the profile, then leave mid-wizard (before "Start exploring").
+  await page.getByLabel("Display name").fill("Return Tester", { timeout: 30_000 });
+  await page.getByLabel("Username").fill(`ret${uniq.slice(-14).replace(/-/g, "")}`);
+  await page.getByRole("button", { name: "Save & continue" }).click();
+  await expect(page.getByRole("button", { name: "Next" })).toBeVisible({ timeout: 30_000 });
+  await page.context().clearCookies();
+
+  await signIn();
+  await page.waitForLoadState("networkidle");
+  await expect(page.getByRole("button", { name: "Save & continue" })).toHaveCount(0);
 });

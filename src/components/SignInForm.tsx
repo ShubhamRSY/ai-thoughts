@@ -58,8 +58,6 @@ function SignInFormInner({}: { total: number }) {
 
   const [step, setStep] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [username, setUsername] = useState("");
   const [code, setCode] = useState("");
   const [devCode, setDevCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -89,17 +87,10 @@ function SignInFormInner({}: { total: number }) {
       setError("Please enter your email");
       return;
     }
-    if (!displayName.trim()) {
-      setError("Pick a display name to continue");
-      return;
-    }
-    const normUsername = username.trim().toLowerCase().replace(/^@/, "").replace(/\s+/g, "");
-    if (normUsername.length < 3 || normUsername.length > 30 || !/^[a-z0-9_]+$/.test(normUsername)) {
-      setError("Username must be 3–30 letters, numbers, or underscores (no spaces, dots, or @)");
-      return;
-    }
+    // Email only: returning members keep their saved name/username; new
+    // accounts pick theirs once in the onboarding profile step.
     setSubmitting(true);
-    const result = await requestCode(email.trim(), displayName.trim(), normUsername);
+    const result = await requestCode(email.trim(), "");
     setSubmitting(false);
     if (result.ok) {
       if (result.alreadySignedIn) {
@@ -139,7 +130,7 @@ function SignInFormInner({}: { total: number }) {
           <BrandMark className="h-8 w-8" />
         </div>
         <h1 className="font-display mt-8 text-3xl font-medium tracking-tight text-[var(--foreground)]">
-          {step === "email" ? "Join Voices" : "Check your email"}
+          {step === "email" ? "Sign in or join Voices" : "Check your email"}
         </h1>
         <p className="mt-2 max-w-[34ch] text-sm leading-relaxed text-[var(--muted)]">
           {step === "email"
@@ -165,41 +156,6 @@ function SignInFormInner({}: { total: number }) {
                 className="w-full rounded-xl border border-[var(--border-base)] bg-[var(--surface)] px-4 py-3 text-sm outline-none focus:border-[var(--accent)]"
                 placeholder="you@example.com"
               />
-            </label>
-            <label className="block">
-              <span className="mb-1.5 block text-xs font-medium text-[var(--muted)]">Display name</span>
-              <input
-                type="text"
-                autoComplete="name"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                required
-                className="w-full rounded-xl border border-[var(--border-base)] bg-[var(--surface)] px-4 py-3 text-sm outline-none focus:border-[var(--accent)]"
-                placeholder="Alex"
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1.5 block text-xs font-medium text-[var(--muted)]">Username</span>
-              <div className="flex items-center rounded-xl border border-[var(--border-base)] bg-[var(--surface)] focus-within:border-[var(--accent)]">
-                <span className="pl-4 text-sm font-semibold text-[var(--muted)]">@</span>
-                <input
-                  type="text"
-                  autoComplete="username"
-                  autoCapitalize="none"
-                  spellCheck={false}
-                  value={username}
-                  onChange={(e) =>
-                    setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_@]/g, ""))
-                  }
-                  placeholder="alex_writes"
-                  required
-                  className="w-full rounded-r-xl bg-transparent px-3 py-3 text-sm outline-none"
-                />
-              </div>
-              <p className="mt-1 text-[11px] text-[var(--muted)]">
-                This is your public handle — never your email. Used the first time you create an
-                account; an existing account keeps its own.
-              </p>
             </label>
             {error && <p className="text-xs leading-relaxed text-rose-700">{error}</p>}
             <button

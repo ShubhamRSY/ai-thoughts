@@ -104,8 +104,12 @@ export default function Home() {
   }, [user]);
 
   // First-run onboarding: only new accounts have onboarded=false in prefs.
+  // Keyed on the account id, not the user object: the wizard's profile save
+  // refreshes `user` (and marks onboarded server-side) mid-flow, and a refetch
+  // then would close the wizard before its remaining steps.
+  const userId = user?.id;
   useEffect(() => {
-    if (!user) {
+    if (!userId) {
       setOnboarded(null);
       return;
     }
@@ -121,7 +125,7 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [userId]);
 
   useEffect(() => {
     if (!undoId) return;

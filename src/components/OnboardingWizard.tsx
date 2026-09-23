@@ -69,10 +69,10 @@ export default function OnboardingWizard({
   const [peersLoading, setPeersLoading] = useState(true);
   const [felt, setFelt] = useState<Set<string>>(() => new Set());
   // Mandatory profile step (the "proper username" instead of an email-derived one).
-  const [profileName, setProfileName] = useState(() => identityAuthor || "");
-  const [profileUsername, setProfileUsername] = useState(() =>
-    identityHandle.replace(/^@/, "").replace(/[^a-z0-9_]/g, "")
-  );
+  // Only new accounts land here, holding a placeholder name ("Voice") and a
+  // random handle from sign-in — start blank so they pick real ones.
+  const [profileName, setProfileName] = useState("");
+  const [profileUsername, setProfileUsername] = useState("");
   const [profileBusy, setProfileBusy] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
 

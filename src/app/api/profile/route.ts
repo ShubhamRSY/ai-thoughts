@@ -229,6 +229,10 @@ export async function PUT(request: NextRequest) {
       { upsert: true }
     );
 
+    // Saving a profile completes the onboarding profile step for good, so a
+    // member who leaves mid-wizard is never asked for it again.
+    await upsertPrefs(db, handle, { onboarded: true });
+
     const token = await createSession(
       { id: session.id, handle, displayName: author },
       { sid: session.sid, userAgent: request.headers.get("user-agent") }

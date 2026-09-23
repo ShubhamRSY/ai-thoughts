@@ -13,15 +13,15 @@ async function signIn(page: Page) {
   const uniq = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
   await page.goto("/sign-in");
   await page.getByLabel("Email", { exact: true }).fill(`e2e-mood-${uniq}@example.com`);
-  await page.getByLabel("Display name").fill("Mood Tester");
-  await page.getByLabel("Username").fill(`moodt${uniq.slice(-14)}`);
   await page.getByRole("button", { name: "Send sign-in code" }).click();
   const code = (await page.getByText("Dev code:").textContent())?.match(/\d{6}/)?.[0];
   await page.getByLabel("6-digit code").fill(code!);
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page).toHaveURL(/\/app$/);
   // First-run wizard covers the page for brand-new accounts: profile, pick, Next, Skip, Start.
-  await page.getByRole("button", { name: "Save & continue" }).click({ timeout: 30_000 });
+  await page.getByLabel("Display name").fill("Mood Tester", { timeout: 30_000 });
+  await page.getByLabel("Username").fill(`moodt${uniq.slice(-14)}`);
+  await page.getByRole("button", { name: "Save & continue" }).click();
   await page.getByRole("button", { name: /I use it every day/ }).click({ timeout: 30_000 });
   await page.getByRole("button", { name: "Next" }).click();
   await page.getByRole("button", { name: "Skip for now" }).click();
