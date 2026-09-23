@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BRAND } from "@/lib/brand";
-import { CONTACT_EMAIL, LEGAL_UPDATED, getSiteUrl } from "@/lib/site";
+import { LEGAL_UPDATED, getSiteUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -30,14 +30,7 @@ export default function PrivacyPage() {
           <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">1. Who we are</h2>
           <p>
             {BRAND.name} (“{BRAND.shortName},” “we,” “us”) is a public community where people share how
-            AI makes them feel — in words, voice, or video. Contact:{" "}
-            <a
-              href={`mailto:${CONTACT_EMAIL}`}
-              className="text-[var(--accent)] underline-offset-2 hover:underline"
-            >
-              {CONTACT_EMAIL}
-            </a>{" "}
-            or the{" "}
+            AI makes them feel — in words, voice, or video. Contact the{" "}
             <Link href="/contact" className="text-[var(--accent)] underline-offset-2 hover:underline">
               contact form
             </Link>
@@ -188,17 +181,10 @@ export default function PrivacyPage() {
             <li>Download a copy of your data or delete your account from You → Your privacy</li>
             <li>Turn off push or email digests in You → Daily habits</li>
             <li>
-              Ask for help via{" "}
+              Ask for help via the{" "}
               <Link href="/contact" className="text-[var(--accent)] underline-offset-2 hover:underline">
-                contact
-              </Link>{" "}
-              or{" "}
-              <a
-                href={`mailto:${CONTACT_EMAIL}`}
-                className="text-[var(--accent)] underline-offset-2 hover:underline"
-              >
-                {CONTACT_EMAIL}
-              </a>
+                contact form
+              </Link>
             </li>
           </ul>
         </section>
@@ -249,14 +235,11 @@ export default function PrivacyPage() {
         <section>
           <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">14. Contact</h2>
           <p>
-            Privacy and data requests:{" "}
-            <a
-              href={`mailto:${CONTACT_EMAIL}`}
-              className="text-[var(--accent)] underline-offset-2 hover:underline"
-            >
-              {CONTACT_EMAIL}
-            </a>
-            . Or use{" "}
+            Privacy and data requests: use the{" "}
+            <Link href="/contact" className="text-[var(--accent)] underline-offset-2 hover:underline">
+              contact form
+            </Link>{" "}
+            at{" "}
             <Link href="/contact" className="text-[var(--accent)] underline-offset-2 hover:underline">
               {site}/contact
             </Link>

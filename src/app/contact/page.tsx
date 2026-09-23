@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import ContactForm from "@/components/ContactForm";
-import { CONTACT_EMAIL } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Contact — AI·Thoughts",
@@ -19,14 +18,7 @@ export default function ContactPage() {
       <ContactForm />
 
       <p className="mt-4 text-xs leading-relaxed text-[var(--muted)]">
-        Prefer email? Write{" "}
-        <a
-          href={`mailto:${CONTACT_EMAIL}`}
-          className="text-[var(--accent)] underline-offset-2 hover:underline"
-        >
-          {CONTACT_EMAIL}
-        </a>
-        .
+        Keepers reply through the contact form above.
       </p>
 
       <div className="mt-8">

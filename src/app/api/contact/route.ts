@@ -3,7 +3,6 @@ import { ObjectId } from "mongodb";
 import { connectToDatabase } from "@/lib/mongodb";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { getSession, isKeeperHandle } from "@/lib/auth";
-import { CONTACT_EMAIL } from "@/lib/site";
 
 const CONTACT_LIMIT = 5;
 const CONTACT_WINDOW_MS = 60 * 60_000;
@@ -87,7 +86,7 @@ export async function POST(request: Request) {
     if (typeof website === "string" && website.trim()) {
       return NextResponse.json({
         ok: true,
-        message: `Received — keepers will follow up. You can also email ${CONTACT_EMAIL}.`,
+        message: "Received — keepers will follow up.",
       });
     }
 
@@ -112,7 +111,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       ok: true,
-      message: `Received — keepers will follow up. You can also email ${CONTACT_EMAIL}.`,
+      message: "Received — keepers will follow up. Use the contact form on the page.",
     });
   } catch (e) {
     console.error("contact error:", e);
