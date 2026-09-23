@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ShieldCheck, ArrowLeft, Flag, RefreshCw, Check } from "lucide-react";
+import { ShieldCheck, ArrowLeft, Flag, RefreshCw, Check, Copy } from "lucide-react";
 import {
   fetchReports,
   resolveReport,
@@ -38,6 +38,17 @@ export default function KeeperPage() {
   const [contacts, setContacts] = useState<ContactRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const copyReplyTo = async (id: string, email: string) => {
+    try {
+      await navigator.clipboard.writeText(email);
+      setCopiedId(id);
+      window.setTimeout(() => setCopiedId((cur) => (cur === id ? null : cur)), 1500);
+    } catch {
+      /* clipboard unavailable */
+    }
+  };
 
   const loadContacts = async () => {
     try {
@@ -243,15 +254,22 @@ export default function KeeperPage() {
                   <span>·</span>
                   <span>{timeAgo(c.createdAt)}</span>
                 </div>
-                <p className="mt-2 text-sm text-[var(--foreground)]">{c.email}</p>
-                <p className="mt-1 whitespace-pre-wrap text-xs text-[var(--muted)]">{c.message}</p>
-                <button
-                  onClick={() => void resolveContact(c.id)}
-                  disabled={working === c.id}
-                  className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-[var(--border-base)] bg-[var(--surface-2)] px-3 py-2 text-xs font-semibold text-[var(--foreground)] transition hover:bg-white disabled:opacity-50"
-                >
-                  <Check className="h-3.5 w-3.5" /> Mark resolved
-                </button>
+                <p className="mt-2 whitespace-pre-wrap text-xs text-[var(--muted)]">{c.message}</p>
+                <div className="mt-3 flex items-center gap-2">
+                  <button
+                    onClick={() => void copyReplyTo(c.id, c.email)}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-[var(--border-base)] bg-[var(--surface-2)] px-3 py-2 text-xs font-semibold text-[var(--foreground)] transition hover:bg-white"
+                  >
+                    <Copy className="h-3.5 w-3.5" /> {copiedId === c.id ? "Copied" : "Copy reply-to"}
+                  </button>
+                  <button
+                    onClick={() => void resolveContact(c.id)}
+                    disabled={working === c.id}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-[var(--border-base)] bg-[var(--surface-2)] px-3 py-2 text-xs font-semibold text-[var(--foreground)] transition hover:bg-white disabled:opacity-50"
+                  >
+                    <Check className="h-3.5 w-3.5" /> Mark resolved
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
