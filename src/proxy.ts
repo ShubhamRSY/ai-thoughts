@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
-import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
+import { SESSION_COOKIE, validateSession } from "@/lib/auth";
 
-// /app is open to guests: reading needs no account. The API asks for sign-in at the
-// first write (share, react, reply, report), so the OTP happens when it has a reason to.
-const PROTECTED_PATHS = ["/keeper", "/admin"];
+// Voices needs an account: reading and writing both ask for sign-in, and the
+// proxy sends guests to the sign-in page before /app loads. The API guards
+// the first write (share, react, reply, report) as the second layer.
+const PROTECTED_PATHS = ["/app", "/keeper", "/admin"];
+// Reading feed content (takes, replies, people, profiles, feelings) is
+// members-only too, so a guest can't pull it straight off the API. Writes are
+// already guarded inside each route.
+const MEMBER_API_PATHS = ["/api/posts", "/api/people", "/api/profile", "/api/prompt", "/api/feelings"];
 const AUTH_PAGES = ["/sign-in"];
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
@@ -45,9 +50,15 @@ function blockedByOriginCheck(request: NextRequest): boolean {
   return true;
 }
 
+// Full check, not just the signature: a signed-out or revoked cookie is still
+// validly signed, and must not open /app.
 async function hasValidSession(request: NextRequest): Promise<boolean> {
   const token = request.cookies.get(SESSION_COOKIE)?.value;
-  return Boolean(token && (await verifySessionToken(token)));
+  return Boolean(token && (await validateSession(token)));
+}
+
+function under(pathname: string, paths: string[]): boolean {
+  return paths.some((p) => pathname === p || pathname.startsWith(p + "/"));
 }
 
 async function guardApi(request: NextRequest) {
@@ -61,6 +72,11 @@ async function guardApi(request: NextRequest) {
     return NextResponse.json({ error: "Cross-site request blocked" }, { status: 403 });
   }
 
+  const isRead = request.method === "GET" || request.method === "HEAD";
+  if (isRead && under(request.nextUrl.pathname, MEMBER_API_PATHS) && !(await hasValidSession(request))) {
+    return NextResponse.json({ error: "Sign in to see Voices" }, { status: 401 });
+  }
+
   return NextResponse.next();
 }
 
@@ -69,9 +85,7 @@ export async function proxy(request: NextRequest) {
 
   if (pathname.startsWith("/api/")) return guardApi(request);
 
-  const isProtected = PROTECTED_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
-
-  if (isProtected) {
+  if (under(pathname, PROTECTED_PATHS)) {
     if (!(await hasValidSession(request))) {
       const signInUrl = new URL("/sign-in", request.url);
       signInUrl.searchParams.set("from", pathname);
