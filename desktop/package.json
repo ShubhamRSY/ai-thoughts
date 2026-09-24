@@ -51,10 +51,10 @@
     },
     "appx": {
       "applicationId": "AiTo",
-      "identityName": "AitoSocial.AitoAI",
+      "identityName": "AitoSocial.Aito",
       "publisher": "CN=56811B97-2DE6-4418-B2C9-04FAFF856BB4",
       "publisherDisplayName": "Aito Social",
-      "displayName": "Aito AI",
+      "displayName": "AiTo",
       "languages": [
         "en-US"
       ]
