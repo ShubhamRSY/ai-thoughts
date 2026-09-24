@@ -29,6 +29,9 @@ import ShareCardButton from "@/components/ShareCardButton";
 import { shouldOfferTranslate } from "@/lib/lang";
 import { isNewAccount } from "@/lib/anti-abuse";
 
+/** Post ids already counted as viewed during this page load. */
+const viewedThisLoad = new Set<string>();
+
 function initials(name: string) {
   return name
     .split(" ")
@@ -125,9 +128,24 @@ export default function FeedCard({
     setMounted(true);
   }, []);
 
-  // ponytail: "mounted" ≈ "seen" — see markViewed's doc comment for the upgrade path.
+  // Count a view once the card is actually on screen, once per page load —
+  // not on mount, which fired a request for every card in the feed.
+  const cardRef = useRef<HTMLElement>(null);
   useEffect(() => {
-    void markViewed(thought.id);
+    const el = cardRef.current;
+    const id = thought.id;
+    if (!el || viewedThisLoad.has(id)) return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting || viewedThisLoad.has(id)) return;
+        viewedThisLoad.add(id);
+        io.disconnect();
+        void markViewed(id);
+      },
+      { threshold: 0.5 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
   }, [thought.id]);
 
   useEffect(() => {
@@ -258,6 +276,7 @@ export default function FeedCard({
 
   return (
     <article
+      ref={cardRef}
       className="relative isolate border-b border-[var(--border-base)] bg-[var(--surface)] py-4"
     >
       <div className="flex items-start gap-3">

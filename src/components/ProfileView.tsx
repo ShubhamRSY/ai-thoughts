@@ -90,6 +90,31 @@ export default function ProfileView({
   const [followers, setFollowers] = useState<ConnectionProfile[]>([]);
   const [followingList, setFollowingList] = useState<ConnectionProfile[]>([]);
 
+  // The browser's saved profile isn't tied to an account: only trust it when it
+  // belongs to whoever is signed in, then load the real bio/avatar from the server.
+  const userHandle = user?.handle;
+  const userName = user?.displayName;
+  useEffect(() => {
+    if (!userHandle) return;
+    const mine = normHandle(profile.handle || "") === normHandle(userHandle);
+    setHandle(userHandle);
+    setAuthor(userName || "");
+    setBio(mine ? profile.bio || "" : "");
+    setAvatarUrl(mine ? profile.avatarUrl || "" : "");
+    let cancelled = false;
+    fetchProfileInfo(userHandle).then((p) => {
+      if (cancelled || !p) return;
+      const next = { handle: userHandle, author: userName || "", bio: p.bio || "", avatarUrl: p.avatarUrl || "" };
+      setBio(next.bio);
+      setAvatarUrl(next.avatarUrl);
+      save(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-sync only when the account changes
+  }, [userHandle, userName]);
+
   const isOwn = !viewHandle || (user ? normHandle(viewHandle) === normHandle(user.handle) : false);
   const effectiveHandle = isOwn ? user?.handle : viewHandle;
 
@@ -294,7 +319,7 @@ export default function ProfileView({
 
   const shownAvatarUrl = isOwn ? avatarUrl : viewedProfile?.avatarUrl || "";
   const shownBio = isOwn
-    ? (bio || profile.bio || BRAND.footerLine).trim()
+    ? (bio || "No bio yet.").trim()
     : (viewedProfile?.bio || "No bio yet.").trim();
 
 

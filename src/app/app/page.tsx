@@ -24,6 +24,7 @@ import PeopleSearchView from "@/components/PeopleSearchView";
 import MaintenanceBanner, { useSiteFlags } from "@/components/MaintenanceBanner";
 import FeaturedVoice from "@/components/FeaturedVoice";
 import OnboardingWizard from "@/components/OnboardingWizard";
+import BrandMark from "@/components/BrandMark";
 import PulseMoved from "@/components/PulseMoved";
 import { digestBytes } from "@/lib/integrity";
 import { useLocalProfile } from "@/hooks/useLocalProfile";
@@ -53,7 +54,7 @@ type MediaFilter = "all" | MediaType;
 export default function Home() {
   const router = useRouter();
   const { profile, save } = useLocalProfile();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const identityHandle = user?.handle || profile.handle;
   const identityAuthor = user?.displayName || profile.author;
   const { streak, bump } = useFeelingStreak();
@@ -590,6 +591,18 @@ export default function Home() {
     for (const t of thoughts) if (t.feeling) m[t.feeling] = (m[t.feeling] ?? 0) + 1;
     return m;
   }, [thoughts]);
+
+  // Hold the feed until we know who's here and whether they still need
+  // onboarding, so a new account never sees Voices flash before the wizard.
+  if (authLoading || (user && onboarded === null)) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-[var(--background)]" aria-busy="true">
+        <div className="flex h-12 w-12 animate-pulse items-center justify-center rounded-2xl bg-[var(--accent)]">
+          <BrandMark className="h-8 w-8" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-dvh">

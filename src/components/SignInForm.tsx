@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import BrandMark from "@/components/BrandMark";
 import { BRAND } from "@/lib/brand";
 
-function OpeningPulse({ name }: { name?: string }) {
+function OpeningPulse({ name, isNew }: { name?: string; isNew?: boolean }) {
   return (
     <div className="app-frame">
       <div className="app-pad relative flex min-h-dvh flex-col items-center justify-center overflow-hidden text-center">
@@ -21,10 +21,10 @@ function OpeningPulse({ name }: { name?: string }) {
             <BrandMark className="h-9 w-9" />
           </div>
           <h1 className="font-display mt-6 text-2xl font-medium tracking-tight text-[var(--foreground)]">
-            {name ? `Welcome back, ${name}` : "Welcome back"}
+            {isNew ? `Welcome to ${BRAND.shortName}` : name ? `Welcome back, ${name}` : "Welcome back"}
           </h1>
           <p className="mt-2 max-w-[24ch] text-sm text-[var(--muted)]">
-            Taking you into Voices…
+            {isNew ? "Let’s set up your profile…" : "Taking you into Voices…"}
           </p>
           <div className="mt-8 flex items-center gap-1.5" aria-hidden>
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--accent)] [animation-delay:0ms]" />
@@ -62,6 +62,7 @@ function SignInFormInner({}: { total: number }) {
   const [devCode, setDevCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [isNew, setIsNew] = useState(false);
 
   const from = searchParams.get("next") ?? searchParams.get("from") ?? "/app";
   const dest = from.startsWith("/") && !from.startsWith("//") ? from : "/app";
@@ -72,8 +73,10 @@ function SignInFormInner({}: { total: number }) {
     }
   }, [loading, user, dest, router]);
 
-  if (loading || user) {
-    return <OpeningPulse name={user?.displayName} />;
+  // While verifying, keep the form up: `user` lands a beat before `isNew`,
+  // and a new account shouldn't flash "Welcome back".
+  if (loading || (user && !submitting)) {
+    return <OpeningPulse name={user?.displayName} isNew={isNew} />;
   }
 
   const handleRequestCode = async (e: React.FormEvent) => {
@@ -114,6 +117,7 @@ function SignInFormInner({}: { total: number }) {
     }
     setSubmitting(true);
     const result = await verifyCode(email.trim(), code.trim());
+    if (result.ok) setIsNew(Boolean(result.isNew));
     setSubmitting(false);
     if (result.ok) {
       router.replace(dest);

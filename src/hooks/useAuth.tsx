@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { LOCAL_PROFILE_KEY } from "@/hooks/useLocalProfile";
 
 export interface AuthUser {
   id: string;
@@ -21,7 +22,7 @@ interface AuthContextValue {
   verifyCode: (
     email: string,
     code: string
-  ) => Promise<{ ok: boolean; error?: string }>;
+  ) => Promise<{ ok: boolean; error?: string; isNew?: boolean }>;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -110,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json();
       if (data.ok) {
         setUser(data.user);
-        return { ok: true };
+        return { ok: true, isNew: Boolean(data.isNew) };
       }
       return { ok: false, error: data.error ?? "Verification failed" };
     } catch {
@@ -122,6 +123,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await fetch("/api/auth/sign-out", { method: "POST", credentials: "include" });
     } finally {
+      // Don't leave this account's name/bio behind for the next person on this device.
+      try {
+        window.localStorage.removeItem(LOCAL_PROFILE_KEY);
+        window.localStorage.removeItem("aithoughts.profile.v1");
+      } catch {
+        /* ignore */
+      }
       setUser(null);
     }
   }, []);

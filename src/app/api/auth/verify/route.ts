@@ -119,6 +119,7 @@ export async function POST(request: Request) {
 
     const res = NextResponse.json({
       ok: true,
+      isNew: createdNew,
       user: {
         id: user._id?.toString(),
         email: normalized,

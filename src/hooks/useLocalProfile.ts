@@ -9,12 +9,12 @@ export interface LocalProfile {
   avatarUrl?: string;
 }
 
-const KEY = "aithoughts.profile.v2";
+export const LOCAL_PROFILE_KEY = "aithoughts.profile.v2";
 
 function readProfile(): LocalProfile {
   if (typeof window === "undefined") return { handle: "", author: "" };
   try {
-    const raw = window.localStorage.getItem(KEY) || window.localStorage.getItem("aithoughts.profile.v1");
+    const raw = window.localStorage.getItem(LOCAL_PROFILE_KEY) || window.localStorage.getItem("aithoughts.profile.v1");
     if (raw) return JSON.parse(raw) as LocalProfile;
   } catch {
     /* ignore */
@@ -28,7 +28,7 @@ export function useLocalProfile() {
   const save = useCallback((p: LocalProfile) => {
     setProfile(p);
     try {
-      window.localStorage.setItem(KEY, JSON.stringify(p));
+      window.localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify(p));
     } catch {
       /* ignore */
     }

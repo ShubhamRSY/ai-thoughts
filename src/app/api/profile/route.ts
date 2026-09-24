@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ObjectId } from "mongodb";
+import { ObjectId, type Db } from "mongodb";
 import { connectToDatabase } from "@/lib/mongodb";
 import {
   createSession,
@@ -11,6 +11,21 @@ import { checkDisplayNameAllowed, checkHandleAllowed } from "@/lib/anti-abuse";
 import { getVisibility } from "@/lib/visibility";
 import { upsertPrefs } from "@/lib/prefs";
 import { decryptEmail } from "@/lib/secure";
+
+/** Up to 3 unused usernames close to `norm`, for the "already taken" message. */
+async function freeHandlesLike(db: Db, norm: string): Promise<string[]> {
+  const base = norm.slice(0, 26);
+  const rand = () => Math.floor(10 + Math.random() * 990);
+  const candidates = Array.from(
+    new Set([`${base}_ai`, `${base}_${rand()}`, `${base}${rand()}`, `the_${base}`.slice(0, 30), `${base}_voice`.slice(0, 30)])
+  ).filter((c) => checkHandleAllowed(`@${c}`).ok);
+  const used = await db
+    .collection<{ handle: string }>("users")
+    .find({ handle: { $in: candidates.map((c) => `@${c}`) } }, { projection: { handle: 1 } })
+    .toArray();
+  const usedSet = new Set(used.map((u) => u.handle.replace(/^@/, "")));
+  return candidates.filter((c) => !usedSet.has(c)).slice(0, 3);
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -68,11 +83,15 @@ export async function PUT(request: NextRequest) {
     if (!author.trim()) {
       return NextResponse.json({ error: "Display name is required" }, { status: 400 });
     }
-    const bio = typeof body.bio === "string" ? body.bio.trim().slice(0, 160) : "";
+    // Fields left out of the request keep their saved value (e.g. the onboarding
+    // name/username save must not wipe a bio or photo).
+    const bio = typeof body.bio === "string" ? body.bio.trim().slice(0, 160) : undefined;
     const avatarUrl =
-      typeof body.avatarUrl === "string" && body.avatarUrl.startsWith("https://")
-        ? body.avatarUrl.slice(0, 500)
-        : "";
+      typeof body.avatarUrl === "string"
+        ? body.avatarUrl.startsWith("https://")
+          ? body.avatarUrl.slice(0, 500)
+          : null
+        : undefined;
 
     const { db } = await connectToDatabase();
 
@@ -106,7 +125,10 @@ export async function PUT(request: NextRequest) {
       });
       if (taken) {
         return NextResponse.json(
-          { error: `@${norm} is already taken — try another username.` },
+          {
+            error: `@${norm} is already taken — try another username.`,
+            suggestions: await freeHandlesLike(db, norm),
+          },
           { status: 409 }
         );
       }
@@ -221,8 +243,8 @@ export async function PUT(request: NextRequest) {
         $set: {
           handle,
           author,
-          bio,
-          avatar_url: avatarUrl || null,
+          ...(bio !== undefined && { bio }),
+          ...(avatarUrl !== undefined && { avatar_url: avatarUrl }),
           updated_at: new Date(),
         },
       },

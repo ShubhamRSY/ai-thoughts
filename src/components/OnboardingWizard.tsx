@@ -75,6 +75,7 @@ export default function OnboardingWizard({
   const [profileUsername, setProfileUsername] = useState("");
   const [profileBusy, setProfileBusy] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
 
   // Prefetch the "feel with" suggestions so step 3 is instant.
   useEffect(() => {
@@ -110,6 +111,7 @@ export default function OnboardingWizard({
     }
     setProfileBusy(true);
     setProfileError(null);
+    setSuggestions([]);
     try {
       const res = await fetch("/api/profile", {
         method: "PUT",
@@ -120,6 +122,7 @@ export default function OnboardingWizard({
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setProfileError(data.error || "Couldn’t save your profile — try again.");
+        if (Array.isArray(data.suggestions)) setSuggestions(data.suggestions);
         return;
       }
       await refresh();
@@ -213,7 +216,7 @@ export default function OnboardingWizard({
               <BrandMark className="h-5 w-5" />
             </div>
             <p className="font-display text-sm font-semibold text-[var(--foreground)]">
-              {firstName ? `Welcome, ${firstName}` : "Welcome to AiTo"}
+              {step === "profile" ? "Welcome to AiTo" : `Welcome, ${firstName}`}
             </p>
           </div>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
@@ -261,6 +264,7 @@ export default function OnboardingWizard({
                   onChange={(e) => {
                     setProfileUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_@]/g, ""));
                     setProfileError(null);
+                    setSuggestions([]);
                   }}
                   placeholder="alex_writes"
                   required
@@ -273,6 +277,25 @@ export default function OnboardingWizard({
             </label>
 
             {profileError && <p className="mt-2 text-xs leading-relaxed text-rose-700">{profileError}</p>}
+            {suggestions.length > 0 && (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className="text-[11px] text-[var(--muted)]">Available:</span>
+                {suggestions.map((sug) => (
+                  <button
+                    key={sug}
+                    type="button"
+                    onClick={() => {
+                      setProfileUsername(sug);
+                      setProfileError(null);
+                      setSuggestions([]);
+                    }}
+                    className="rounded-full border border-[var(--border-base)] bg-[var(--surface)] px-3 py-1 text-xs font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
+                  >
+                    @{sug}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <button
               type="button"
@@ -330,6 +353,13 @@ export default function OnboardingWizard({
                 Pick the feeling that’s true for you
               </p>
             )}
+            <button
+              type="button"
+              onClick={() => setStep("together")}
+              className="mt-2 w-full rounded-full border border-[var(--border-base)] py-3.5 text-sm font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-2)]"
+            >
+              Skip for now
+            </button>
           </section>
         )}
 

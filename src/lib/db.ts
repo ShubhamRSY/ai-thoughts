@@ -523,21 +523,6 @@ export async function archivePost(postId: string, archived: boolean): Promise<bo
   }
 }
 
-export interface LocalProfile {
-  handle: string;
-  author: string;
-}
-
-export async function getProfile(): Promise<LocalProfile | null> {
-  try {
-    const local = localStorage.getItem("aithoughts.profile.v1");
-    if (!local) return null;
-    return JSON.parse(local) as LocalProfile;
-  } catch {
-    return null;
-  }
-}
-
 export async function saveProfile(
   _userId: string,
   handle: string,

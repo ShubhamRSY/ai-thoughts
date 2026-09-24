@@ -62,7 +62,8 @@ function createWindow() {
  * Only runs in packaged builds (not `npm start` / electron .).
  */
 function setupAutoUpdater() {
-  if (!app.isPackaged) return;
+  // Store builds update through the Microsoft Store only (Store policy).
+  if (!app.isPackaged || process.windowsStore) return;
 
   let autoUpdater;
   try {

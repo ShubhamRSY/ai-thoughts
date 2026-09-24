@@ -17,11 +17,7 @@ const IP_VIEW_WINDOW_MS = 10 * 60_000;
  * POST /api/posts/[id]/view — record that the current viewer has seen this
  * take. Deduped per (post, viewer): signed-in viewers key on their handle,
  * signed-out viewers key on an anonymous id set here on first view.
- *
- * ponytail: "seen" = the card mounted client-side, not that it actually
- * scrolled into the viewport. An IntersectionObserver would be the more
- * honest signal — upgrade to that if this number ever needs to resist
- * gaming (e.g. as a creator-facing metric with real stakes).
+ * The client calls this once a card is at least half on screen.
  */
 export async function POST(
   request: NextRequest,
