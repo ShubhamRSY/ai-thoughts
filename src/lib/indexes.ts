@@ -3,6 +3,9 @@ import { reportError } from "./report-error.ts";
 
 let ensured = false;
 
+/** How long a viewer is remembered before their next view counts again. */
+const VIEW_DEDUPE_DAYS = 30;
+
 /** Idempotent indexes for lookups that matter for auth, prompts, and push. */
 export async function ensureCoreIndexes(db: Db): Promise<void> {
   if (ensured) return;
@@ -196,6 +199,32 @@ export async function ensureCoreIndexes(db: Db): Promise<void> {
     );
   } catch (e) {
     console.warn("ensureCoreIndexes notifications:", (e as Error)?.message || e);
+    reportError(e, { route: "lib/indexes", service: "mongodb" });
+  }
+
+  // View counts used to be countDocuments over every post_views row ever
+  // written, so the collection could never shrink. They now live on the post
+  // (posts.view_count) and rows expire after the dedupe window. Before the TTL
+  // index exists, copy each post's full row count onto it exactly once.
+  try {
+    const views = db.collection("post_views");
+    const hasTtl = (await views.indexes()).some((i) => i.name === "post_views_ttl");
+    if (!hasTtl) {
+      await views
+        .aggregate([
+          { $group: { _id: "$post_id", view_count: { $sum: 1 } } },
+          { $match: { _id: { $regex: /^[0-9a-f]{24}$/ } } },
+          { $project: { _id: { $toObjectId: "$_id" }, view_count: 1 } },
+          { $merge: { into: "posts", on: "_id", whenMatched: "merge", whenNotMatched: "discard" } },
+        ], { timeoutMS: 0 })
+        .toArray();
+      await views.createIndex(
+        { created_at: 1 },
+        { expireAfterSeconds: 60 * 60 * 24 * VIEW_DEDUPE_DAYS, name: "post_views_ttl" }
+      );
+    }
+  } catch (e) {
+    console.warn("ensureCoreIndexes post_views:", (e as Error)?.message || e);
     reportError(e, { route: "lib/indexes", service: "mongodb" });
   }
 

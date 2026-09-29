@@ -1,4 +1,5 @@
-import type { Db } from "mongodb";
+import type { Db, ObjectId } from "mongodb";
+import { isFlaggedContent, transcribeMedia } from "./content-moderation.ts";
 
 // Suspended (banned) accounts keep their row so the same email can't
 // immediately re-register, but they can't sign in and their content is removed.
@@ -77,4 +78,52 @@ export async function banUser(db: Db, handle: string): Promise<boolean> {
     await deletePostCascade(db, post._id);
   }
   return true;
+}
+/**
+ * Runs after an audio/video take is published (transcription takes seconds,
+ * too long to hold the post request). The transcript is saved either way — the
+ * feed shows it as captions. Flagged speech hides the take and files a report:
+ * a keeper's "dismiss" puts it back, "remove_post" deletes it. It is held, not
+ * deleted, because a false positive must not destroy someone's recording.
+ */
+export async function screenMediaPost(db: Db, postId: ObjectId, mediaUrl: string): Promise<void> {
+  const transcript = await transcribeMedia(mediaUrl);
+  if (!transcript?.length) return;
+  const posts = db.collection("posts");
+  if (!(await isFlaggedContent({ text: transcript.map((s) => s.text).join(" ") }))) {
+    await posts.updateOne({ _id: postId }, { $set: { transcript } });
+    return;
+  }
+  const post = await posts.findOneAndUpdate(
+    { _id: postId },
+    { $set: { transcript, archived: true, archived_at: new Date(), moderation_hold: true } },
+    { projection: { handle: 1, content: 1 } }
+  );
+  if (!post) return; // deleted meanwhile
+  await db.collection("reports").updateOne(
+    { post_id: postId.toString(), reporter_handle: AUTO_REPORTER },
+    {
+      $setOnInsert: {
+        reason: "Automatic: speech in this take looks like it breaks the guidelines",
+        reported_handle: post.handle ?? null,
+        content_snippet: String(post.content ?? "").slice(0, 120),
+        status: "open",
+        created_at: new Date(),
+      },
+    },
+    { upsert: true }
+  );
+}
+
+/** Reporter on automatic reports; "system" is a reserved handle, so no user can own it. */
+export const AUTO_REPORTER = "@system";
+
+/** A keeper cleared a report: lift an automatic hold, if the take has one. */
+export async function releaseModerationHold(db: Db, postId: ObjectId): Promise<void> {
+  await db
+    .collection("posts")
+    .updateOne(
+      { _id: postId, moderation_hold: true },
+      { $unset: { moderation_hold: "", archived: "", archived_at: "" } }
+    );
 }

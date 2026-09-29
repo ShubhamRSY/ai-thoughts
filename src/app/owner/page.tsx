@@ -178,7 +178,7 @@ export default function OwnerDashboardPage() {
     <div className="min-h-dvh bg-[var(--background)] text-[var(--foreground)]">
       <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
               Product owner · private analytics
             </p>

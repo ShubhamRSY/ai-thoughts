@@ -19,6 +19,7 @@ function withAt(h: string) {
 // cheap — no same query twice within the window.
 const SEARCH_LIMIT = 30;
 const SEARCH_WINDOW_MS = 15 * 60_000;
+const SEARCH_SCAN_POSTS = 5000;
 
 export type SearchPostHit = {
   id: string;
@@ -127,14 +128,17 @@ export async function GET(request: NextRequest) {
     // Match anywhere in content, and/or the post's declared tags (so #pulse
     // finds posts tagged "pulse" even when their text doesn't spell the tag).
     const posts: SearchPostHit[] = [];
+    // Regex can't use an index, so an unmatched query used to read every post.
+    // Only the newest SEARCH_SCAN_POSTS are scanned (walking posts_created_id).
+    // ponytail: old takes fall out of search; a text/Atlas Search index when that matters.
     const postCandidates = await db
       .collection("posts")
-      .find({
-        archived: { $ne: true },
-        $or: [{ content: rx }, { tags: rx }],
-      })
-      .sort({ created_at: -1 })
-      .limit(40)
+      .aggregate([
+        { $sort: { created_at: -1, _id: -1 } },
+        { $limit: SEARCH_SCAN_POSTS },
+        { $match: { archived: { $ne: true }, $or: [{ content: rx }, { tags: rx }] } },
+        { $limit: 40 },
+      ])
       .toArray();
 
     for (const post of postCandidates) {

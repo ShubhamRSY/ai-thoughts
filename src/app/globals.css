@@ -224,6 +224,15 @@ body {
   overscroll-behavior-y: none;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
+  /* At 200% text on a 320px phone one long word ("Guidelines") is wider than
+     the screen; break it instead of widening the page. */
+  overflow-wrap: break-word;
+}
+
+h1,
+h2,
+h3 {
+  hyphens: auto;
 }
 
 html.is-app-shell body {

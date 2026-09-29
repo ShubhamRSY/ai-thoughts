@@ -10,13 +10,13 @@ import { reportError } from "@/lib/report-error";
 const ANON_ID_COOKIE = "aithoughts.anon";
 const ANON_ID_MAX_AGE = 400 * 24 * 3600; // ~13 months, well past any session
 // Views write a deduped row per (post, viewer) — generous but bounded so a
-// script can't churn unbounded rows into post_views.
+// script can't churn rows into post_views faster than the TTL drains them.
 const IP_VIEW_LIMIT = 300;
 const IP_VIEW_WINDOW_MS = 10 * 60_000;
 
 /**
  * POST /api/posts/[id]/view — record that the current viewer has seen this
- * take. Deduped per (post, viewer): signed-in viewers key on their handle,
+ * take. Deduped per (post, viewer) for 30 days: signed-in viewers key on their handle,
  * signed-out viewers key on an anonymous id set here on first view.
  * The client calls this once a card is at least half on screen.
  */
@@ -51,19 +51,30 @@ export async function POST(
     const viewerKey = session ? `user:${session.handle}` : `anon:${anonId}`;
 
     const { db } = await connectToDatabase();
-    const post = await db.collection("posts").findOne({ _id: objectId }, { projection: { handle: 1, archived: 1 } });
+    const post = await db.collection("posts").findOne({ _id: objectId }, { projection: { handle: 1, archived: 1, view_count: 1 } });
     if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
     if (!(await canViewPost(db, session?.handle ?? null, post))) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    await db.collection("post_views").updateOne(
+    const seen = await db.collection("post_views").updateOne(
       { post_id: id, viewer_key: viewerKey },
       { $setOnInsert: { post_id: id, viewer_key: viewerKey, created_at: new Date() } },
       { upsert: true }
     );
-
-    const viewCount = await db.collection("post_views").countDocuments({ post_id: id });
+    // The count lives on the post; post_views rows are only the dedupe window
+    // (TTL, see lib/indexes.ts), so a viewer counts again after it expires.
+    let viewCount = typeof post.view_count === "number" ? post.view_count : 0;
+    if (seen.upsertedCount === 1) {
+      const updated = await db
+        .collection("posts")
+        .findOneAndUpdate(
+          { _id: objectId },
+          { $inc: { view_count: 1 } },
+          { returnDocument: "after", projection: { view_count: 1 } }
+        );
+      viewCount = typeof updated?.view_count === "number" ? updated.view_count : viewCount + 1;
+    }
 
     const res = NextResponse.json({ ok: true, view_count: viewCount });
     if (anonId && anonId !== existingAnonId) {

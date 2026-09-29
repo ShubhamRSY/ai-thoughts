@@ -31,13 +31,19 @@ export async function POST(
     const { db } = await connectToDatabase();
     const post = await db
       .collection("posts")
-      .findOne({ _id }, { projection: { user_id: 1, handle: 1 } });
+      .findOne({ _id }, { projection: { user_id: 1, handle: 1, moderation_hold: 1 } });
     if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     const isAuthor =
       String(post.user_id ?? "") === session.id ||
       (!!post.handle && norm(String(post.handle)) === norm(session.handle));
     if (!isAuthor) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!body.archived && post.moderation_hold === true) {
+      return NextResponse.json(
+        { error: "This take is hidden while a keeper reviews it", code: "moderation_hold" },
+        { status: 403 }
+      );
+    }
 
     await db
       .collection("posts")

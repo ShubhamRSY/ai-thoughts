@@ -77,7 +77,9 @@ export default function VideoPlayer({
           <>
             <video
               ref={wrapRef}
-              src={src}
+              // #t=0.1 makes browsers (iOS Safari especially) paint a frame as
+              // the thumbnail instead of a black box; there is no poster image.
+              src={src && !src.includes("#") ? `${src}#t=0.1` : src}
               playsInline
               preload="metadata"
               className="h-full w-full object-cover"

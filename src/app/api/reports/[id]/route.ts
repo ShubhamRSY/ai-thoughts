@@ -4,7 +4,7 @@ import { ObjectId } from "mongodb";
 import { getSession, isKeeperHandle } from "@/lib/auth";
 import { logSecurityEvent } from "@/lib/audit";
 import { clientIp } from "@/lib/rate-limit";
-import { deletePostCascade, banUser } from "@/lib/moderation";
+import { deletePostCascade, banUser, releaseModerationHold } from "@/lib/moderation";
 import { reportError } from "@/lib/report-error";
 
 // Keepers can also delete via DELETE /api/posts/[id] or archive; these are the
@@ -75,6 +75,10 @@ export async function POST(
       if (typeof report.reported_handle === "string") {
         await banUser(db, report.reported_handle);
       }
+    } else if (report.target_type !== "comment") {
+      // Kept the content: an automatic hold (screenMediaPost) comes off.
+      const target = parseObjectId(String(report.post_id ?? ""));
+      if (target) await releaseModerationHold(db, target);
     }
 
     const resolvedAt = new Date();

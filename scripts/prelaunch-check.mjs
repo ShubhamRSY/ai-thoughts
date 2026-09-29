@@ -14,7 +14,9 @@ if (!process.env.MONGODB_URL || !process.env.MONGODB_DB) {
   process.exit(2);
 }
 const mongo = await MongoClient.connect(process.env.MONGODB_URL);
-const db = mongo.db(process.env.MONGODB_DB);
+// The dev server appends "_dev" to MONGODB_DB (src/lib/mongodb.ts); match it.
+const DB = process.env.MONGODB_DB.endsWith("_dev") ? process.env.MONGODB_DB : `${process.env.MONGODB_DB}_dev`;
+const db = mongo.db(DB);
 
 let ipN = 1;
 const ip = () => `100.64.${(ipN >> 8) & 255}.${ipN++ & 255}`;

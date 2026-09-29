@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { createHash } from "crypto";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId, type Document } from "mongodb";
@@ -24,6 +24,7 @@ import { blockedHandles } from "@/lib/blocks";
 import { mutedHandles } from "@/lib/mutes";
 import { isAllowedMediaUrl, isBlobUrl, isPlayableMediaUrl } from "@/lib/media-sniff";
 import { isFlaggedContent } from "@/lib/content-moderation";
+import { screenMediaPost } from "@/lib/moderation";
 import { reportError } from "@/lib/report-error";
 
 function normHandle(h: string) {
@@ -91,6 +92,10 @@ interface PostDoc {
   /** Author-hidden: visible to the author only (see canViewPost). */
   archived?: boolean;
   archived_at?: Date;
+  /** Hidden by automatic screening until a keeper reviews it (lib/moderation.ts). */
+  moderation_hold?: boolean;
+  /** Unique viewers, bumped by POST /api/posts/[id]/view on each new post_views row. */
+  view_count?: number;
   content_fp?: string;
   author_joined_at?: string | null;
   abuse_flags?: string[];
@@ -291,8 +296,8 @@ export async function GET(request: NextRequest) {
             .toArray()
         : Promise.resolve([] as { _id: string; n: number }[]);
 
-    // None of these depend on each other — one round trip instead of four.
-    const [reactions, quoted, messageRows, viewRows] = await Promise.all([
+    // None of these depend on each other — one round trip instead of three.
+    const [reactions, quoted, messageRows] = await Promise.all([
       db
         .collection<{
           post_id: string;
@@ -310,7 +315,6 @@ export async function GET(request: NextRequest) {
             .toArray()
         : Promise.resolve([] as Document[]),
       countBy("messages"),
-      countBy("post_views"),
     ]);
 
     const reactMap: Record<string, Record<string, number>> = {};
@@ -386,8 +390,6 @@ export async function GET(request: NextRequest) {
 
     const messageCounts = new Map<string, number>();
     for (const row of messageRows) if (row._id) messageCounts.set(String(row._id), row.n);
-    const viewCounts = new Map<string, number>();
-    for (const row of viewRows) if (row._id) viewCounts.set(String(row._id), row.n);
 
     // Names of blocked users are dropped from "liked by"; the counts are left alone.
     const blockedSet = new Set((await blockedP).map(normHandle));
@@ -465,7 +467,7 @@ export async function GET(request: NextRequest) {
         boost_count: boostCount,
         boosted_by_me: boostedByMe,
         bookmarked_by_me: bookmarkedByMe,
-        view_count: viewCounts.get(id) ?? 0,
+        view_count: p.view_count ?? 0,
         author_joined_at: p.author_joined_at ?? null,
       };
     });
@@ -658,7 +660,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "media_url is required" }, { status: 400 });
     }
 
-    // Photo takes are media_type "text" with a media_url; audio/video aren't screened yet.
+    // Photo takes are media_type "text" with a media_url; audio/video are
+    // screened from their transcript after publishing (screenMediaPost below).
     if (await isFlaggedContent({ text: content, imageUrl: mediaType === "text" ? mediaUrl : null })) {
       return NextResponse.json(
         { error: "This take can't be posted — it looks like it breaks the community guidelines.", code: "flagged" },
@@ -724,6 +727,14 @@ export async function POST(request: NextRequest) {
 
     const result = await db.collection<PostDoc>("posts").insertOne(doc);
     const postId = result.insertedId.toString();
+    if (mediaUrl && mediaType !== "text") {
+      const insertedId = result.insertedId;
+      after(() =>
+        screenMediaPost(db, insertedId, mediaUrl).catch((e) =>
+          reportError(e, { route: "api/posts", service: "openai" })
+        )
+      );
+    }
     if (feeling) {
       await setMood(db, session.handle, promptDay ?? promptDayKeyUTC(), feeling, "post").catch(() => {});
     }

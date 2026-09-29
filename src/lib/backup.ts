@@ -80,7 +80,7 @@ export async function buildArchive(db: Db, opts: { host?: string } = {}): Promis
     const docs: string[] = [];
     // Cursor iteration, not toArray() on a guessed count: this has to survive
     // the day a collection is too big to materialise twice.
-    for await (const doc of db.collection(name).find({})) {
+    for await (const doc of db.collection(name).find({}, { timeoutMode: "iteration" })) {
       docs.push(EJSON.stringify(doc, { relaxed: false }));
       if (++docCount > MAX_DOCS) {
         throw new Error(
