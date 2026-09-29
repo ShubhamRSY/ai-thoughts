@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { BRAND } from "@/lib/brand";
+import { OPERATOR } from "@/lib/site";
 
-export default function Footer({ hideRunBy = false }: { hideRunBy?: boolean }) {
+export default function Footer() {
   return (
     <footer className="app-pad border-t border-[var(--border-base)] py-8">
       <p className="font-display text-sm text-[var(--foreground)]">{BRAND.name}</p>
@@ -25,11 +26,9 @@ export default function Footer({ hideRunBy = false }: { hideRunBy?: boolean }) {
       <p className="mt-3 text-[11px] leading-relaxed text-[var(--muted)]">
         {BRAND.footerLine}
       </p>
-      {!hideRunBy && (
-        <p className="mt-2 text-[10px] uppercase tracking-widest text-[var(--muted)]">
-          {BRAND.runBy}
-        </p>
-      )}
+      <p className="mt-2 text-[11px] text-[var(--muted)]">
+        Run by {OPERATOR.description} in {OPERATOR.region} · For adults 18+
+      </p>
     </footer>
   );
 }

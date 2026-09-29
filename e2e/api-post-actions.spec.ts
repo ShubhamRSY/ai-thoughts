@@ -19,7 +19,7 @@ async function signIn(request: APIRequestContext): Promise<void> {
   expect(devCode, "dev OTP code should be present (no RESEND_API_KEY in this env)").toMatch(
     /^\d{6}$/
   );
-  const verifyRes = await request.post("/api/auth/verify", { data: { email, code: devCode } });
+  const verifyRes = await request.post("/api/auth/verify", { data: { email, code: devCode, age_confirmed: true } });
   expect(verifyRes.ok()).toBeTruthy();
 }
 

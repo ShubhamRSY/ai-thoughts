@@ -122,7 +122,7 @@ function SignInFormInner({}: { total: number }) {
       return;
     }
     setSubmitting(true);
-    const result = await verifyCode(email.trim(), code.trim());
+    const result = await verifyCode(email.trim(), code.trim(), ageAgreed);
     if (result.ok) setIsNew(Boolean(result.isNew));
     setSubmitting(false);
     if (result.ok) {
@@ -176,7 +176,7 @@ function SignInFormInner({}: { total: number }) {
                 className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--accent)]"
               />
               <span>
-                I’m 13 or older and agree to the{" "}
+                I’m 18 or older and agree to the{" "}
                 <Link
                   href="/terms"
                   className="text-[var(--accent)] underline underline-offset-2"

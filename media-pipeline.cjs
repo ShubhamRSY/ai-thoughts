@@ -34,7 +34,7 @@ async function signIn(displayName) {
   assert(/^\d{6}$/.test(code || ""), "dev code present in sign-in response");
   const s2 = await json("/api/auth/verify", {
     method: "POST",
-    body: JSON.stringify({ email, code }),
+    body: JSON.stringify({ email, code, age_confirmed: true }),
   });
   assert(s2.res.status === 200, `verify ${s2.res.status}`);
   const setCookie = s2.res.headers.getSetCookie?.()[0] || s2.res.headers.get("set-cookie") || "";

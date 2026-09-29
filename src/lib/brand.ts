@@ -13,8 +13,6 @@ export const BRAND = {
   footerLine: "Every feeling about AI belongs here — the good and the hard.",
   /** Trust line shown at sign-in and in the footer. */
   trustLine: "Real humans moderate.",
-  /** Who runs the place — small, human, accountable. */
-  runBy: "AiTo · made by Aito Social",
   shareCta: "Share your feeling",
   shareTitle: "Share your feeling",
   shareSuccess: "Your feeling is live.",

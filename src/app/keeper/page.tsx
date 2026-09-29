@@ -12,6 +12,7 @@ import {
   isLive,
 } from "@/lib/db";
 import { useAuth } from "@/hooks/useAuth";
+import { CHILD_SAFETY } from "@/lib/report-reasons";
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -212,6 +213,11 @@ export default function KeeperPage() {
                 </span>
                 <Flag className="h-3.5 w-3.5 text-rose-500" />
                 <span className="font-semibold text-rose-700">{r.reason}</span>
+                {r.reason === CHILD_SAFETY && (
+                  <span className="rounded-full bg-rose-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                    Urgent
+                  </span>
+                )}
                 <span>·</span>
                 <span>{timeAgo(r.created_at)}</span>
               </div>
@@ -221,6 +227,23 @@ export default function KeeperPage() {
               {r.content_snippet && (
                 <p className="mt-1 line-clamp-2 text-xs text-[var(--muted)]">
                   “{r.content_snippet}”
+                </p>
+              )}
+              {r.reason === CHILD_SAFETY && (
+                <p className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-800">
+                  The take is already hidden. If it sexualises or exploits a child: remove it (a copy
+                  is preserved automatically for 1 year), ban the account, and file a report with
+                  NCMEC&apos;s{" "}
+                  <a
+                    href="https://report.cybertip.org/"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-semibold underline underline-offset-2"
+                  >
+                    CyberTipline
+                  </a>
+                  . US law requires it. Do not download or share the content. &ldquo;Keep &amp;
+                  resolve&rdquo; makes the take visible again.
                 </p>
               )}
               <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -246,7 +269,7 @@ export default function KeeperPage() {
                 ) : (
                   <button
                     onClick={() => {
-                      if (r.reason === "Spam or coordinated accounts") {
+                      if (r.reason === "Spam or coordinated accounts" || r.reason === CHILD_SAFETY) {
                         if (!window.confirm(`Remove the take and ban ${r.reported_handle ?? "this account"}?`)) return;
                         void handleModerate(r, "ban");
                       } else {

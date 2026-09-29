@@ -5,6 +5,7 @@ let ensured = false;
 
 /** How long a viewer is remembered before their next view counts again. */
 const VIEW_DEDUPE_DAYS = 30;
+const ONE_YEAR_S = 60 * 60 * 24 * 365;
 
 /** Idempotent indexes for lookups that matter for auth, prompts, and push. */
 export async function ensureCoreIndexes(db: Db): Promise<void> {
@@ -93,6 +94,25 @@ export async function ensureCoreIndexes(db: Db): Promise<void> {
     db.collection("moods").createIndex(
       { handle_norm: 1, day: 1 },
       { unique: true, name: "moods_handle_day_unique" }
+    ),
+    // Retention promised in the privacy policy (section 10). Unresolved
+    // reports have no resolved_at, so they never expire while open.
+    db.collection("security_audit_log").createIndex(
+      { created_at: 1 },
+      { expireAfterSeconds: ONE_YEAR_S, name: "security_audit_log_ttl" }
+    ),
+    db.collection("contact_requests").createIndex(
+      { created_at: 1 },
+      { expireAfterSeconds: ONE_YEAR_S, name: "contact_requests_ttl" }
+    ),
+    // Child-safety evidence (lib/moderation.ts): each row carries its own expiry.
+    db.collection("evidence").createIndex(
+      { expires_at: 1 },
+      { expireAfterSeconds: 0, name: "evidence_ttl" }
+    ),
+    db.collection("reports").createIndex(
+      { resolved_at: 1 },
+      { expireAfterSeconds: ONE_YEAR_S, name: "reports_resolved_ttl" }
     ),
     db.collection("post_views").createIndex(
       { post_id: 1, viewer_key: 1 },

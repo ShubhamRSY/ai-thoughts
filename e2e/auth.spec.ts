@@ -22,7 +22,7 @@ test("a new visitor can sign in end-to-end with the emailed code", async ({ page
   await page.goto("/sign-in");
   await page.getByLabel("Email", { exact: true }).fill(email);
   // The 13+ / Terms agreement gates the button (COPPA age gate).
-  await page.getByRole("checkbox", { name: /13 or older/ }).check();
+  await page.getByRole("checkbox", { name: /18 or older/ }).check();
   await page.getByRole("button", { name: "Send sign-in code" }).click();
 
   // Dev-mode-only: the API returns the OTP in-band (no RESEND_API_KEY set),
@@ -53,7 +53,7 @@ test("an unrecognized code is rejected with an error, not a silent sign-in", asy
   await page.goto("/sign-in");
   await page.getByLabel("Email", { exact: true }).fill(email);
   // The 13+ / Terms agreement gates the button (COPPA age gate).
-  await page.getByRole("checkbox", { name: /13 or older/ }).check();
+  await page.getByRole("checkbox", { name: /18 or older/ }).check();
   await page.getByRole("button", { name: "Send sign-in code" }).click();
   await expect(page.getByText("Dev code:")).toBeVisible();
 
@@ -73,7 +73,7 @@ test("a returning member signs in with just their email and is never re-asked fo
     await page.goto("/sign-in");
     await page.getByLabel("Email", { exact: true }).fill(email);
     // The 13+ / Terms agreement gates the button (COPPA age gate).
-    await page.getByRole("checkbox", { name: /13 or older/ }).check();
+    await page.getByRole("checkbox", { name: /18 or older/ }).check();
     await page.getByRole("button", { name: "Send sign-in code" }).click();
     const code = (await page.getByText("Dev code:").textContent())?.match(/\d{6}/)?.[0];
     await page.getByLabel("6-digit code").fill(code!);

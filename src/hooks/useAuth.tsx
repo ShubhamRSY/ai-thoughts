@@ -22,7 +22,8 @@ interface AuthContextValue {
   ) => Promise<{ ok: boolean; error?: string; devCode?: string; alreadySignedIn?: boolean }>;
   verifyCode: (
     email: string,
-    code: string
+    code: string,
+    ageConfirmed: boolean
   ) => Promise<{ ok: boolean; error?: string; isNew?: boolean }>;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -98,7 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user]);
 
-  const verifyCode = useCallback(async (email: string, code: string) => {
+  const verifyCode = useCallback(async (email: string, code: string, ageConfirmed: boolean) => {
     if (user) {
       return { ok: true };
     }
@@ -107,7 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email, code }),
+        body: JSON.stringify({ email, code, age_confirmed: ageConfirmed }),
       });
       const data = await res.json();
       if (data.ok) {

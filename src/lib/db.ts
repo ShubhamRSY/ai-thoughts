@@ -388,6 +388,21 @@ export async function reportPost(
   }
 }
 
+/** Report an account (not one take) to the keepers. */
+export async function reportAccount(handle: string, reason: string): Promise<boolean> {
+  try {
+    await jsonFetch(`${API}/reports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target_type: "user", target_id: handle, reason }),
+    });
+    return true;
+  } catch (e) {
+    console.error("reportAccount:", e);
+    return false;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Chat
 // ---------------------------------------------------------------------------

@@ -77,7 +77,7 @@ export default async function LandingPage() {
       </main>
 
       <div className="landing-footer-wrap">
-        <Footer hideRunBy />
+        <Footer />
       </div>
     </div>
   );

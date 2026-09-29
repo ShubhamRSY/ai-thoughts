@@ -21,7 +21,7 @@ async function newUser(label: string, ip: string): Promise<U> {
   });
   const email = `e2e-arch-${label}-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
   const { devCode } = await (await api.post("/api/auth/sign-in", { data: { email } })).json();
-  const verify = await api.post("/api/auth/verify", { data: { email, code: devCode } });
+  const verify = await api.post("/api/auth/verify", { data: { email, code: devCode, age_confirmed: true } });
   expect(verify.ok(), await verify.text()).toBeTruthy();
   return { api, handle: (await verify.json()).user.handle as string };
 }

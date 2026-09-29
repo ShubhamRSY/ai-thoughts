@@ -17,7 +17,7 @@ test("prefs are patched, not replaced, and nothing is opted in by default", asyn
   try {
     const email = `e2e-prefs-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
     const { devCode } = await (await api.post("/api/auth/sign-in", { data: { email } })).json();
-    expect((await api.post("/api/auth/verify", { data: { email, code: devCode } })).ok()).toBeTruthy();
+    expect((await api.post("/api/auth/verify", { data: { email, code: devCode, age_confirmed: true } })).ok()).toBeTruthy();
 
     const get = async () => (await api.get("/api/prefs")).json();
     const post = async (data: object) => {

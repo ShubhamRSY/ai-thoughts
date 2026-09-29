@@ -109,6 +109,7 @@ export async function POST(request: Request) {
       kind: requestKind,
       status: "open",
       createdAt: new Date().toISOString(),
+      created_at: new Date(), // Date for the 1-year TTL (lib/indexes.ts)
       ip,
     });
 

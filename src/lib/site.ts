@@ -19,5 +19,16 @@ export const CONTACT_EMAIL =
   process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim() || "keepers@aito.social";
 
 /** Fixed legal "last updated" date — do not use `new Date()` at render time. */
-export const LEGAL_UPDATED = "September 28, 2026";
+export const LEGAL_UPDATED = "September 29, 2026";
+
+/**
+ * Who runs AiTo, as shown in the footer, Terms and Privacy Policy. The
+ * operator's legal name is deliberately not published on the site; it lives
+ * in the app-store developer accounts, and CONTACT_EMAIL reaches them.
+ */
+export const OPERATOR = {
+  description: "an independent developer",
+  region: "Connecticut, USA",
+  governingLaw: "the State of Connecticut, USA",
+};
 export const PRIVACY_UPDATED = "September 29, 2026";

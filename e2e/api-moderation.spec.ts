@@ -33,7 +33,7 @@ async function signIn(ctx: APIRequestContext, tag: string): Promise<string> {
   expect(devCode, "dev OTP code should be present (no RESEND_API_KEY in this env)").toMatch(
     /^\d{6}$/
   );
-  const verifyRes = await ctx.post("/api/auth/verify", { data: { email, code: devCode } });
+  const verifyRes = await ctx.post("/api/auth/verify", { data: { email, code: devCode, age_confirmed: true } });
   const verifyBody = await verifyRes.json();
   expect(verifyRes.ok()).toBeTruthy();
   return verifyBody.user?.handle as string;

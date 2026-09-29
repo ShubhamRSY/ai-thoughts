@@ -11,7 +11,6 @@ import {
   BarChart2,
   MoreHorizontal,
   Flag,
-  ShieldCheck,
   Trash2,
   HeartHandshake,
   BellOff,
@@ -28,6 +27,8 @@ import ChatPanel from "@/components/Chat/ChatPanel";
 import TranslateToEnglish from "@/components/TranslateToEnglish";
 import ShareCardButton from "@/components/ShareCardButton";
 import { shouldOfferTranslate } from "@/lib/lang";
+import type { ReportReason } from "@/lib/report-reasons";
+import ReportDialog from "@/components/ReportDialog";
 import { isNewAccount } from "@/lib/anti-abuse";
 
 /** Post ids already counted as viewed during this page load. */
@@ -83,14 +84,7 @@ function linkifyText(
   });
 }
 
-export type ReportReason =
-  | "Hate or harassment"
-  | "Unsafe or explicit"
-  | "Spam or coordinated accounts"
-  | "Misleading or fake story"
-  | "Sounds AI-generated"
-  | "Impersonation"
-  | "Harms someone";
+export type { ReportReason };
 
 interface FeedCardProps {
   thought: Thought;
@@ -120,16 +114,6 @@ function sameHandle(a?: string | null, b?: string | null) {
   if (!a || !b) return false;
   return a.trim().toLowerCase().replace(/^@/, "") === b.trim().toLowerCase().replace(/^@/, "");
 }
-
-const REPORT_REASONS: ReportReason[] = [
-  "Hate or harassment",
-  "Unsafe or explicit",
-  "Spam or coordinated accounts",
-  "Misleading or fake story",
-  "Sounds AI-generated",
-  "Impersonation",
-  "Harms someone",
-];
 
 export default function FeedCard({
   thought,
@@ -164,9 +148,6 @@ export default function FeedCard({
   const [bookmarked, setBookmarked] = useState(Boolean(thought.bookmarkedByMe));
   const [menuOpen, setMenuOpen] = useState(false);
   const [reporting, setReporting] = useState(false);
-  const [reported, setReported] = useState(false);
-  const [reportBusy, setReportBusy] = useState(false);
-  const [reportError, setReportError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [chatOpen, setChatOpen] = useState(Boolean(forceChatOpen));
@@ -203,33 +184,6 @@ export default function FeedCard({
   useEffect(() => {
     if (forceChatOpen) setChatOpen(true);
   }, [forceChatOpen]);
-
-  const submitReport = async (reason: ReportReason) => {
-    if (reportBusy) return;
-    setReportBusy(true);
-    setReportError(null);
-    try {
-      if (!currentHandle) {
-        setReportError("Sign in to report a take.");
-        return;
-      }
-      const ok = onReport ? await Promise.resolve(onReport(thought.id, reason)) : true;
-      if (ok === false) {
-        setReportError("Couldn’t send that report — try again.");
-        return;
-      }
-      setReported(true);
-    } finally {
-      setReportBusy(false);
-    }
-  };
-
-  const closeReport = () => {
-    setReporting(false);
-    setReported(false);
-    setReportError(null);
-    setReportBusy(false);
-  };
 
   const isAuthor = sameHandle(currentHandle, thought.handle);
   const authorIsNew = isNewAccount(thought.authorJoinedAt ?? null, 7 * 24 * 3600_000);
@@ -729,78 +683,16 @@ export default function FeedCard({
           document.body
         )}
 
-      {mounted &&
-        (reporting || reported) &&
-        createPortal(
-          <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/40 sm:items-center">
-            <button
-              type="button"
-              className="absolute inset-0 cursor-default"
-              aria-label="Close report"
-              onClick={closeReport}
-            />
-            <div
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="report-title"
-              className="relative z-10 flex max-h-[min(85dvh,32rem)] w-full max-w-md flex-col rounded-t-2xl border border-[var(--border-base)] bg-[var(--surface)] shadow-xl sm:rounded-2xl"
-            >
-              {reported ? (
-                <div className="flex flex-col items-center gap-3 px-5 py-8 text-center">
-                  <ShieldCheck className="h-8 w-8 text-[var(--accent)]" />
-                  <p className="text-sm font-semibold">Thanks — reported</p>
-                  <p className="text-xs text-[var(--muted)]">We&apos;ll take a look.</p>
-                  <button
-                    type="button"
-                    onClick={closeReport}
-                    className="mt-1 w-full rounded-full border border-[var(--border-base)] py-2.5 text-sm font-semibold"
-                  >
-                    Done
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-center justify-between border-b border-[var(--border-base)] px-5 py-3">
-                    <h3 id="report-title" className="font-display text-base font-semibold">
-                      Report
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={closeReport}
-                      className="text-sm font-medium text-[var(--muted)] hover:text-[var(--foreground)]"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                  <div className="overflow-y-auto overscroll-contain px-5 py-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
-                    {!currentHandle && (
-                      <p className="mb-3 text-sm text-[var(--muted)]">
-                        Sign in to send a report.
-                      </p>
-                    )}
-                    {reportError && (
-                      <p className="mb-3 text-sm text-rose-700">{reportError}</p>
-                    )}
-                    <div className="flex flex-col gap-2">
-                      {REPORT_REASONS.map((reason) => (
-                        <button
-                          key={reason}
-                          type="button"
-                          disabled={reportBusy || !currentHandle}
-                          onClick={() => void submitReport(reason)}
-                          className="rounded-xl border border-[var(--border-base)] px-3 py-2.5 text-left text-sm hover:bg-[var(--surface-2)] disabled:opacity-50"
-                        >
-                          {reason}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>,
-          document.body
-        )}
+      {mounted && reporting && (
+        <ReportDialog
+          subject="take"
+          signedIn={Boolean(currentHandle)}
+          onSubmit={async (reason) =>
+            (onReport ? await Promise.resolve(onReport(thought.id, reason)) : true) !== false
+          }
+          onClose={() => setReporting(false)}
+        />
+      )}
 
       <ChatPanel
         postId={thought.id}

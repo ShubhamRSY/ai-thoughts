@@ -39,7 +39,7 @@ async function req(path, { method = "GET", body, cookie, xff = ip(), headers = {
   return { status: r.status, json, text, cookie: r.headers.get("set-cookie")?.split(";")[0] };
 }
 const signIn = (email, extra = {}, xff) => req("/api/auth/sign-in", { method: "POST", body: { email, ...extra }, xff });
-const verify = (email, code, xff) => req("/api/auth/verify", { method: "POST", body: { email, code }, xff });
+const verify = (email, code, xff) => req("/api/auth/verify", { method: "POST", body: { email, code, age_confirmed: true }, xff });
 const uniq = (p) => `${p}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 async function newUser(prefix = "u", username) {
   const email = `${uniq(prefix)}@example.com`;

@@ -9,6 +9,7 @@ import { extractMentions } from "@/lib/mentions";
 import { contentFingerprint } from "@/lib/anti-abuse";
 import { reportError } from "@/lib/report-error";
 import { signMediaUrl } from "@/lib/media-access";
+import { deletePostCascade } from "@/lib/moderation";
 
 function parseObjectId(id: string): ObjectId | null {
   try {
@@ -229,22 +230,9 @@ export async function DELETE(
       return NextResponse.json({ error: "Only the author can delete this take" }, { status: 403 });
     }
 
-    await db.collection("posts").deleteOne({ _id: objectId });
-    await db.collection("messages").deleteMany({ post_id: id });
-    await db.collection("reactions").deleteMany({ post_id: id });
-    await db.collection("reports").deleteMany({ post_id: id });
-    // A deleted take must vanish from inboxes too — a dangling notification
-    // that opens to nothing is worse than none. Also drop its view rows.
-    await db.collection("notifications").deleteMany({ post_id: id });
-    await db.collection("post_views").deleteMany({ post_id: id });
-
-    const { deleteBlobUrls, mediaUrlsFromPost } = await import("@/lib/privacy");
-    await deleteBlobUrls(
-      mediaUrlsFromPost({
-        media_url: typeof post.media_url === "string" ? post.media_url : null,
-        stream_url: typeof post.stream_url === "string" ? post.stream_url : null,
-      })
-    );
+    // Same cascade as keeper removals: files, replies, inbox rows, and — for a
+    // take reported for child safety — evidence preserved first.
+    await deletePostCascade(db, objectId, session.handle);
 
     return NextResponse.json({ ok: true });
   } catch (error) {

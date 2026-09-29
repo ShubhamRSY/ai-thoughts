@@ -6,19 +6,12 @@ import { redactForStorage } from "@/lib/privacy";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { canViewPost } from "@/lib/visibility";
 import { reportError } from "@/lib/report-error";
+import { CHILD_SAFETY, isReportReason } from "@/lib/report-reasons";
+import { holdPost } from "@/lib/moderation";
 
 const IP_REPORT_LIMIT = 20;
 const IP_REPORT_WINDOW_MS = 10 * 60_000;
 
-const VALID_REASONS = new Set([
-  "Hate or harassment",
-  "Unsafe or explicit",
-  "Spam or coordinated accounts",
-  "Misleading or fake story",
-  "Sounds AI-generated",
-  "Impersonation",
-  "Harms someone",
-]);
 
 type ReportTargetKind = "post" | "comment" | "user";
 
@@ -49,6 +42,8 @@ export async function GET() {
       .sort({ created_at: -1 })
       .limit(100)
       .toArray();
+    // Child-safety reports jump the queue (stable sort keeps newest-first within each group).
+    reports.sort((a, b) => Number(b.reason === CHILD_SAFETY) - Number(a.reason === CHILD_SAFETY));
     return NextResponse.json(
       reports.map((r) => ({
         id: r._id.toString(),
@@ -94,7 +89,7 @@ export async function POST(request: NextRequest) {
     }
     const targetId = typeof body.target_id === "string" ? body.target_id.trim() : "";
     const reason = typeof body.reason === "string" ? body.reason.trim() : "";
-    if (!VALID_REASONS.has(reason) || !targetId) {
+    if (!isReportReason(reason) || !targetId) {
       return NextResponse.json(
         { error: "Invalid report reason or missing target" },
         { status: 400 }
@@ -182,6 +177,10 @@ export async function POST(request: NextRequest) {
         status: "open",
         created_at: new Date(),
       });
+      // Child safety: hide the take now; a keeper's "Keep & resolve" puts it back.
+      if (reason === CHILD_SAFETY && targetType === "post") {
+        await holdPost(db, parseObjectId(targetId)!);
+      }
     } catch (error) {
       if (
         typeof error === "object" &&

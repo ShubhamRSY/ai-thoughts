@@ -20,7 +20,7 @@ type Api = { post: (url: string, o: object) => Promise<import("@playwright/test"
 async function signInAs(api: Api, email: string, ip: string) {
   const headers = { "X-Forwarded-For": ip };
   const { devCode } = await (await api.post("/api/auth/sign-in", { data: { email }, headers })).json();
-  const verify = await api.post("/api/auth/verify", { data: { email, code: devCode }, headers });
+  const verify = await api.post("/api/auth/verify", { data: { email, code: devCode, age_confirmed: true }, headers });
   expect(verify.ok(), await verify.text()).toBeTruthy();
   return (await verify.json()).user.handle as string;
 }

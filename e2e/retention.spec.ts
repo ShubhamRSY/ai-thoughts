@@ -15,7 +15,7 @@ async function signIn(page: Page) {
   await page.goto("/sign-in");
   await page.getByLabel("Email", { exact: true }).fill(`e2e-mood-${uniq}@example.com`);
   // The 13+ / Terms agreement gates the button (COPPA age gate).
-  await page.getByRole("checkbox", { name: /13 or older/ }).check();
+  await page.getByRole("checkbox", { name: /18 or older/ }).check();
   await page.getByRole("button", { name: "Send sign-in code" }).click();
   const code = (await page.getByText("Dev code:").textContent())?.match(/\d{6}/)?.[0];
   await page.getByLabel("6-digit code").fill(code!);

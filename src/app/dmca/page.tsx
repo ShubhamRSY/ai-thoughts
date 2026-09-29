@@ -84,7 +84,7 @@ export default function DmcaPage() {
             Accounts that repeatedly host infringing material are subject to suspension. Good-faith
             flags and removals under this policy do not count toward that, and malicious or abusive
             DMCA notices are themselves treated as abuse of the platform and are{" "}
-            <Link href="/support" className="text-[var(--accent)] underline underline-offset-2">
+            <Link href="/contact" className="text-[var(--accent)] underline underline-offset-2">
               reportable
             </Link>
             .

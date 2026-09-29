@@ -45,7 +45,12 @@ export interface UserRecord {
   suspended?: boolean;
   /** "Sign out everywhere": tokens issued before this (ms) are rejected. */
   sessions_revoked_before?: number;
+  /** When this person last confirmed they are MIN_AGE or older (required at every sign-in). */
+  ageConfirmedAt?: string;
 }
+
+/** AiTo is adults-only. Checked server-side at sign-in (api/auth/verify). */
+export const MIN_AGE = 18;
 
 function getSecret(): string {
   const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
@@ -321,6 +326,7 @@ export async function findOrCreateUser(
       {
         $set: {
           lastLoginAt: new Date().toISOString(),
+          ageConfirmedAt: new Date().toISOString(),
           emailHash,
           emailEnc,
           ...(nextName ? { displayName: nextName } : {}),
@@ -366,6 +372,7 @@ export async function findOrCreateUser(
         displayName.trim() || (preferredHandle ? preferredHandle.replace(/^@/, "") : "Voice"),
       createdAt: new Date().toISOString(),
       lastLoginAt: new Date().toISOString(),
+      ageConfirmedAt: new Date().toISOString(),
     };
     // The unique indexes on handle/emailHash are the real guard; the findOne
     // checks above only make the common case friendly.
@@ -425,10 +432,13 @@ export async function deleteUserAccount(session: SessionUser): Promise<void> {
     .project({ avatar_url: 1, avatarUrl: 1 })
     .toArray();
 
+  // Deleting your account must not destroy child-safety evidence.
+  const { preserveChildSafetyEvidence } = await import("@/lib/moderation");
+  const keepFiles = await preserveChildSafetyEvidence(db, postIds, `account-deletion:${session.handle}`);
   const blobUrls = [
     ...posts.flatMap((p) => mediaUrlsFromPost(p)),
     ...profiles.flatMap((p) => mediaUrlsFromPost(p)),
-  ];
+  ].filter((u) => !keepFiles.has(u));
   await deleteBlobUrls(blobUrls);
 
   if (postIds.length) {

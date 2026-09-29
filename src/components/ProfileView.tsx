@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Archive, ArrowLeft, Ban, Bookmark, Camera, Check, Download, Lock, PencilLine, Settings, Trash2, UserPlus, UserCheck, BellOff } from "lucide-react";
+import { Archive, ArrowLeft, Ban, Bookmark, Camera, Check, Download, Flag, Lock, PencilLine, Settings, Trash2, UserPlus, UserCheck, BellOff } from "lucide-react";
+import ReportDialog from "@/components/ReportDialog";
 import { upload } from "@vercel/blob/client";
 import { stripImageMetadata } from "@/lib/image";
 import type { Thought } from "@/lib/types";
@@ -15,6 +16,7 @@ import {
   fetchPostsByHandle,
   fetchPostsTagged,
   fetchFollowGraph,
+  reportAccount,
   type ProfileInfo,
   type FollowGraph,
 } from "@/lib/db";
@@ -323,6 +325,8 @@ export default function ProfileView({
     }
   };
 
+  const [reportingAccount, setReportingAccount] = useState(false);
+
   const setMuted = async (action: "mute" | "unmute") => {
     if (!viewHandle || followBusy) return;
     setFollowBusy(true);
@@ -350,6 +354,14 @@ export default function ProfileView({
 
   return (
     <div className="py-5">
+      {reportingAccount && viewHandle && (
+        <ReportDialog
+          subject="account"
+          signedIn={Boolean(user)}
+          onSubmit={(reason) => reportAccount(viewHandle, reason)}
+          onClose={() => setReportingAccount(false)}
+        />
+      )}
       {!isOwn && onBack && (
         <button
           type="button"
@@ -438,6 +450,15 @@ export default function ProfileView({
                     }`}
                   >
                     <BellOff className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Report account"
+                    title="Report this account"
+                    onClick={() => setReportingAccount(true)}
+                    className="rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-[var(--surface-2)] hover:text-rose-700"
+                  >
+                    <Flag className="h-4 w-4" />
                   </button>
                   <button
                     type="button"

@@ -6,19 +6,12 @@ import { redactForStorage } from "@/lib/privacy";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { canViewPost } from "@/lib/visibility";
 import { reportError } from "@/lib/report-error";
+import { CHILD_SAFETY, REPORT_REASONS, isReportReason } from "@/lib/report-reasons";
+import { holdPost } from "@/lib/moderation";
 
 const IP_REPORT_LIMIT = 20;
 const IP_REPORT_WINDOW_MS = 10 * 60_000;
 
-const VALID_REASONS = new Set([
-  "Hate or harassment",
-  "Unsafe or explicit",
-  "Spam or coordinated accounts",
-  "Misleading or fake story",
-  "Sounds AI-generated",
-  "Impersonation",
-  "Harms someone",
-]);
 
 const MAX_REPORTED_HANDLE = 64;
 
@@ -46,9 +39,9 @@ export async function POST(
     const body = await request.json();
     const reason =
       typeof body.reason === "string" ? body.reason.trim() : "";
-    if (!VALID_REASONS.has(reason)) {
+    if (!isReportReason(reason)) {
       return NextResponse.json(
-        { error: "Invalid report reason", allowed: [...VALID_REASONS] },
+        { error: "Invalid report reason", allowed: REPORT_REASONS },
         { status: 400 }
       );
     }
@@ -94,6 +87,8 @@ export async function POST(
         status: "open",
         created_at: new Date(),
       });
+      // Child safety: hide the take now; a keeper's "Keep & resolve" puts it back.
+      if (reason === CHILD_SAFETY) await holdPost(db, objectId);
     } catch (error) {
       // Another request won the (post, reporter) dedupe race.
       if (

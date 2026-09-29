@@ -49,7 +49,7 @@ async function devSessionCookie(baseURL: string): Promise<string | null> {
     const verify = await fetch(new URL("/api/auth/verify", baseURL), {
       method: "POST",
       headers,
-      body: JSON.stringify({ email, code: devCode }),
+      body: JSON.stringify({ email, code: devCode, age_confirmed: true }),
       signal: AbortSignal.timeout(120_000),
     });
     const cookies = verify.headers.getSetCookie().map((c) => c.split(";")[0]);

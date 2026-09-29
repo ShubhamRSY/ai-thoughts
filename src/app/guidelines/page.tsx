@@ -4,7 +4,7 @@ import { LEGAL_UPDATED } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Community Guidelines — AI·Thoughts",
-  description: "How we keep AI·Thoughts safe and honest for all ages — what belongs here and what doesn't.",
+  description: "How we keep AI·Thoughts safe and honest — what belongs here and what doesn't.",
 };
 
 export default function GuidelinesPage() {
@@ -17,6 +17,9 @@ export default function GuidelinesPage() {
         <section>
           <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">The one rule</h2>
           <p>
+            AiTo is for adults (18+). Every feeling about AI is welcome here.
+          </p>
+          <p className="mt-2">
             Honest takes about AI belong here — including hard criticism. Be clear, be human,
             and leave dignity intact for everyone reading.
           </p>
@@ -31,7 +34,11 @@ export default function GuidelinesPage() {
             <li>Doxxing or posting others&apos; private info</li>
             <li>Spam, impersonation, or coordinated fake content</li>
             <li>Misleading “personal stories” posted as fact, or mass AI-generated essay spam</li>
-            <li>Content that endangers a person, especially young people</li>
+            <li>Content that endangers a person</li>
+            <li>
+              Anything that sexualises, exploits, or endangers someone under 18 — removed on sight,
+              the account suspended, and reported to NCMEC and law enforcement
+            </li>
           </ul>
           <p className="mt-2">
             You can still say you hate how AI is used at work, fear deepfakes, or love a tool —
@@ -50,8 +57,10 @@ export default function GuidelinesPage() {
         <section>
           <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">How to report</h2>
           <p>
-            Use the menu on any take → <em>Report this take</em>, pick a reason, and our
-            community keepers review it. Reports are confidential.
+            Use the menu on any take → <em>Report this take</em>, or <em>Report</em> on
+            someone&apos;s profile, pick a reason, and our community keepers review it. Reports
+            are confidential. <em>Child safety</em> reports hide the take right away and go to the
+            top of the keepers&apos; queue.
           </p>
         </section>
 

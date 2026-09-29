@@ -35,7 +35,7 @@ async function signIn(ctx: APIRequestContext, tag: string): Promise<{ handle: st
   expect(devCode, "dev OTP code should be present (no RESEND_API_KEY in this env)").toMatch(
     /^\d{6}$/
   );
-  const verifyRes = await ctx.post("/api/auth/verify", { data: { email, code: devCode } });
+  const verifyRes = await ctx.post("/api/auth/verify", { data: { email, code: devCode, age_confirmed: true } });
   const verifyBody = await verifyRes.json();
   expect(verifyRes.ok()).toBeTruthy();
   return { handle: verifyBody.user?.handle as string };
@@ -48,6 +48,21 @@ async function createPost(ctx: APIRequestContext): Promise<string> {
   expect(res.ok(), await res.text()).toBeTruthy();
   return (await res.json()).id as string;
 }
+
+test("no account or session without the 18+ confirmation", async ({ playwright }) => {
+  const { ctx } = await persons(playwright, "194.1.9.9");
+  const email = `e2e-neg-age-${Date.now()}@example.com`;
+  const { devCode } = await (await ctx.post("/api/auth/sign-in", { data: { email } })).json();
+  for (const data of [{ email, code: devCode }, { email, code: devCode, age_confirmed: "yes" }]) {
+    const res = await ctx.post("/api/auth/verify", { data });
+    expect(res.status()).toBe(400);
+    expect((await res.json()).code).toBe("age_required");
+  }
+  // The code wasn't consumed by the refusals, so confirming still works.
+  const ok = await ctx.post("/api/auth/verify", { data: { email, code: devCode, age_confirmed: true } });
+  expect(ok.ok()).toBeTruthy();
+  await ctx.dispose();
+});
 
 test.describe("negative and edge cases", () => {
   // One shared owner for every test keeps this spec's total sign-in count low

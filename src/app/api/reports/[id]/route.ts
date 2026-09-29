@@ -67,7 +67,7 @@ export async function POST(
     // ---------- the actual moderation ----------
     if (action === "remove_post") {
       const target = parseObjectId(String(report.post_id ?? ""));
-      if (target) await deletePostCascade(db, target);
+      if (target) await deletePostCascade(db, target, session.handle);
     } else if (action === "remove_comment") {
       const target = parseObjectId(String(report.post_id ?? ""));
       if (target) await db.collection("messages").deleteOne({ _id: target });

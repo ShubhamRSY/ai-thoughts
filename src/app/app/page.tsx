@@ -783,12 +783,12 @@ export default function Home() {
                 </div>
 
                 <div className="mt-8">
-                  <Footer hideRunBy />
+                  <Footer />
                 </div>
 
                 <p className="app-pad mt-4 flex items-center justify-center gap-1.5 pb-2 text-[11px] font-medium text-[var(--muted)]">
                   <HeartHandshake className="h-3.5 w-3.5 text-[var(--accent)]" />
-                  All ages. All languages. Honest takes — with dignity.
+                  Every feeling. All languages. Honest takes — with dignity.
                 </p>
               </>
             )}

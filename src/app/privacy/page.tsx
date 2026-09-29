@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BRAND } from "@/lib/brand";
-import { PRIVACY_UPDATED, getSiteUrl } from "@/lib/site";
+import { CONTACT_EMAIL, OPERATOR, PRIVACY_UPDATED, getSiteUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -30,12 +30,22 @@ export default function PrivacyPage() {
         <section>
           <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">1. Who we are</h2>
           <p>
-            {BRAND.name} (“{BRAND.shortName},” “we,” “us”) is a public community where people share how
-            AI makes them feel — in words, voice, or video. For privacy or data requests, use our{" "}
+            {BRAND.name} (“{BRAND.shortName},” “we,” “us”) is a public community where adults share
+            how AI makes them feel — in words, voice, or video. {BRAND.shortName} is run by{" "}
+            {OPERATOR.description} based in {OPERATOR.region}, who is responsible for your information (the “data
+            controller”). For privacy or data requests, email{" "}
+            <a href={`mailto:${CONTACT_EMAIL}`} className="text-[var(--accent)] underline underline-offset-2">
+              {CONTACT_EMAIL}
+            </a>{" "}
+            or use our{" "}
             <Link href="/contact" className="text-[var(--accent)] underline underline-offset-2">
               contact form
             </Link>
             .
+          </p>
+          <p className="mt-2 font-medium text-[var(--foreground)]">
+            We do not sell your personal information, and we do not share it for advertising.
+            {" "}{BRAND.shortName} shows no ads.
           </p>
         </section>
 
@@ -65,7 +75,9 @@ export default function PrivacyPage() {
               <span className="font-medium text-[var(--foreground)]">Delete means delete.</span> When
               you remove a take or delete your account, we remove related database records and
               delete your voice, video, and avatar files from our media storage when they are
-              hosted by us.
+              hosted by us. Backup copies roll off within 14 days. The one exception is content
+              reported for child safety, which we must preserve for law enforcement (see section
+              12).
             </li>
             <li>
               <span className="font-medium text-[var(--foreground)]">PII scrubbing outbound.</span> If
@@ -98,6 +110,7 @@ export default function PrivacyPage() {
             <li>Display name</li>
             <li>Handle</li>
             <li>Date you joined</li>
+            <li>That you confirmed you are 18 or older, and when</li>
           </ul>
           <p className="mt-1">
             Sign-in uses a one-time code emailed to you. We do not store passwords.
@@ -110,6 +123,8 @@ export default function PrivacyPage() {
             <li>Voice recordings</li>
             <li>Video recordings</li>
             <li>Feeling or emotion selections</li>
+            <li>Photos</li>
+            <li>Transcripts (captions) of the speech in voice and video takes</li>
             <li>Language</li>
             <li>Tags</li>
             <li>Replies</li>
@@ -181,6 +196,7 @@ export default function PrivacyPage() {
               protections
             </li>
             <li>Measure service usage and performance through analytics</li>
+            <li>Detect, remove, and report child sexual exploitation, as the law requires</li>
             <li>Improve reliability and fix bugs</li>
             <li>Respond to privacy, account, or removal requests</li>
           </ul>
@@ -241,21 +257,47 @@ export default function PrivacyPage() {
             8. Service providers
           </h2>
           <p className="mb-2">
-            We use service providers to host and operate {BRAND.shortName}, including providers for:
+            These companies process information for us, only to provide their service to{" "}
+            {BRAND.shortName}:
           </p>
           <ul className="ml-4 list-disc space-y-1.5">
-            <li>Application hosting and serverless compute</li>
-            <li>Database storage</li>
-            <li>Cloud media/object storage</li>
-            <li>Transactional email for sign-in codes and optional digests</li>
-            <li>Analytics</li>
-            <li>Optional translation</li>
-            <li>Automated content screening and transcription (OpenAI)</li>
+            <li>
+              <span className="font-medium text-[var(--foreground)]">Vercel</span> — hosting, file
+              storage for media and backups, and privacy-friendly usage analytics
+            </li>
+            <li>
+              <span className="font-medium text-[var(--foreground)]">MongoDB Atlas</span> — our
+              database
+            </li>
+            <li>
+              <span className="font-medium text-[var(--foreground)]">Resend</span> — sign-in codes,
+              sign-in alerts, and optional digest emails
+            </li>
+            <li>
+              <span className="font-medium text-[var(--foreground)]">Upstash</span> — short-lived
+              rate-limit counters keyed by IP address, to stop abuse
+            </li>
+            <li>
+              <span className="font-medium text-[var(--foreground)]">Cloudflare Turnstile</span> — a
+              check at sign-in that you&apos;re not a bot
+            </li>
+            <li>
+              <span className="font-medium text-[var(--foreground)]">Sentry</span> — error reports so
+              we can fix bugs; emails and sign-in tokens are removed before they are sent
+            </li>
+            <li>
+              <span className="font-medium text-[var(--foreground)]">OpenAI</span> — automated
+              screening of takes and transcription of speech (see section 6). Under OpenAI&apos;s API
+              terms this data is not used to train its models
+            </li>
+            <li>
+              <span className="font-medium text-[var(--foreground)]">MyMemory (Translated)</span> —
+              only when you tap Translate, with personal details stripped first
+            </li>
           </ul>
           <p className="mt-2">
-            These providers process information as necessary to provide their services to{" "}
-            {BRAND.shortName} and are subject to their own terms, privacy policies, and security
-            practices.
+            Each is bound by its own terms and privacy policy. We may also disclose information when
+            the law requires it, for example to report child sexual exploitation to NCMEC.
           </p>
         </section>
 
@@ -278,48 +320,92 @@ export default function PrivacyPage() {
 
         <section>
           <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">
-            10. Retention and your choices
+            10. How long we keep it
           </h2>
-          <p>
-            Public posts remain available until you delete them or we remove them for safety or
-            policy reasons. Session information is retained while needed to keep you signed in.
-            One-time sign-in codes expire after a short period.
-          </p>
-          <p className="mb-2 mt-2">You can:</p>
           <ul className="ml-4 list-disc space-y-1.5">
-            <li>Delete your own takes while signed in</li>
+            <li>Your account, takes, replies, and profile: until you delete them or your account</li>
+            <li>Database backups: 14 days, then overwritten</li>
+            <li>Sign-in codes: 10 minutes</li>
+            <li>Sign-in sessions: up to 90 days, or until you sign out</li>
+            <li>Notifications: 90 days</li>
+            <li>Records of who viewed a take (for view counts): 30 days</li>
+            <li>Rate-limit counters: up to 1 hour</li>
+            <li>Security logs of account and moderation actions: 1 year</li>
+            <li>Messages sent through the contact form: 1 year</li>
+            <li>Reports: until resolved, then 1 year</li>
             <li>
-              Download a copy of your data or delete your account from You → Your privacy
+              Content reported for child sexual exploitation: preserved for 1 year for law
+              enforcement, or longer if they ask us to
             </li>
-            <li>Turn off push notifications or email digests in You → Daily habits</li>
+            <li>Error reports at Sentry: deleted automatically, typically within 90 days</li>
             <li>
-              Contact us about privacy or data requests through our{" "}
-              <Link href="/contact" className="text-[var(--accent)] underline underline-offset-2">
-                contact form
-              </Link>
+              Content sent to OpenAI for screening: kept by OpenAI for up to 30 days for abuse
+              monitoring, then deleted
             </li>
           </ul>
         </section>
 
         <section>
           <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">
-            11. Children and families
+            11. Your rights and choices
           </h2>
-          <p>
-            {BRAND.shortName} is intended for a broad audience. If you are under the age at which
-            you can legally agree to online services in your country, ask a parent or guardian
-            before using {BRAND.shortName}.
+          <p className="mb-2">Wherever you live, you can:</p>
+          <ul className="ml-4 list-disc space-y-1.5">
+            <li>Delete your own takes while signed in</li>
+            <li>
+              Download a copy of your data (access and portability) or delete your account, from You
+              → Your privacy
+            </li>
+            <li>Correct your name, handle, and profile at any time</li>
+            <li>Turn off push notifications or email digests in You → Daily habits</li>
+            <li>
+              Ask us anything about your data, or ask us to restrict or stop processing it, by
+              emailing{" "}
+              <a href={`mailto:${CONTACT_EMAIL}`} className="text-[var(--accent)] underline underline-offset-2">
+                {CONTACT_EMAIL}
+              </a>
+              . We reply within 30 days.
+            </li>
+          </ul>
+          <p className="mt-2">
+            <span className="font-medium text-[var(--foreground)]">EU, UK, and similar laws (GDPR).</span>{" "}
+            We use your information to provide the service you signed up for (contract); to keep it
+            safe, secure, and working (legitimate interests); for push notifications, digests, and
+            camera or microphone use only with your consent, which you can withdraw at any time; and
+            to meet legal duties such as child-safety reporting. You can also object to processing
+            based on legitimate interests, and complain to your data-protection authority.
           </p>
           <p className="mt-2">
-            Do not post names, addresses, school details, phone numbers, or other identifying
-            information about yourself or others. Parents or guardians can contact us to request
-            removal of a child&apos;s account or content.
+            <span className="font-medium text-[var(--foreground)]">California (CCPA/CPRA).</span>{" "}
+            You have the right to know what we collect, to delete it, to correct it, and not to be
+            treated differently for using these rights. We do not sell or share personal
+            information, and we do not use sensitive information beyond running the service.
           </p>
         </section>
 
         <section>
           <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">
-            12. International users
+            12. Adults only, and child safety
+          </h2>
+          <p>
+            {BRAND.shortName} is for people 18 and older, and you confirm your age each time you sign
+            in. We do not knowingly collect information from anyone under 18. If we learn an account
+            belongs to someone under 18, we delete it. Parents or guardians can email{" "}
+            <a href={`mailto:${CONTACT_EMAIL}`} className="text-[var(--accent)] underline underline-offset-2">
+              {CONTACT_EMAIL}
+            </a>{" "}
+            to ask us to remove a child&apos;s account or content.
+          </p>
+          <p className="mt-2">
+            Content that sexually exploits or endangers children is hidden as soon as it is
+            reported. We preserve it and report it to the National Center for Missing &amp;
+            Exploited Children (NCMEC) and law enforcement, as required by law.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">
+            13. International users
           </h2>
           <p>
             {BRAND.shortName} may process and store information in the United States and other
@@ -330,7 +416,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">13. Security</h2>
+          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">14. Security</h2>
           <p>
             We use reasonable technical and organizational measures designed to protect information,
             including HTTPS encryption in transit, protection of sensitive identifiers, hashed
@@ -344,7 +430,7 @@ export default function PrivacyPage() {
 
         <section>
           <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">
-            14. Changes to this policy
+            15. Changes to this policy
           </h2>
           <p>
             We may update this Privacy Policy from time to time. When we make changes, we will update
@@ -356,9 +442,14 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">15. Contact</h2>
+          <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">16. Contact</h2>
           <p>
-            For privacy and data requests, use our{" "}
+            {BRAND.shortName} is run by {OPERATOR.description} based in {OPERATOR.region}. For
+            privacy and data requests, email{" "}
+            <a href={`mailto:${CONTACT_EMAIL}`} className="text-[var(--accent)] underline underline-offset-2">
+              {CONTACT_EMAIL}
+            </a>{" "}
+            or use our{" "}
             <Link href="/contact" className="text-[var(--accent)] underline underline-offset-2">
               contact form
             </Link>

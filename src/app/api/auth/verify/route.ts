@@ -6,6 +6,7 @@ import {
   getSession,
   SESSION_COOKIE,
   sessionCookieOptions,
+  MIN_AGE,
 } from "@/lib/auth";
 import { verifyAndConsumeOtp } from "@/lib/otp";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
@@ -49,7 +50,16 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { email, code } = body as { email?: string; code?: string };
+    const { email, code, age_confirmed } = body as { email?: string; code?: string; age_confirmed?: unknown };
+
+    // No account and no session without an explicit adult confirmation; the
+    // time of it is stored on the user (findOrCreateUser).
+    if (age_confirmed !== true) {
+      return NextResponse.json(
+        { error: `AiTo is for people ${MIN_AGE} and older. Confirm your age to continue.`, code: "age_required" },
+        { status: 400 }
+      );
+    }
 
     if (!email || typeof email !== "string") {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });

@@ -49,7 +49,7 @@ async function ctx(ua: string, ip: string, cookies: { name: string; value: strin
 async function signIn(email: string, ua: string, ip: string): Promise<Device> {
   const api = await ctx(ua, ip);
   const { devCode } = await (await api.post("/api/auth/sign-in", { data: { email } })).json();
-  const verify = await api.post("/api/auth/verify", { data: { email, code: devCode } });
+  const verify = await api.post("/api/auth/verify", { data: { email, code: devCode, age_confirmed: true } });
   expect(verify.ok(), await verify.text()).toBeTruthy();
   return { api, user: (await verify.json()).user };
 }
