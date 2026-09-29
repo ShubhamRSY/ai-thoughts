@@ -97,10 +97,79 @@ After deploying, open `/api/health` once: it builds the new unique index on `use
 
 ## Backup restore drill (do once, ~20 min)
 
-1. Atlas → cluster → **Backup**: confirm Cloud Backup is on and a snapshot exists.
-2. **Restore** the latest snapshot to a *new* cluster (never the live one).
-3. Point a local `npm run dev` at it (`MONGODB_URL`, `MONGODB_DB`), sign in, open a profile and the feed.
-4. Write down how long the restore took (that's your recovery time) and the snapshot's age (that's how much data you'd lose). Delete the temporary cluster.
+**Current state: production has no managed backups.** `atlas-teal-basket` runs
+on the Atlas **Free Plan (M0)**, which does not offer Cloud Backup or snapshots
+at any setting — there is no snapshot to restore. The manual dump below is
+currently the only backup that exists. Re-check this before inviting real users.
+
+> **Since 2026-09-29 this is automated.** `/api/cron/backup` runs daily at 04:30
+> UTC, writes a verified archive to Vercel Blob under `backups/`, and prunes to
+> the newest `BACKUP_KEEP` (default 14). It is guarded by `CRON_SECRET` and
+> refuses to upload if the Blob token cannot store the archive as **private** —
+> the archives contain real handles and post text, so a public store is a
+> disqualifying failure, not a fallback.
+
+The point of the drill is to produce numbers you can act on: how long a restore
+takes, and how much data a restore would cost you. Do not accept "it looked
+fine" as the result.
+
+0. **Take a dump** (optional now that the cron runs, but do it once by hand so
+   you have a copy that does not depend on the schedule working):
+
+   ```bash
+   MONGODB_URL="$LIVE_URL" MONGODB_DB=aithoughts npm run db:dump
+   ```
+
+   Writes `backups/aithoughts-<timestamp>.json.gz` (gitignored — it holds real
+   user data). `mongodump` is not installable via Homebrew and the MongoDB
+   downloads are region-blocked, so this writes canonical Extended JSON instead:
+   `ObjectId` / `Date` / `Decimal128` / `Long` round-trip exactly, and
+   `scripts/mongo-restore.mjs` puts them back. The archive records every index,
+   so a restore rebuilds the schema, not just the rows.
+
+   Both the CLI and the cron share `src/lib/backup.ts` and both re-read the
+   archive and re-parse every document before storing it. A dump that has never
+   been verified is an assumption.
+
+1. Atlas → cluster `atlas-teal-basket` → **Backup**: note the tier. On M0 this
+   tab cannot be made to do anything; the fix is upgrading to M10+.
+2. **Verify the dump actually restores** — an untested dump is not a backup.
+   Restore it into a throwaway database, never over live:
+
+   ```bash
+   MONGODB_URL="mongodb://127.0.0.1:27017/restoretest?tlsAllowInvalidCertificates=true" \
+     MONGODB_DB=aithoughts npm run db:restore -- backups/<file>.json.gz --drop
+   ```
+
+   (Start a disposable Mongo with `e2e/start-test-mongo.sh`.)
+
+3. Capture a baseline from live, then verify the restore against it:
+
+   ```bash
+   # against live (read-only, safe):
+   MONGODB_URL="$LIVE_URL" MONGODB_DB=aithoughts npm run drill:check -- --json > live.json
+
+   # against the restored copy (read-only, safe):
+   MONGODB_URL="$RESTORED_URL" MONGODB_DB=aithoughts \
+     npm run drill:check -- --compare live.json
+   ```
+
+   This checks that all 22 app collections are present, that the critical
+   indexes survived, that no post/reaction/report/profile points at a document
+   that did not come back, and that every user still has a handle (a restore
+   without handles locks everyone out of their own account). It prints the newest
+   document timestamp, which is the real answer to "how much data would I lose".
+   Exits non-zero on any failure. Posts whose `user_id` has no user doc are
+   reported as a NOTE with the handles listed — `npm run seed` creates demo
+   posts that do this by design, so it needs a human to judge.
+
+   Then still open the app against the restored cluster to confirm the UI path:
+   `MONGODB_URL=... MONGODB_DB=... npm run dev`, sign in, open a profile and the
+   feed. The script proves the data; the browser proves the wiring. A restored
+   Atlas cluster inherits the live IP allowlist — add your own IP first.
+
+4. Record: dump path, restore duration, and the diff result. Delete any
+   temporary cluster when done.
 
 ## Moderation promise
 
@@ -109,6 +178,34 @@ The Terms promise action on reports **within 24 hours** (App Store rule 1.2). So
 ## Still host-owned (cannot be coded away)
 
 - Atlas IP allowlist / private networking
-- Backup restore drill (do once)
+- Backup restore drill (do once) — blocked while production is on the Free Plan; see drill section
 - Who is on the keeper list
 - Watching Resend + Vercel logs for spikes
+
+## Known gaps found 2026-09-29
+
+- **No managed backups.** `atlas-teal-basket` is Atlas Free (M0), which has no
+  Cloud Backup at any setting. Only `npm run db:dump` covers this today, and
+  nobody is scheduled to run it.
+- **`mongodump` is unavailable.** Removed from Homebrew; MongoDB's own downloads
+  return 403 here. `scripts/mongo-dump.mjs` is the substitute.
+- **Production Atlas project is not in your own Atlas account.** The cluster was
+  provisioned through Vercel's MongoDB integration, so `cloud.mongodb.com` shows
+  only an unrelated "Project 0". You cannot enable managed backups or change the
+  tier without access to that project — request an invite, or manage billing via
+  Vercel.
+- **No admin on production.** The `admins` and `site_settings` collections do
+  not exist, so `ADMIN_HANDLES` is unset and the bootstrap `curl` above has
+  never been run. `/admin` is unusable.
+- **Missing index.** `messages.messages_post_created` is absent on production
+  (an older `messages.post_id_1_created_at_1` is there instead), so
+  `ensureCoreIndexes` is not completing cleanly. Harmless at 1 message.
+- **Backup job is unverified end-to-end in production.** It is unit-tested and
+  the dump/restore round-trip was verified against live data, but the cron has
+  never actually run on Vercel. Check it after the first scheduled run:
+  `curl -sS https://YOUR_APP/api/cron/backup -H "Authorization: Bearer $CRON_SECRET"`.
+  If it returns 502 about private access, `BLOB_READ_WRITE_TOKEN` is a public
+  store token and the job will not upload — that is intentional.
+- **A silent backup is worse than none.** Nobody is alerted if the cron stops
+  running. Consider wiring a staleness check into `/api/health`.
+

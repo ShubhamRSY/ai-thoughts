@@ -37,6 +37,9 @@ yarn-error.log*
 .env*
 !.env*.example
 
+# database backups — contain real user data (handles, post text, encrypted emails)
+/backups
+
 # vercel
 .vercel
 

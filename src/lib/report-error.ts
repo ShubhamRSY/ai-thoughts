@@ -9,7 +9,8 @@ type Service =
   | "openai"
   | "turnstile"
   | "push"
-  | "translate";
+  | "translate"
+  | "blob";
 
 /**
  * Report an unexpected server error that a catch block handled (so it never
