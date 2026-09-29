@@ -3,13 +3,10 @@ import { Redis } from "@upstash/redis";
 // Shared, multi-instance-safe limiter when Upstash is configured (free tier
 // works fine — https://upstash.com). Falls back to the in-memory limiter
 // below with zero config, so nothing breaks for anyone who hasn't set it up.
-const redis =
-  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
-    ? new Redis({
-        url: process.env.UPSTASH_REDIS_REST_URL,
-        token: process.env.UPSTASH_REDIS_REST_TOKEN,
-      })
-    : null;
+// KV_REST_API_* are the names Vercel's Upstash integration injects.
+const redisUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+const redis = redisUrl && redisToken ? new Redis({ url: redisUrl, token: redisToken }) : null;
 
 export function isDistributedRateLimitConfigured(): boolean {
   return redis !== null;
