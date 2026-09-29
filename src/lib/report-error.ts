@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
+import { waitUntil } from "@vercel/functions";
 import type { ErrorEvent } from "@sentry/nextjs";
 
 type Service =
@@ -21,6 +22,9 @@ export function reportError(
   context: { route: string; service?: Service }
 ): void {
   Sentry.captureException(error, { tags: context });
+  // Sending is async and Vercel may freeze the function once the response is
+  // out, so keep it alive until the event is flushed. No-op off Vercel.
+  waitUntil(Sentry.flush(2000));
 }
 
 const EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
