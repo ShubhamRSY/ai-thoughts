@@ -22,7 +22,11 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   workers: 1,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
-  timeout: 45_000,
+  // `next dev` compiles each route on first hit (5–7s for some API routes,
+  // longer for /app), and a test touching several cold routes blew the old 45s
+  // budget and the 5s assertion default. Warm tests still finish in seconds.
+  timeout: 120_000,
+  expect: { timeout: 15_000 },
   use: {
     baseURL,
     trace: "retain-on-failure",
