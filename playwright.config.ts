@@ -26,6 +26,9 @@ export default defineConfig({
   // longer for /app), and a test touching several cold routes blew the old 45s
   // budget and the 5s assertion default. Warm tests still finish in seconds.
   timeout: 120_000,
+  // A CI run twice stalled silently after test 5 until canceled at ~18m. Fail
+  // the whole run instead, so the report says which test hung and gets uploaded.
+  globalTimeout: 15 * 60_000,
   expect: { timeout: 15_000 },
   use: {
     baseURL,

@@ -9,6 +9,9 @@ name: E2E
 jobs:
   playwright:
     runs-on: ubuntu-latest
+    # Above Playwright's 15-min globalTimeout plus setup, so a stall fails
+    # with a report instead of hanging until someone cancels it.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -33,7 +36,8 @@ jobs:
           MONGODB_DB: aithoughts-e2e
 
       - uses: actions/upload-artifact@v4
-        if: failure()
+        # Also on cancel/timeout — a hung run is exactly when the trace matters.
+        if: failure() || cancelled()
         with:
           name: playwright-report
           path: playwright-report/
