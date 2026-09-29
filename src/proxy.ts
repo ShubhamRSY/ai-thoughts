@@ -80,8 +80,16 @@ const unavailable = () =>
 async function hasMalformedJsonBody(request: NextRequest): Promise<boolean> {
   if (!MUTATING_METHODS.has(request.method)) return false;
   if (!request.headers.get("content-type")?.includes("application/json")) return false;
-  const text = await request.clone().text();
-  if (!text) return false;
+  // Every JSON caller sends a body, so an empty or unreadable one is a client
+  // that disconnected mid-send. Answer 400 here rather than let the route's
+  // request.json() throw into a 500 that gets reported as a server error.
+  let text: string;
+  try {
+    text = await request.clone().text();
+  } catch {
+    return true;
+  }
+  if (!text) return true;
   try {
     const body: unknown = JSON.parse(text);
     return body === null || typeof body !== "object";

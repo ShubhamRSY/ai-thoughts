@@ -83,6 +83,17 @@ test.describe("negative and edge cases", () => {
     expect(badMedia.status(), "unknown media_type must be rejected").toBe(400);
   });
 
+  test("an empty JSON body is a 400, not a server error", async () => {
+    // What a client that disconnects mid-send leaves behind. It used to reach
+    // request.json() in the route, throw, and come back as a reported 500.
+    const postId = await createPost(ownerCtx);
+    const res = await ownerCtx.post(`/api/posts/${postId}/messages`, {
+      headers: { "Content-Type": "application/json" },
+    });
+    expect(res.status(), await res.text()).toBe(400);
+    await ownerCtx.delete(`/api/posts/${postId}`);
+  });
+
   test("report rejects bogus id, nonexistent post, and then works on a real one", async ({
     playwright,
   }) => {
