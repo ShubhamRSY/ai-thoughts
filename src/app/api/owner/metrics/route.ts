@@ -4,6 +4,7 @@ import { authorizeBearer } from "@/lib/cron-auth";
 import { collectOwnerMetrics } from "@/lib/owner-metrics";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 
+import { reportError } from "@/lib/report-error";
 export const dynamic = "force-dynamic";
 
 /**
@@ -38,6 +39,7 @@ export async function GET(request: Request) {
     });
   } catch (e) {
     console.error("owner metrics:", e);
+    reportError(e, { route: "api/owner/metrics" });
     return NextResponse.json({ error: "Failed to load metrics" }, { status: 500 });
   }
 }

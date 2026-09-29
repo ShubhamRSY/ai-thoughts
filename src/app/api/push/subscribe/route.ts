@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { removePushSubscription, savePushSubscription } from "@/lib/push";
 import { upsertPrefs } from "@/lib/prefs";
 
+import { reportError } from "@/lib/report-error";
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
@@ -30,6 +31,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/push/subscribe" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }
@@ -49,6 +51,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/push/subscribe" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }

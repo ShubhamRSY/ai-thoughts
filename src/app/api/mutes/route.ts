@@ -5,6 +5,7 @@ import { getSession } from "@/lib/auth";
 import { muteUser, unmuteUser, listMuted } from "@/lib/mutes";
 import { resolveProfiles } from "@/lib/follows";
 
+import { reportError } from "@/lib/report-error";
 export async function GET() {
   try {
     const session = await getSession();
@@ -14,6 +15,7 @@ export async function GET() {
     return NextResponse.json({ muted });
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/mutes" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }
@@ -49,6 +51,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/mutes" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }

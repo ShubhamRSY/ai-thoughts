@@ -8,6 +8,7 @@ import {
 } from "@/lib/auth";
 import { listSessions, revokeAll, revokeOthers, revokeSession } from "@/lib/sessions";
 
+import { reportError } from "@/lib/report-error";
 export async function GET() {
   try {
     const session = await getSession();
@@ -17,6 +18,7 @@ export async function GET() {
     return NextResponse.json({ current: session.sid ?? null, sessions });
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/account/sessions" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }
@@ -67,6 +69,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/account/sessions" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }

@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs/config";
 
 // 'unsafe-eval' is only needed for dev-mode HMR (Turbopack/webpack) — a
 // production build never legitimately calls eval(), so dropping it there
@@ -34,7 +35,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com",
       "font-src 'self'",
-      "connect-src 'self' https://*.public.blob.vercel-storage.com https://blob.vercel-storage.com",
+      "connect-src 'self' https://*.public.blob.vercel-storage.com https://blob.vercel-storage.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io",
       "media-src 'self' blob: https://*.public.blob.vercel-storage.com",
       "frame-ancestors 'none'",
       // No fallback to default-src for these three, so they must be explicit.
@@ -66,4 +67,10 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Source-map upload only runs when the Vercel Sentry integration's vars are present.
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+});

@@ -1,5 +1,6 @@
 import { Redis } from "@upstash/redis";
 
+import { reportError } from "./report-error.ts";
 // Shared, multi-instance-safe limiter when Upstash is configured (free tier
 // works fine — https://upstash.com). Falls back to the in-memory limiter
 // below with zero config, so nothing breaks for anyone who hasn't set it up.
@@ -39,6 +40,7 @@ async function rateLimitRedis(
     // and the in-memory limiter isn't a fallback mid-request (state isn't
     // shared), so this is the safest default.
     console.error("redis rate limit failed, failing open:", e);
+    reportError(e, { route: "lib/rate-limit", service: "redis" });
     return { ok: true, retryInSec: 0 };
   }
 }

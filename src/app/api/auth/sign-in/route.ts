@@ -12,6 +12,7 @@ import { getSiteSettings } from "@/lib/admin";
 import { connectToDatabase } from "@/lib/mongodb";
 import { hashEmail } from "@/lib/secure";
 
+import { reportError } from "@/lib/report-error";
 const SIGN_IN_LIMIT = 8;
 const SIGN_IN_WINDOW_MS = 15 * 60_000;
 // Each code allows 5 guesses, so this bounds guesses at one inbox to 25/hour
@@ -47,7 +48,8 @@ async function passesTurnstile(token: unknown, ip: string): Promise<boolean> {
       signal: AbortSignal.timeout(5_000),
     });
     return Boolean(((await res.json()) as { success?: boolean }).success);
-  } catch {
+  } catch (e) {
+    reportError(e, { route: "api/auth/sign-in", service: "turnstile" });
     return false;
   }
 }
@@ -219,6 +221,10 @@ export async function POST(request: Request) {
     return NextResponse.json(payload);
   } catch (e) {
     console.error("sign-in error:", e);
+    reportError(e, {
+      route: "api/auth/sign-in",
+      ...(e instanceof EmailDeliveryError ? { service: "resend" as const } : {}),
+    });
     if (e instanceof EmailDeliveryError) {
       const status = e.code === "not_configured" || e.code === "test_domain" ? 503 : 502;
       return NextResponse.json({ error: e.message, code: e.code }, { status });

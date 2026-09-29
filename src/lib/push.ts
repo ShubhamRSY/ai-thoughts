@@ -3,6 +3,7 @@ import { lookup } from "node:dns/promises";
 import net from "node:net";
 import type { Db } from "mongodb";
 
+import { reportError } from "./report-error.ts";
 export type PushSubscriptionJSON = {
   endpoint: string;
   keys: { p256dh: string; auth: string };
@@ -206,6 +207,7 @@ export async function sendPushToHandle(
           await db.collection("push_subscriptions").deleteOne({ endpoint: s.endpoint });
         } else {
           console.error("push send failed:", err);
+          reportError(err, { route: "lib/push", service: "push" });
         }
       }
     })

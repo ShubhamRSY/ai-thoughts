@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { applyPrivacyTransition, listPendingRequests } from "@/lib/follows";
 import { getPrivacy, PRIVACY_LEVELS, type Privacy } from "@/lib/visibility";
 
+import { reportError } from "@/lib/report-error";
 export async function GET() {
   try {
     const session = await getSession();
@@ -16,6 +17,7 @@ export async function GET() {
     return NextResponse.json({ privacy, pending_count: pending.length });
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/account/privacy" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }
@@ -45,6 +47,7 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ ok: true, privacy });
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/account/privacy" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }

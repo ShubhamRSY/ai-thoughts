@@ -1,5 +1,6 @@
 import { getSiteUrl } from "@/lib/site";
 
+import { reportError } from "./report-error.ts";
 export class EmailDeliveryError extends Error {
   constructor(
     message: string,
@@ -202,6 +203,7 @@ export async function sendActivityDigestEmail(
     return true;
   } catch (e) {
     console.error("activity digest email failed:", e);
+    reportError(e, { route: "lib/email:activity-digest", service: "resend" });
     return false;
   }
 }
@@ -254,6 +256,7 @@ export async function sendWeeklyVoicesEmail(
     return true;
   } catch (e) {
     console.error("weekly voices email failed:", e);
+    reportError(e, { route: "lib/email:weekly-voices", service: "resend" });
     return false;
   }
 }

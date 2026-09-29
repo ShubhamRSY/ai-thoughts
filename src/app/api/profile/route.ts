@@ -15,6 +15,7 @@ import { getVisibility } from "@/lib/visibility";
 import { upsertPrefs } from "@/lib/prefs";
 import { decryptEmail } from "@/lib/secure";
 
+import { reportError } from "@/lib/report-error";
 /** Up to 3 unused usernames close to `norm`, for the "already taken" message. */
 async function freeHandlesLike(db: Db, norm: string): Promise<string[]> {
   const base = norm.slice(0, 26);
@@ -67,6 +68,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/profile" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }
@@ -287,6 +289,7 @@ export async function PUT(request: NextRequest) {
     return res;
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/profile" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }

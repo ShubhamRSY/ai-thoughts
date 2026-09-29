@@ -5,6 +5,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { GLOBAL_SEED_POSTS } from "@/lib/seed-posts";
 import { authorizeBearer } from "@/lib/cron-auth";
 
+import { reportError } from "@/lib/report-error";
 function hash(s: string) {
   return createHash("sha256").update(s).digest("hex").slice(0, 16);
 }
@@ -80,6 +81,7 @@ export async function POST(request: Request) {
     });
   } catch (e) {
     console.error("seed error:", e);
+    reportError(e, { route: "api/admin/seed" });
     return NextResponse.json({ error: "Seed failed" }, { status: 500 });
   }
 }

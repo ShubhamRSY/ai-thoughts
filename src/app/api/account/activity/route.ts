@@ -4,6 +4,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
 import { handleVariants, hiddenAuthorFilter } from "@/lib/visibility";
 
+import { reportError } from "@/lib/report-error";
 const PER_SOURCE = 40;
 const MAX_ITEMS = 60;
 const REACTION_TYPES: Record<string, string> = { "❤️": "like", "🔁": "repost", "🔖": "save" };
@@ -136,6 +137,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ items: items.slice(0, MAX_ITEMS) });
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/account/activity" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }

@@ -4,6 +4,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { getSession, isKeeperHandle } from "@/lib/auth";
 
+import { reportError } from "@/lib/report-error";
 const CONTACT_LIMIT = 5;
 const CONTACT_WINDOW_MS = 60 * 60_000;
 
@@ -32,6 +33,7 @@ export async function GET() {
     });
   } catch (e) {
     console.error("contact list error:", e);
+    reportError(e, { route: "api/contact" });
     return NextResponse.json({ error: "Failed to load" }, { status: 500 });
   }
 }
@@ -58,6 +60,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error("contact resolve error:", e);
+    reportError(e, { route: "api/contact" });
     return NextResponse.json({ error: "Failed to resolve" }, { status: 500 });
   }
 }
@@ -115,6 +118,7 @@ export async function POST(request: Request) {
     });
   } catch (e) {
     console.error("contact error:", e);
+    reportError(e, { route: "api/contact" });
     return NextResponse.json({ error: "Could not send message" }, { status: 500 });
   }
 }

@@ -3,6 +3,7 @@ import { ObjectId } from "mongodb";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
 
+import { reportError } from "@/lib/report-error";
 const norm = (h: string) => h.trim().toLowerCase().replace(/^@/, "");
 
 /** POST /api/posts/[id]/archive `{ archived: boolean }` — author only. */
@@ -49,6 +50,7 @@ export async function POST(
     return NextResponse.json({ ok: true, archived: body.archived });
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/posts/[id]/archive" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }

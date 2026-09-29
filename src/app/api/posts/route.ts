@@ -25,6 +25,7 @@ import { mutedHandles } from "@/lib/mutes";
 import { isAllowedMediaUrl, isBlobUrl, isPlayableMediaUrl } from "@/lib/media-sniff";
 import { isFlaggedContent } from "@/lib/content-moderation";
 
+import { reportError } from "@/lib/report-error";
 function normHandle(h: string) {
   return h.trim().toLowerCase().replace(/^@/, "");
 }
@@ -474,6 +475,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/posts" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }
@@ -807,6 +809,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/posts" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }

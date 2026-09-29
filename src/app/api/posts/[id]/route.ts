@@ -8,6 +8,7 @@ import { checkDignity } from "@/lib/dignity";
 import { extractMentions } from "@/lib/mentions";
 import { contentFingerprint } from "@/lib/anti-abuse";
 
+import { reportError } from "@/lib/report-error";
 function parseObjectId(id: string): ObjectId | null {
   try {
     return new ObjectId(id);
@@ -113,6 +114,7 @@ export async function GET(
     });
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/posts/[id]" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }
@@ -198,6 +200,7 @@ export async function PATCH(
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/posts/[id]" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }
@@ -244,6 +247,7 @@ export async function DELETE(
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/posts/[id]" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }

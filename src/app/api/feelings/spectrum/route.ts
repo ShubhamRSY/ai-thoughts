@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { FEELINGS } from "@/lib/feelings";
 
+import { reportError } from "@/lib/report-error";
 const WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const FEELING_IDS = FEELINGS.map((f) => f.id);
 
@@ -42,6 +43,7 @@ export async function GET() {
     );
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/feelings/spectrum" });
     return NextResponse.json({ tally: [], total: 0 }, { status: 500 });
   }
 }

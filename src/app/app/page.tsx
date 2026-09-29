@@ -625,7 +625,14 @@ export default function Home() {
     <div className="flex min-h-dvh">
       <div className="app-shell">
       <MaintenanceBanner />
-      <Header onShare={() => openShare("text")} />
+      <Header
+        onShare={() => openShare("text")}
+        onOpenProfile={() => {
+          setTab("you");
+          setViewProfileHandle(null);
+          setShowAccount(false);
+        }}
+      />
 
       <main className="flex-1 pb-nav">
         {tab === "home" && (

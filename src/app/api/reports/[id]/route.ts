@@ -6,6 +6,7 @@ import { logSecurityEvent } from "@/lib/audit";
 import { clientIp } from "@/lib/rate-limit";
 import { deletePostCascade, banUser } from "@/lib/moderation";
 
+import { reportError } from "@/lib/report-error";
 // Keepers can also delete via DELETE /api/posts/[id] or archive; these are the
 // "handle it here" desk buttons a report row knows how to resolve:
 //   resolve      — nothing further, keep the content
@@ -107,6 +108,7 @@ export async function POST(
     return NextResponse.json({ ok: true, action });
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/reports/[id]" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }

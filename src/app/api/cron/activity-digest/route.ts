@@ -4,6 +4,7 @@ import { listDigestRecipients } from "@/lib/prefs";
 import { sendActivityDigestEmail } from "@/lib/email";
 import { authorizeCron } from "@/lib/cron-auth";
 
+import { reportError } from "@/lib/report-error";
 function normHandle(h: string) {
   return h.trim().toLowerCase().replace(/^@/, "");
 }
@@ -57,6 +58,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: true, sent, recipients: recipients.length });
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/cron/activity-digest" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }

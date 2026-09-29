@@ -3,6 +3,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
 import { listPendingRequests, resolveProfiles } from "@/lib/follows";
 
+import { reportError } from "@/lib/report-error";
 export async function GET() {
   try {
     const session = await getSession();
@@ -12,6 +13,7 @@ export async function GET() {
     return NextResponse.json({ requests });
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/follows/requests" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }

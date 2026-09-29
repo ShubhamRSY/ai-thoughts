@@ -8,9 +8,10 @@ import { BRAND } from "@/lib/brand";
 
 interface HeaderProps {
   onShare: () => void;
+  onOpenProfile: () => void;
 }
 
-export default function Header({ onShare }: HeaderProps) {
+export default function Header({ onShare, onOpenProfile }: HeaderProps) {
   const { user, signOut } = useAuth();
   const router = useRouter();
 
@@ -49,12 +50,15 @@ export default function Header({ onShare }: HeaderProps) {
           )}
           {user && (
             <>
-              <span
-                className="ml-1 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--surface-2)] text-xs font-semibold text-[var(--foreground)]"
+              <button
+                type="button"
+                onClick={onOpenProfile}
+                aria-label="View your profile"
                 title={user.displayName}
+                className="ml-1 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-[var(--surface-2)] text-xs font-semibold text-[var(--foreground)] transition hover:ring-2 hover:ring-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] active:scale-95"
               >
                 {user.displayName.slice(0, 1).toUpperCase()}
-              </span>
+              </button>
               <button
                 type="button"
                 onClick={handleSignOut}

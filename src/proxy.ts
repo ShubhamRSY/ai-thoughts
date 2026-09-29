@@ -4,6 +4,7 @@ import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { SESSION_COOKIE, sessionCookieOptions, validateSession } from "@/lib/auth";
 import { safeRedirectPath } from "@/lib/safe-redirect";
 
+import { reportError } from "@/lib/report-error";
 // Voices needs an account: reading and writing both ask for sign-in, and the
 // proxy sends guests to the sign-in page before /app loads. The API guards
 // the first write (share, react, reply, report) as the second layer.
@@ -62,6 +63,7 @@ async function hasValidSession(request: NextRequest): Promise<boolean | null> {
     return Boolean(await validateSession(token));
   } catch (e) {
     console.error("session check unavailable:", e);
+    reportError(e, { route: "proxy", service: "mongodb" });
     return null;
   }
 }

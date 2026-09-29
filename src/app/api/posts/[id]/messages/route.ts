@@ -9,6 +9,7 @@ import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { canViewPost, postHiddenFrom } from "@/lib/visibility";
 import { blockedHandles } from "@/lib/blocks";
 
+import { reportError } from "@/lib/report-error";
 const IP_MESSAGE_LIMIT = 30;
 const IP_MESSAGE_WINDOW_MS = 10 * 60_000;
 
@@ -60,6 +61,7 @@ export async function GET(
     );
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/posts/[id]/messages" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }
@@ -143,6 +145,7 @@ export async function POST(
     return NextResponse.json({ ok: true, id: result.insertedId.toString() });
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/posts/[id]/messages" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }

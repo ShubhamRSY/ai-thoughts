@@ -4,6 +4,7 @@ import { FEELINGS } from "@/lib/feelings";
 import { promptDayKeyUTC, shiftDayKey } from "@/lib/daily-prompt";
 import type { FeelingId } from "@/lib/types";
 
+import { reportError } from "@/lib/report-error";
 const FEELING_IDS = FEELINGS.map((f) => f.id);
 
 interface DayBucket {
@@ -79,6 +80,7 @@ export async function GET() {
     );
   } catch (error) {
     console.error("pulse-move:", error);
+    reportError(error, { route: "api/feelings/pulse-move" });
     return NextResponse.json(empty, { status: 200 });
   }
 }

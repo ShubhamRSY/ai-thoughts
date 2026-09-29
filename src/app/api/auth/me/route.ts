@@ -10,6 +10,7 @@ import {
 import { connectToDatabase } from "@/lib/mongodb";
 import { decryptEmail } from "@/lib/secure";
 
+import { reportError } from "@/lib/report-error";
 /**
  * GET /api/auth/me — current user from DB (fresh displayName/handle).
  * Slides the session cookie forward and refreshes identity from Mongo.
@@ -57,6 +58,7 @@ export async function GET(request: Request) {
     return res;
   } catch (e) {
     console.error(e);
+    reportError(e, { route: "api/auth/me", service: "mongodb" });
     const token = await createSession(
       { id: session.id, handle: session.handle, displayName: session.displayName },
       { sid: session.sid, userAgent: request.headers.get("user-agent") }

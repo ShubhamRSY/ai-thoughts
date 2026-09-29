@@ -4,6 +4,7 @@ import { envStatus, isProductionRuntime } from "@/lib/env";
 import { isMongoConfigured, connectToDatabase } from "@/lib/mongodb";
 import { ensureCoreIndexes } from "@/lib/indexes";
 
+import { reportError } from "@/lib/report-error";
 export const dynamic = "force-dynamic";
 
 /**
@@ -55,10 +56,12 @@ export async function GET(request: Request) {
         indexes = "ok";
       } catch (e) {
         console.error("index ensure failed:", e);
+        reportError(e, { route: "api/health", service: "mongodb" });
         indexes = "error";
       }
     } catch (e) {
       console.error("health mongo ping failed:", e);
+      reportError(e, { route: "api/health", service: "mongodb" });
       mongo = "error";
     }
   } else if (isProductionRuntime()) {

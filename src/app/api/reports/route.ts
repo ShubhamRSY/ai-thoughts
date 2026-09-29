@@ -6,6 +6,7 @@ import { redactForStorage } from "@/lib/privacy";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { canViewPost } from "@/lib/visibility";
 
+import { reportError } from "@/lib/report-error";
 const IP_REPORT_LIMIT = 20;
 const IP_REPORT_WINDOW_MS = 10 * 60_000;
 
@@ -64,6 +65,7 @@ export async function GET() {
     );
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/reports" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }
@@ -194,6 +196,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/reports" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }

@@ -13,6 +13,7 @@ import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { listFollowing } from "@/lib/follows";
 import { getPrefs } from "@/lib/prefs";
 
+import { reportError } from "@/lib/report-error";
 function handleVariants(session: SessionUser): string[] {
   return Array.from(
     new Set([
@@ -181,6 +182,7 @@ export async function GET(request: Request) {
     });
   } catch (e) {
     console.error("account export error:", e);
+    reportError(e, { route: "api/account" });
     return NextResponse.json({ error: "Could not export account" }, { status: 500 });
   }
 }
@@ -227,6 +229,7 @@ export async function DELETE(request: Request) {
     return res;
   } catch (e) {
     console.error("account delete error:", e);
+    reportError(e, { route: "api/account" });
     return NextResponse.json({ error: "Could not delete account" }, { status: 500 });
   }
 }

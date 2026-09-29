@@ -3,6 +3,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
 import { getPrefs, upsertPrefs } from "@/lib/prefs";
 
+import { reportError } from "@/lib/report-error";
 export async function GET() {
   try {
     const session = await getSession();
@@ -15,6 +16,7 @@ export async function GET() {
     });
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/prefs" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }
@@ -38,6 +40,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(prefs);
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/prefs" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }

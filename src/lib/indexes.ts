@@ -1,5 +1,6 @@
 import type { Db, ObjectId } from "mongodb";
 
+import { reportError } from "./report-error.ts";
 let ensured = false;
 
 /** Idempotent indexes for lookups that matter for auth, prompts, and push. */
@@ -128,6 +129,7 @@ export async function ensureCoreIndexes(db: Db): Promise<void> {
     // E11000 here means existing duplicate handles — rename one of each pair,
     // then the next health check builds the index.
     console.error("ensureCoreIndexes users_handle_unique:", (e as Error)?.message || e);
+    reportError(e, { route: "lib/indexes", service: "mongodb" });
   }
 
   // One report queue entry per (post, reporter): collapse legacy duplicates
@@ -159,6 +161,7 @@ export async function ensureCoreIndexes(db: Db): Promise<void> {
     );
   } catch (e) {
     console.warn("ensureCoreIndexes reports:", (e as Error)?.message || e);
+    reportError(e, { route: "lib/indexes", service: "mongodb" });
   }
 
   // One notification row per (recipient, actor, post, kind) — "arrive exactly
@@ -193,6 +196,7 @@ export async function ensureCoreIndexes(db: Db): Promise<void> {
     );
   } catch (e) {
     console.warn("ensureCoreIndexes notifications:", (e as Error)?.message || e);
+    reportError(e, { route: "lib/indexes", service: "mongodb" });
   }
 
   ensured = true;

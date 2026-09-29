@@ -14,6 +14,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { hashEmail } from "@/lib/secure";
 import { upsertPrefs } from "@/lib/prefs";
 
+import { reportError } from "@/lib/report-error";
 const VERIFY_LIMIT = 20;
 const VERIFY_WINDOW_MS = 10 * 60_000;
 
@@ -111,8 +112,9 @@ export async function POST(request: Request) {
       try {
         const { db } = await connectToDatabase();
         await upsertPrefs(db, user.handle, { onboarded: false });
-      } catch {
+      } catch (e) {
         // Non-fatal — the wizard simply won't show if the write failed.
+        reportError(e, { route: "api/auth/verify", service: "mongodb" });
       }
     }
 
@@ -121,7 +123,10 @@ export async function POST(request: Request) {
     if (!createdNew) {
       const device = request.headers.get("user-agent") ?? "";
       after(() =>
-        sendSignInAlertEmail(normalized, device).catch((e) => console.error("sign-in alert failed:", e))
+        sendSignInAlertEmail(normalized, device).catch((e) => {
+          console.error("sign-in alert failed:", e);
+          reportError(e, { route: "api/auth/verify", service: "resend" });
+        })
       );
     }
 
@@ -139,6 +144,7 @@ export async function POST(request: Request) {
     return res;
   } catch (e) {
     console.error("verify error:", e);
+    reportError(e, { route: "api/auth/verify" });
     return NextResponse.json({ error: "Verification failed" }, { status: 500 });
   }
 }

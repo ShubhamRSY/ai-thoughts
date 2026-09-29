@@ -15,6 +15,7 @@ import { getVisibility } from "@/lib/visibility";
 import { blockedByMe } from "@/lib/blocks";
 import { isMuted } from "@/lib/mutes";
 
+import { reportError } from "@/lib/report-error";
 function normHandle(h: string) {
   return h.trim().toLowerCase().replace(/^@/, "");
 }
@@ -69,6 +70,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/follows" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }
@@ -108,6 +110,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/follows" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }

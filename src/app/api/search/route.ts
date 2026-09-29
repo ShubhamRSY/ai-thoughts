@@ -5,6 +5,7 @@ import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { listFollowing, listRequested } from "@/lib/follows";
 import { hiddenHandles, canViewPosts } from "@/lib/visibility";
 
+import { reportError } from "@/lib/report-error";
 function norm(h: string) {
   return h.trim().toLowerCase().replace(/^@/, "");
 }
@@ -163,6 +164,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (e) {
     console.error(e);
+    reportError(e, { route: "api/search" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }

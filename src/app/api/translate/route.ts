@@ -4,6 +4,7 @@ import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { translateToEnglish, isEnglishLang } from "@/lib/translate";
 import { connectToDatabase, isMongoConfigured } from "@/lib/mongodb";
 
+import { reportError } from "@/lib/report-error";
 const LIMIT = 30;
 const WINDOW_MS = 10 * 60_000;
 
@@ -51,8 +52,9 @@ export async function POST(request: Request) {
             cached: true,
           });
         }
-      } catch {
-        /* cache miss / unavailable — continue */
+      } catch (e) {
+        // Cache unavailable — translate anyway.
+        reportError(e, { route: "api/translate", service: "mongodb" });
       }
     }
 
@@ -74,14 +76,16 @@ export async function POST(request: Request) {
           },
           { upsert: true }
         );
-      } catch {
-        /* non-fatal */
+      } catch (e) {
+        // Non-fatal: the translation is still returned.
+        reportError(e, { route: "api/translate", service: "mongodb" });
       }
     }
 
     return NextResponse.json({ ok: true, translation });
   } catch (e) {
     console.error("translate error:", e);
+    reportError(e, { route: "api/translate" });
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Translation failed" },
       { status: 500 }

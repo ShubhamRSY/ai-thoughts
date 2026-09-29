@@ -3,6 +3,7 @@ import { connectToDatabase, isMongoConfigured } from "@/lib/mongodb";
 import { INITIAL_THOUGHTS } from "@/lib/mock-data";
 import type { FeelingId } from "@/lib/types";
 
+import { reportError } from "./report-error.ts";
 // Server-only: powers the pre-login pages (/ and /sign-in) with a real
 // snapshot of the pulse instead of static marketing copy — falls back to
 // the demo fixtures whenever Mongo isn't configured or a query fails, so
@@ -87,7 +88,8 @@ export async function getPulseStats(): Promise<PulseStats> {
   if (!isMongoConfigured()) return FALLBACK_STATS;
   try {
     return await loadPulseStats();
-  } catch {
+  } catch (e) {
+    reportError(e, { route: "lib/pulse-stats", service: "mongodb" });
     return FALLBACK_STATS;
   }
 }

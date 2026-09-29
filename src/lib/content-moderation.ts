@@ -1,3 +1,4 @@
+import { reportError } from "./report-error.ts";
 /**
  * Automated screening of a take's text and photo with OpenAI's free
  * omni-moderation model. Off unless OPENAI_API_KEY is set.
@@ -25,6 +26,7 @@ export async function isFlaggedContent(opts: { text?: string; imageUrl?: string 
     return Boolean(data.results?.some((r) => r.flagged));
   } catch (e) {
     console.error("content moderation unavailable, allowing:", e);
+    reportError(e, { route: "lib/content-moderation", service: "openai" });
     return false;
   }
 }

@@ -3,6 +3,7 @@ import { ObjectId } from "mongodb";
 import { getSiteSettings } from "@/lib/admin";
 import { connectToDatabase } from "@/lib/mongodb";
 
+import { reportError } from "@/lib/report-error";
 /** The human-picked voice, or null if none is set / it was deleted or archived. */
 async function getFeatured(id: string) {
   if (!id || !ObjectId.isValid(id)) return null;
@@ -33,7 +34,8 @@ export async function GET() {
       },
       { headers: { "Cache-Control": "no-store" } }
     );
-  } catch {
+  } catch (e) {
+    reportError(e, { route: "api/site", service: "mongodb" });
     return NextResponse.json({
       maintenance: false,
       maintenanceMessage: "",

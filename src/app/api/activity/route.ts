@@ -3,6 +3,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
 import { ObjectId } from "mongodb";
 
+import { reportError } from "@/lib/report-error";
 function normHandle(h: string) {
   return h.trim().toLowerCase().replace(/^@/, "");
 }
@@ -69,6 +70,7 @@ export async function GET() {
     });
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/activity" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }
@@ -123,6 +125,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/activity" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }

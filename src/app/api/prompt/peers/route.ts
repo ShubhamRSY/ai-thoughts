@@ -5,6 +5,7 @@ import { listFollowing } from "@/lib/follows";
 import { hiddenAuthorFilter } from "@/lib/visibility";
 import { dailyPromptForDay, todayKey, yesterdayKey } from "@/lib/daily-prompt";
 
+import { reportError } from "@/lib/report-error";
 function norm(h: string) {
   return h.trim().toLowerCase().replace(/^@/, "");
 }
@@ -133,6 +134,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (e) {
     console.error("prompt peers:", e);
+    reportError(e, { route: "api/prompt/peers" });
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }

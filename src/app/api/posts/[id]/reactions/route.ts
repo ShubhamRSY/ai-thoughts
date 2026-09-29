@@ -7,6 +7,7 @@ import { BOOST_REACTION, isValidReaction, shouldNotifyOwner } from "@/lib/likes"
 import { canBeReposted, canViewPost, getPrivacy } from "@/lib/visibility";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 
+import { reportError } from "@/lib/report-error";
 const IP_REACTION_LIMIT = 120;
 const IP_REACTION_WINDOW_MS = 10 * 60_000;
 
@@ -118,6 +119,7 @@ export async function POST(
     return NextResponse.json({ ok: true, action: "added" });
   } catch (error) {
     console.error(error);
+    reportError(error, { route: "api/posts/[id]/reactions" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }
