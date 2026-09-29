@@ -14,8 +14,8 @@ import {
 import { getVisibility } from "@/lib/visibility";
 import { blockedByMe } from "@/lib/blocks";
 import { isMuted } from "@/lib/mutes";
-
 import { reportError } from "@/lib/report-error";
+
 function normHandle(h: string) {
   return h.trim().toLowerCase().replace(/^@/, "");
 }

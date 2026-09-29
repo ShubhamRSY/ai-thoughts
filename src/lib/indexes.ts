@@ -1,6 +1,6 @@
 import type { Db, ObjectId } from "mongodb";
-
 import { reportError } from "./report-error.ts";
+
 let ensured = false;
 
 /** Idempotent indexes for lookups that matter for auth, prompts, and push. */

@@ -12,8 +12,8 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { listFollowing } from "@/lib/follows";
 import { getPrefs } from "@/lib/prefs";
-
 import { reportError } from "@/lib/report-error";
+
 function handleVariants(session: SessionUser): string[] {
   return Array.from(
     new Set([

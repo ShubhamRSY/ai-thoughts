@@ -4,8 +4,8 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
 import { blockUser, listBlocked, unblockUser } from "@/lib/blocks";
 import { resolveProfiles } from "@/lib/follows";
-
 import { reportError } from "@/lib/report-error";
+
 export async function GET() {
   try {
     const session = await getSession();

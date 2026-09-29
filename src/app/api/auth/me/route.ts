@@ -9,8 +9,8 @@ import {
 } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { decryptEmail } from "@/lib/secure";
-
 import { reportError } from "@/lib/report-error";
+
 /**
  * GET /api/auth/me — current user from DB (fresh displayName/handle).
  * Slides the session cookie forward and refreshes identity from Mongo.

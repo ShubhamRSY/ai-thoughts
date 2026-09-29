@@ -1,6 +1,6 @@
 import { getSiteUrl } from "@/lib/site";
-
 import { reportError } from "./report-error.ts";
+
 export class EmailDeliveryError extends Error {
   constructor(
     message: string,

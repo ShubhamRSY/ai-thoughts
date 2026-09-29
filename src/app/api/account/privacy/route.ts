@@ -3,8 +3,8 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
 import { applyPrivacyTransition, listPendingRequests } from "@/lib/follows";
 import { getPrivacy, PRIVACY_LEVELS, type Privacy } from "@/lib/visibility";
-
 import { reportError } from "@/lib/report-error";
+
 export async function GET() {
   try {
     const session = await getSession();

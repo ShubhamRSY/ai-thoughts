@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
 import { ObjectId } from "mongodb";
-
 import { reportError } from "@/lib/report-error";
+
 function normHandle(h: string) {
   return h.trim().toLowerCase().replace(/^@/, "");
 }

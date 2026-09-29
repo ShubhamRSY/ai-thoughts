@@ -7,8 +7,8 @@ import { blockedHandles } from "@/lib/blocks";
 import { checkDignity } from "@/lib/dignity";
 import { extractMentions } from "@/lib/mentions";
 import { contentFingerprint } from "@/lib/anti-abuse";
-
 import { reportError } from "@/lib/report-error";
+
 function parseObjectId(id: string): ObjectId | null {
   try {
     return new ObjectId(id);

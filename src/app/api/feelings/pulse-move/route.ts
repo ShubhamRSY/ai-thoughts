@@ -3,8 +3,8 @@ import { connectToDatabase, isMongoConfigured } from "@/lib/mongodb";
 import { FEELINGS } from "@/lib/feelings";
 import { promptDayKeyUTC, shiftDayKey } from "@/lib/daily-prompt";
 import type { FeelingId } from "@/lib/types";
-
 import { reportError } from "@/lib/report-error";
+
 const FEELING_IDS = FEELINGS.map((f) => f.id);
 
 interface DayBucket {

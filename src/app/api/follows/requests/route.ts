@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
 import { listPendingRequests, resolveProfiles } from "@/lib/follows";
-
 import { reportError } from "@/lib/report-error";
+
 export async function GET() {
   try {
     const session = await getSession();

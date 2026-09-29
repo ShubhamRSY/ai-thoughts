@@ -5,8 +5,8 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
 import { canViewPost } from "@/lib/visibility";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
-
 import { reportError } from "@/lib/report-error";
+
 const ANON_ID_COOKIE = "aithoughts.anon";
 const ANON_ID_MAX_AGE = 400 * 24 * 3600; // ~13 months, well past any session
 // Views write a deduped row per (post, viewer) — generous but bounded so a

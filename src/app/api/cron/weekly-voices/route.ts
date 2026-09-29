@@ -6,8 +6,8 @@ import { feelingOf } from "@/lib/feelings";
 import type { FeelingId } from "@/lib/types";
 import { authorizeCron } from "@/lib/cron-auth";
 import { hiddenAuthorFilter } from "@/lib/visibility";
-
 import { reportError } from "@/lib/report-error";
+
 export async function GET(request: NextRequest) {
   try {
     if (!(await authorizeCron(request))) {

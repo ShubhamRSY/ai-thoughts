@@ -4,8 +4,8 @@ import { getSession } from "@/lib/auth";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { listFollowing, listRequested } from "@/lib/follows";
 import { hiddenHandles, canViewPosts } from "@/lib/visibility";
-
 import { reportError } from "@/lib/report-error";
+
 function norm(h: string) {
   return h.trim().toLowerCase().replace(/^@/, "");
 }

@@ -3,8 +3,8 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { authorizeBearer } from "@/lib/cron-auth";
 import { collectOwnerMetrics } from "@/lib/owner-metrics";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
-
 import { reportError } from "@/lib/report-error";
+
 export const dynamic = "force-dynamic";
 
 /**

@@ -3,8 +3,8 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
 import { removePushSubscription, savePushSubscription } from "@/lib/push";
 import { upsertPrefs } from "@/lib/prefs";
-
 import { reportError } from "@/lib/report-error";
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession();

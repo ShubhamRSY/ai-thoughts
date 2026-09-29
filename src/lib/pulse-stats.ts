@@ -2,8 +2,8 @@ import { unstable_cache } from "next/cache";
 import { connectToDatabase, isMongoConfigured } from "@/lib/mongodb";
 import { INITIAL_THOUGHTS } from "@/lib/mock-data";
 import type { FeelingId } from "@/lib/types";
-
 import { reportError } from "./report-error.ts";
+
 // Server-only: powers the pre-login pages (/ and /sign-in) with a real
 // snapshot of the pulse instead of static marketing copy — falls back to
 // the demo fixtures whenever Mongo isn't configured or a query fails, so

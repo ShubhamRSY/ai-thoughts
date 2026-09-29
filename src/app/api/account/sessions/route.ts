@@ -7,8 +7,8 @@ import {
   sessionCookieOptions,
 } from "@/lib/auth";
 import { listSessions, revokeAll, revokeOthers, revokeSession } from "@/lib/sessions";
-
 import { reportError } from "@/lib/report-error";
+
 export async function GET() {
   try {
     const session = await getSession();

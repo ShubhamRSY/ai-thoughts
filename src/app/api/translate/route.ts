@@ -3,8 +3,8 @@ import { createHash } from "crypto";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { translateToEnglish, isEnglishLang } from "@/lib/translate";
 import { connectToDatabase, isMongoConfigured } from "@/lib/mongodb";
-
 import { reportError } from "@/lib/report-error";
+
 const LIMIT = 30;
 const WINDOW_MS = 10 * 60_000;
 

@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { getSiteSettings } from "@/lib/admin";
 import { connectToDatabase } from "@/lib/mongodb";
-
 import { reportError } from "@/lib/report-error";
+
 /** The human-picked voice, or null if none is set / it was deleted or archived. */
 async function getFeatured(id: string) {
   if (!id || !ObjectId.isValid(id)) return null;

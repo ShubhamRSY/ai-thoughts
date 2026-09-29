@@ -8,8 +8,8 @@ import { ObjectId } from "mongodb";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { canViewPost, postHiddenFrom } from "@/lib/visibility";
 import { blockedHandles } from "@/lib/blocks";
-
 import { reportError } from "@/lib/report-error";
+
 const IP_MESSAGE_LIMIT = 30;
 const IP_MESSAGE_WINDOW_MS = 10 * 60_000;
 

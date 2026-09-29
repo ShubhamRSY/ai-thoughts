@@ -2,8 +2,8 @@ import webpush from "web-push";
 import { lookup } from "node:dns/promises";
 import net from "node:net";
 import type { Db } from "mongodb";
-
 import { reportError } from "./report-error.ts";
+
 export type PushSubscriptionJSON = {
   endpoint: string;
   keys: { p256dh: string; auth: string };

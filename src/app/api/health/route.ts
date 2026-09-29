@@ -3,8 +3,8 @@ import { timingSafeEqual } from "crypto";
 import { envStatus, isProductionRuntime } from "@/lib/env";
 import { isMongoConfigured, connectToDatabase } from "@/lib/mongodb";
 import { ensureCoreIndexes } from "@/lib/indexes";
-
 import { reportError } from "@/lib/report-error";
+
 export const dynamic = "force-dynamic";
 
 /**

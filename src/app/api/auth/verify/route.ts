@@ -13,8 +13,8 @@ import { getSiteSettings } from "@/lib/admin";
 import { connectToDatabase } from "@/lib/mongodb";
 import { hashEmail } from "@/lib/secure";
 import { upsertPrefs } from "@/lib/prefs";
-
 import { reportError } from "@/lib/report-error";
+
 const VERIFY_LIMIT = 20;
 const VERIFY_WINDOW_MS = 10 * 60_000;
 

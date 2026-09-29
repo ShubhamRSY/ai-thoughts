@@ -11,8 +11,8 @@ import {
 import { getSiteSettings } from "@/lib/admin";
 import { connectToDatabase } from "@/lib/mongodb";
 import { hashEmail } from "@/lib/secure";
-
 import { reportError } from "@/lib/report-error";
+
 const SIGN_IN_LIMIT = 8;
 const SIGN_IN_WINDOW_MS = 15 * 60_000;
 // Each code allows 5 guesses, so this bounds guesses at one inbox to 25/hour

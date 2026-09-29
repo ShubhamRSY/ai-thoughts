@@ -24,8 +24,8 @@ import { blockedHandles } from "@/lib/blocks";
 import { mutedHandles } from "@/lib/mutes";
 import { isAllowedMediaUrl, isBlobUrl, isPlayableMediaUrl } from "@/lib/media-sniff";
 import { isFlaggedContent } from "@/lib/content-moderation";
-
 import { reportError } from "@/lib/report-error";
+
 function normHandle(h: string) {
   return h.trim().toLowerCase().replace(/^@/, "");
 }

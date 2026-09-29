@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
-
 import { reportError } from "@/lib/report-error";
+
 const norm = (h: string) => h.trim().toLowerCase().replace(/^@/, "");
 
 /** POST /api/posts/[id]/archive `{ archived: boolean }` — author only. */

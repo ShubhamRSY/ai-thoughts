@@ -1,6 +1,6 @@
 import type { Db } from "mongodb";
-
 import { reportError } from "./report-error.ts";
+
 /**
  * Append-only trail for privileged mutations (admin/keeper grants, site
  * settings, break-glass bootstrap). If a secret or session is ever

@@ -5,8 +5,8 @@ import { getSession, isKeeperHandle } from "@/lib/auth";
 import { redactForStorage } from "@/lib/privacy";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { canViewPost } from "@/lib/visibility";
-
 import { reportError } from "@/lib/report-error";
+
 const IP_REPORT_LIMIT = 20;
 const IP_REPORT_WINDOW_MS = 10 * 60_000;
 

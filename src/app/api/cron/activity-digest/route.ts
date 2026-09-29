@@ -3,8 +3,8 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { listDigestRecipients } from "@/lib/prefs";
 import { sendActivityDigestEmail } from "@/lib/email";
 import { authorizeCron } from "@/lib/cron-auth";
-
 import { reportError } from "@/lib/report-error";
+
 function normHandle(h: string) {
   return h.trim().toLowerCase().replace(/^@/, "");
 }

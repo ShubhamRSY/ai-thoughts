@@ -1,6 +1,6 @@
 import { Redis } from "@upstash/redis";
-
 import { reportError } from "./report-error.ts";
+
 // Shared, multi-instance-safe limiter when Upstash is configured (free tier
 // works fine — https://upstash.com). Falls back to the in-memory limiter
 // below with zero config, so nothing breaks for anyone who hasn't set it up.

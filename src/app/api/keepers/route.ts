@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isKeeperHandle, getSession } from "@/lib/auth";
-
 import { reportError } from "@/lib/report-error";
+
 // Keepers are granted invite-only, by inserting a handle directly into the
 // "keepers" collection (e.g. via the Atlas console or a trusted script) —
 // intentionally not exposed as a public write endpoint.

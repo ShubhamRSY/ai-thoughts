@@ -4,8 +4,8 @@ import { ObjectId } from "mongodb";
 import { connectToDatabase } from "@/lib/mongodb";
 import { GLOBAL_SEED_POSTS } from "@/lib/seed-posts";
 import { authorizeBearer } from "@/lib/cron-auth";
-
 import { reportError } from "@/lib/report-error";
+
 function hash(s: string) {
   return createHash("sha256").update(s).digest("hex").slice(0, 16);
 }

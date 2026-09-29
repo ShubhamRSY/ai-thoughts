@@ -6,8 +6,8 @@ import { notifyPostOwner } from "@/lib/activity";
 import { BOOST_REACTION, isValidReaction, shouldNotifyOwner } from "@/lib/likes";
 import { canBeReposted, canViewPost, getPrivacy } from "@/lib/visibility";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
-
 import { reportError } from "@/lib/report-error";
+
 const IP_REACTION_LIMIT = 120;
 const IP_REACTION_WINDOW_MS = 10 * 60_000;
 
