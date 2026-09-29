@@ -162,7 +162,9 @@ export async function fetchPulsePosts(opts?: {
     const rows = await jsonFetch<RawPost[]>(`${API}/posts?${q}`);
     return rows.map(toThought);
   } catch (e) {
-    console.error("fetchPulsePosts:", e);
+    // 401 = the session just ended (e.g. "sign out everywhere" while a refresh
+    // was in flight) — an expected state, not an error worth logging.
+    if ((e as { status?: number }).status !== 401) console.error("fetchPulsePosts:", e);
     return null;
   }
 }
