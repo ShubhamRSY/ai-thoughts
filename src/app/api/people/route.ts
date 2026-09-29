@@ -87,6 +87,7 @@ export async function GET(request: NextRequest) {
         db
           .collection("users")
           .find({
+            suspended: { $ne: true },
             $or: [{ handle: rx }, { displayName: rx }],
           })
           .project({ handle: 1, displayName: 1 })
@@ -154,7 +155,7 @@ export async function GET(request: NextRequest) {
       if (people.length < 12) {
         const more = await db
           .collection("users")
-          .find({})
+          .find({ suspended: { $ne: true } })
           .project({ handle: 1, displayName: 1 })
           .sort({ lastLoginAt: -1 })
           .limit(24)

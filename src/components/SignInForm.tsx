@@ -7,6 +7,8 @@ import { ShieldCheck } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import BrandMark from "@/components/BrandMark";
 import { BRAND } from "@/lib/brand";
+import Turnstile, { turnstileEnabled } from "@/components/Turnstile";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 
 function OpeningPulse({ name, isNew }: { name?: string; isNew?: boolean }) {
   return (
@@ -63,9 +65,12 @@ function SignInFormInner({}: { total: number }) {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [isNew, setIsNew] = useState(false);
+  const [ageAgreed, setAgeAgreed] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaKey, setCaptchaKey] = useState(0);
 
   const from = searchParams.get("next") ?? searchParams.get("from") ?? "/app";
-  const dest = from.startsWith("/") && !from.startsWith("//") ? from : "/app";
+  const dest = safeRedirectPath(from);
 
   useEffect(() => {
     if (!loading && user) {
@@ -93,8 +98,9 @@ function SignInFormInner({}: { total: number }) {
     // Email only: returning members keep their saved name/username; new
     // accounts pick theirs once in the onboarding profile step.
     setSubmitting(true);
-    const result = await requestCode(email.trim(), "");
+    const result = await requestCode(email.trim(), "", undefined, captchaToken ?? undefined);
     setSubmitting(false);
+    setCaptchaKey((k) => k + 1); // tokens are single-use; a retry needs a fresh one
     if (result.ok) {
       if (result.alreadySignedIn) {
         router.replace(dest);
@@ -161,10 +167,37 @@ function SignInFormInner({}: { total: number }) {
                 placeholder="you@example.com"
               />
             </label>
+            <label className="flex items-start gap-2.5 text-xs leading-relaxed text-[var(--muted)]">
+              <input
+                type="checkbox"
+                checked={ageAgreed}
+                onChange={(e) => setAgeAgreed(e.target.checked)}
+                required
+                className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--accent)]"
+              />
+              <span>
+                I’m 13 or older and agree to the{" "}
+                <Link
+                  href="/terms"
+                  className="text-[var(--accent)] underline underline-offset-2"
+                >
+                  Terms
+                </Link>{" "}
+                and{" "}
+                <Link
+                  href="/privacy"
+                  className="text-[var(--accent)] underline underline-offset-2"
+                >
+                  Privacy Policy
+                </Link>
+                .
+              </span>
+            </label>
+            <Turnstile key={captchaKey} onToken={setCaptchaToken} />
             {error && <p className="text-xs leading-relaxed text-rose-700">{error}</p>}
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || !ageAgreed || (turnstileEnabled && !captchaToken)}
               className="w-full rounded-full bg-[var(--accent)] py-3.5 text-sm font-semibold text-[var(--surface)] hover:bg-[var(--accent-2)] disabled:opacity-50"
             >
               {submitting ? "Sending…" : "Send sign-in code"}

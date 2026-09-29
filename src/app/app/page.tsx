@@ -61,9 +61,11 @@ export default function Home() {
   const [thoughts, setThoughts] = useState<Thought[]>([]);
   const [feedStatus, setFeedStatus] = useState<"loading" | "ready" | "error">("loading");
   /** Timestamp of the oldest take loaded from the main feed; null = nothing older to load. */
-  const [feedCursor, setFeedCursor] = useState<string | null>(null);
+  const [feedCursor, setFeedCursor] = useState<{ ts: string; id: string } | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [focusPostId, setFocusPostId] = useState<string | null>(null);
+  /** Search term the Search tab should pick up when a #tag is tapped on a take. */
+  const [searchQuery, setSearchQuery] = useState<string | null>(null);
   const [mine, setMine] = useState<Thought[]>([]);
   const [media, setMedia] = useState<MediaFilter>("all");
   const [feeling, setFeeling] = useState<FeelingFilter>("all");
@@ -252,9 +254,16 @@ export default function Home() {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const circle = params.get("circle");
-    if (circle) {
+    // The new-sign-in email links here so a stranger's device can be ended fast.
+    const view = params.get("view");
+    if (view === "account") {
+      setTab("you");
+      setShowAccount(true);
+    }
+    if (circle || view) {
       // Circles removed — ignore legacy deep links
       params.delete("circle");
+      params.delete("view");
       const next = `${window.location.pathname}${params.toString() ? `?${params}` : ""}`;
       window.history.replaceState({}, "", next);
     }
@@ -497,15 +506,18 @@ export default function Home() {
         }
         return;
       }
-      const last = posts.length >= FEED_PAGE_SIZE ? posts[posts.length - 1].timestamp : null;
+      const last = posts.length >= FEED_PAGE_SIZE ? posts[posts.length - 1] : null;
       if (silent && last) {
         // Quiet refresh: refresh the newest page but keep older pages the reader already loaded.
-        const oldest = Date.parse(last);
+        const oldest = Date.parse(last.timestamp);
         setThoughts((prev) => [...posts, ...prev.filter((t) => Date.parse(t.timestamp) < oldest)]);
-        setFeedCursor((prev) => (prev && Date.parse(prev) < oldest ? prev : last));
+        // Keep the existing cursor when it points further back than this new page.
+        setFeedCursor((prev) =>
+          prev && Date.parse(prev.ts) < oldest ? prev : { ts: last.timestamp, id: last.id }
+        );
       } else {
         setThoughts(posts);
-        setFeedCursor(last);
+        setFeedCursor(last ? { ts: last.timestamp, id: last.id } : null);
       }
       setMine(posts.filter((t) => sameAuthor(t.handle, identityHandle)));
       setFeedStatus("ready");
@@ -516,7 +528,7 @@ export default function Home() {
   const loadOlder = useCallback(async () => {
     if (!feedCursor || loadingMore) return;
     setLoadingMore(true);
-    const rows = await fetchPulsePosts({ before: feedCursor });
+    const rows = await fetchPulsePosts({ before: feedCursor.ts, beforeId: feedCursor.id });
     setLoadingMore(false);
     if (!rows) return;
     setThoughts((prev) => {
@@ -525,7 +537,12 @@ export default function Home() {
         (a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp)
       );
     });
-    setFeedCursor(rows.length >= FEED_PAGE_SIZE ? rows[rows.length - 1].timestamp : null);
+    if (rows.length >= FEED_PAGE_SIZE) {
+      const last = rows[rows.length - 1];
+      setFeedCursor({ ts: last.timestamp, id: last.id });
+    } else {
+      setFeedCursor(null);
+    }
   }, [feedCursor, loadingMore]);
 
   // First load + when signed-in identity changes
@@ -705,6 +722,27 @@ export default function Home() {
                     onOpenRoom={handleOpenRoom}
                     onFeelWith={user ? onFeelWith : undefined}
                     onQuoteRepost={user ? onQuoteRepost : undefined}
+                    onOpenTag={(tag) => {
+                      setSearchQuery(tag);
+                      setTab("search");
+                    }}
+                    onOpenMention={(handle) => {
+                      setViewProfileHandle(handle.replace(/^@/, ""));
+                      setTab("you");
+                    }}
+                    onMute={async (handle, muted) => {
+                      if (!user) return;
+                      await fetch("/api/mutes", {
+                        method: "POST",
+                        credentials: "include",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          handle: handle.replace(/^@/, ""),
+                          action: muted ? "mute" : "unmute",
+                        }),
+                      });
+                      reloadFeed();
+                    }}
                     followingHandles={followingSet}
                     othersMap={othersMap}
                     loading={feedStatus === "loading"}
@@ -769,10 +807,13 @@ export default function Home() {
             signedIn={!!user}
             onNeedSignIn={() => router.push("/sign-in?next=/app")}
             onFollow={(handle, next) => onFeelWith(handle, next)}
+            onSearch={() => setSearchQuery(null)}
+            queryOverride={searchQuery}
             onOpenPerson={(handle) => {
               setViewProfileHandle(handle);
               setTab("you");
             }}
+            onOpenPost={openActivityPost}
           />
         )}
 

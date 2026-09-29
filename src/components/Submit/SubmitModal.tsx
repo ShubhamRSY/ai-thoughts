@@ -104,6 +104,50 @@ export default function SubmitModal({
     setCustomFeeling("");
   }, [open, presetFeeling]);
 
+  // ---- offline autosave: a half-written take survives accidental closes ----
+  const DRAFT_KEY = "aito.draft.v1";
+  const [draftHint, setDraftHint] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw) as { content?: string; tags?: string[]; savedAt?: string };
+      if (d?.content?.trim()) {
+        setContent(d.content);
+        setTags(Array.isArray(d.tags) ? d.tags.slice(0, 8) : []);
+        setDraftHint("Draft restored. Safe to edit and post.");
+      }
+    } catch {
+      /* unreadable draft — ignore */
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || content.trim().length === 0) return;
+    const t = window.setTimeout(() => {
+      try {
+        localStorage.setItem(
+          DRAFT_KEY,
+          JSON.stringify({ content, tags, savedAt: new Date().toISOString() })
+        );
+      } catch {
+        /* storage full/unavailable — draft just won't persist */
+      }
+    }, 350);
+    return () => window.clearTimeout(t);
+  }, [open, content, tags]);
+
+  const clearDraft = () => {
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch {
+      /* ignore */
+    }
+    setDraftHint(null);
+  };
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -206,6 +250,17 @@ export default function SubmitModal({
           ? { blob: image, duration: 0 }
           : undefined;
 
+    // Client-side guardrails before anything hits the wire — the server enforces
+    // the same caps, but failing fast beats uploading 150MB into a dead-end.
+    if (captured?.blob && captured.blob.size > 150 * 1024 * 1024) {
+      setPublishError("That clip is over 150 MB. Keep takes to 150 MB or under.");
+      return;
+    }
+    if (captured?.duration && captured.duration > 600) {
+      setPublishError("Takes are capped at 10 minutes.");
+      return;
+    }
+
     // Instagram-style: upload progress bar, then drop straight into the feed.
     setPublishing(true);
     setPublishProgress(5);
@@ -257,6 +312,7 @@ export default function SubmitModal({
 
     stopLoading();
     setPublishProgress(100);
+    clearDraft();
     setPublishedAsPrompt(Boolean(fromDailyPrompt));
     setPublishedThought(result.thought ?? null);
     if (fromDailyPrompt) {
@@ -392,6 +448,18 @@ export default function SubmitModal({
               {tab === "text" && (
                 <TextForm value={content} onChange={setContent} image={image} onImageChange={setImage} />
               )}
+              {draftHint && (
+                <p className="flex items-center justify-between gap-3 text-[11px] text-[var(--muted)]">
+                  <span>{draftHint}</span>
+                  <button
+                    type="button"
+                    onClick={clearDraft}
+                    className="font-medium text-[var(--accent)] hover:text-[var(--accent-2)]"
+                  >
+                    Discard draft
+                  </button>
+                </p>
+              )}
 
               <div>
                 <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1">
@@ -433,6 +501,7 @@ export default function SubmitModal({
                 {feeling === "custom" ? (
                   <input
                     value={customFeeling}
+                    aria-label="Type how AI makes you feel"
                     onChange={(e) => setCustomFeeling(e.target.value.slice(0, 40))}
                     placeholder="Type how AI makes you feel…"
                     className="mt-2 w-full rounded-lg border border-[var(--border-base)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
@@ -488,6 +557,7 @@ export default function SubmitModal({
               {tab !== "text" && (
                 <input
                   value={content}
+                  aria-label="Caption for your clip"
                   onChange={(e) => setContent(e.target.value.slice(0, 500))}
                   placeholder="Add a caption…"
                   dir="auto"
@@ -535,6 +605,7 @@ export default function SubmitModal({
                   <div className="flex gap-2">
                     <input
                       value={customTag}
+                      aria-label="Add your own tag"
                       onChange={(e) => setCustomTag(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {

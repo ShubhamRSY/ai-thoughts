@@ -5,6 +5,7 @@ import "./globals.css";
 import PwaRegister from "@/components/PwaRegister";
 import PWAInstall from "@/components/PWAInstall";
 import ViewportSync from "@/components/ViewportSync";
+import CookieConsent from "@/components/CookieConsent";
 import { AuthProvider } from "@/hooks/useAuth";
 import { getSiteUrl } from "@/lib/site";
 
@@ -70,6 +71,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <ViewportSync />
           {children}
           <PWAInstall />
+          <CookieConsent />
         </AuthProvider>
         <PwaRegister />
         <Analytics />

@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
     if (
       !(await authorizeBearer(request, {
         secrets: [process.env.OWNER_DASHBOARD_SECRET, process.env.CRON_SECRET],
-        allowInsecureDev: process.env.NODE_ENV !== "production",
+        allowInsecureDev: true, // still needs ALLOW_INSECURE_DEV_AUTH=1, see cron-auth.ts
       }))
     ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

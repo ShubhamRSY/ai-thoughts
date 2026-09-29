@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Archive, ArrowLeft, Ban, Bookmark, Camera, Check, Download, Lock, PencilLine, Settings, Trash2, UserPlus, UserCheck } from "lucide-react";
+import { Archive, ArrowLeft, Ban, Bookmark, Camera, Check, Download, Lock, PencilLine, Settings, Trash2, UserPlus, UserCheck, BellOff } from "lucide-react";
 import { upload } from "@vercel/blob/client";
+import { stripImageMetadata } from "@/lib/image";
 import type { Thought } from "@/lib/types";
 import { useLocalProfile } from "@/hooks/useLocalProfile";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,6 +20,7 @@ import {
 } from "@/lib/db";
 import VerifiedBadge from "@/components/VerifiedBadge";
 import { BRAND } from "@/lib/brand";
+import WindowsStoreCta, { isWindowsBrowser } from "@/components/WindowsStoreCta";
 
 function normHandle(h: string) {
   return h.trim().toLowerCase().replace(/^@/, "");
@@ -83,6 +85,9 @@ export default function ProfileView({
   const [bio, setBio] = useState(profile.bio || "");
   const [avatarUrl, setAvatarUrl] = useState(profile.avatarUrl || "");
   const [uploading, setUploading] = useState(false);
+  // Read after mount so server and client render the same markup.
+  const [onWindows, setOnWindows] = useState(false);
+  useEffect(() => setOnWindows(isWindowsBrowser()), []);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deletingAccount, setDeletingAccount] = useState(false);
@@ -258,9 +263,10 @@ export default function ProfileView({
         : file.type.includes("webp")
           ? "webp"
           : "jpg";
-      const uploaded = await upload(`avatar-${Date.now()}.${ext}`, file, {
+      const clean = await stripImageMetadata(file);
+      const uploaded = await upload(`avatar-${Date.now()}.${ext}`, clean, {
         access: "public",
-        contentType: file.type,
+        contentType: clean.type,
         handleUploadUrl: "/api/upload",
       });
       await persist({ avatarUrl: uploaded.url });
@@ -312,6 +318,25 @@ export default function ProfileView({
       if (!res.ok) return;
       if (action === "block") onBack?.();
       else setViewedFollow(await fetchFollowGraph(viewHandle));
+    } finally {
+      setFollowBusy(false);
+    }
+  };
+
+  const setMuted = async (action: "mute" | "unmute") => {
+    if (!viewHandle || followBusy) return;
+    setFollowBusy(true);
+    try {
+      const res = await fetch("/api/mutes", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ handle: viewHandle, action }),
+      });
+      if (!res.ok) return;
+      // Unmuting keeps their public takes in view; the follow graph is the
+      // single source the mute flag rides along on.
+      setViewedFollow(await fetchFollowGraph(viewHandle));
     } finally {
       setFollowBusy(false);
     }
@@ -400,6 +425,20 @@ export default function ProfileView({
               ) : (
                 user && onFollowToggle && (
                   <>
+                  <button
+                    type="button"
+                    aria-label={viewedFollow?.mutedByMe ? "Unmute" : "Mute"}
+                    title={viewedFollow?.mutedByMe ? "Unmute — see their takes again" : "Mute — hide their takes from your feed"}
+                    onClick={() => void (viewedFollow?.mutedByMe ? setMuted("unmute") : setMuted("mute"))}
+                    disabled={followBusy}
+                    className={`rounded-lg p-1.5 transition disabled:opacity-50 ${
+                      viewedFollow?.mutedByMe
+                        ? "text-[var(--accent)] hover:bg-[var(--surface-2)]"
+                        : "text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    <BellOff className="h-4 w-4" />
+                  </button>
                   <button
                     type="button"
                     aria-label="Block"
@@ -584,14 +623,23 @@ export default function ProfileView({
             <Download className="h-3.5 w-3.5 text-[var(--accent)]" /> Get the app
           </p>
           <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">
-            Install {BRAND.shortName} on your phone.
+            Install {BRAND.shortName} on your phone{onWindows ? " or this Windows PC" : ""}.
           </p>
-          <Link
-            href="/install"
-            className="mt-3 inline-flex rounded-full bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-[var(--surface)] transition hover:bg-[var(--accent-2)]"
-          >
-            Install {BRAND.shortName}
-          </Link>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Link
+              href="/install"
+              className="inline-flex rounded-full bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-[var(--surface)] transition hover:bg-[var(--accent-2)]"
+            >
+              Install {BRAND.shortName}
+            </Link>
+            {onWindows && (
+              <WindowsStoreCta
+                className="contents"
+                showNote={false}
+                buttonClassName="inline-flex rounded-full border border-[var(--border-base)] px-4 py-2 text-xs font-semibold text-[var(--foreground)] transition hover:bg-[var(--surface-2)]"
+              />
+            )}
+          </div>
         </div>
       )}
 

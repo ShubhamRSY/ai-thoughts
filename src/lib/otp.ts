@@ -1,5 +1,6 @@
 import { connectToDatabase } from "@/lib/mongodb";
 import { hashEmail, timingSafeEqualStr } from "@/lib/secure";
+import { randomInt } from "node:crypto";
 
 const OTP_TTL_MS = 10 * 60_000;
 const MAX_ATTEMPTS = 5;
@@ -39,8 +40,9 @@ async function hmacHex(data: string): Promise<string> {
 }
 
 export function generateOtpCode(): string {
-  const n = crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000;
-  return n.toString().padStart(6, "0");
+  // randomInt has no modulo bias (random bytes % 1e6 slightly favors low
+  // values); Node's driver handles the rejection-free uniform draw.
+  return randomInt(0, 1_000_000).toString().padStart(6, "0");
 }
 
 export async function hashOtp(email: string, code: string): Promise<string> {
@@ -107,15 +109,22 @@ export async function verifyAndConsumeOtp(
     return { ok: false, error: "Code expired — request a new one" };
   }
 
-  if (record.attempts >= MAX_ATTEMPTS) {
+  // Spend an attempt atomically *before* comparing. Reading `attempts` then
+  // incrementing after let a parallel burst all see 0 and get far more than
+  // MAX_ATTEMPTS guesses at one code.
+  const claimed = await codes.findOneAndUpdate(
+    { ...matchFilter, attempts: { $lt: MAX_ATTEMPTS } },
+    { $inc: { attempts: 1 } },
+    { returnDocument: "after" }
+  );
+  if (!claimed) {
     await codes.deleteMany(matchFilter);
     return { ok: false, error: "Too many attempts — request a new code" };
   }
 
   const expected = await hashOtp(normalized, code.trim());
-  if (!timingSafeEqualStr(expected, record.codeHash)) {
-    await codes.updateOne(matchFilter, { $inc: { attempts: 1 } });
-    const left = MAX_ATTEMPTS - record.attempts - 1;
+  if (!timingSafeEqualStr(expected, claimed.codeHash)) {
+    const left = MAX_ATTEMPTS - claimed.attempts;
     return {
       ok: false,
       error: left > 0 ? `Incorrect code (${left} tries left)` : "Too many attempts — request a new code",

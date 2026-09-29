@@ -38,6 +38,13 @@ export default function TermsPage() {
             explicit content, doxxing, or anything that harms someone. Community keepers review
             reports and can remove takes.
           </p>
+          <p className="mt-2">
+            There is zero tolerance for objectionable content and abusive users. You can report any
+            take, comment, or account, and block anyone. We act on reports within 24 hours: content
+            that breaks these rules is removed and the accounts behind it are suspended. Only post
+            what you have the right to share — copyright owners can send takedown requests through
+            our <Link href="/dmca" className="text-[var(--accent)] underline underline-offset-2">DMCA page</Link>.
+          </p>
         </section>
 
         <section>

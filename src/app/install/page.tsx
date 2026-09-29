@@ -121,20 +121,23 @@ export default function InstallPage() {
                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-50 text-[10px] font-semibold text-teal-800">
                       1
                     </span>
+                    <span className="min-w-0">
                     Open <span className="text-[var(--foreground)]">aito.social</span> in Safari
-                    (macOS 14+)
+                    (macOS 14+)</span>
                   </li>
                   <li className="flex gap-2">
                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-50 text-[10px] font-semibold text-teal-800">
                       2
                     </span>
-                    Menu bar → <span className="text-[var(--foreground)]">File → Add to Dock</span>
+                    <span className="min-w-0">
+                    Menu bar → <span className="text-[var(--foreground)]">File → Add to Dock</span></span>
                   </li>
                   <li className="flex gap-2">
                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-50 text-[10px] font-semibold text-teal-800">
                       3
                     </span>
-                    AiTo opens like an app from your Dock
+                    <span className="min-w-0">
+                    AiTo opens like an app from your Dock</span>
                   </li>
                 </ol>
               </div>
@@ -147,21 +150,24 @@ export default function InstallPage() {
                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-50 text-[10px] font-semibold text-teal-800">
                       1
                     </span>
+                    <span className="min-w-0">
                     Open <span className="text-[var(--foreground)]">aito.social</span> in Chrome or
-                    Edge
+                    Edge</span>
                   </li>
                   <li className="flex gap-2">
                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-50 text-[10px] font-semibold text-teal-800">
                       2
                     </span>
+                    <span className="min-w-0">
                     Menu →{" "}
-                    <span className="text-[var(--foreground)]">Install AiTo…</span>
+                    <span className="text-[var(--foreground)]">Install AiTo…</span></span>
                   </li>
                   <li className="flex gap-2">
                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-50 text-[10px] font-semibold text-teal-800">
                       3
                     </span>
-                    Runs in its own window with a Dock icon
+                    <span className="min-w-0">
+                    Runs in its own window with a Dock icon</span>
                   </li>
                 </ol>
               </div>
@@ -186,29 +192,32 @@ export default function InstallPage() {
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-800">
                       1
                     </span>
+                    <span className="min-w-0">
                     Open this site in{" "}
                     <span className="rounded bg-[var(--surface-2)] px-1.5 font-medium">Safari</span>{" "}
-                    (not Chrome)
+                    (not Chrome)</span>
                   </li>
                   <li className="flex items-start gap-3 text-xs text-[var(--foreground)]">
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-800">
                       2
                     </span>
+                    <span className="min-w-0">
                     Tap{" "}
                     <span className="inline-flex items-center gap-1 rounded bg-[var(--surface-2)] px-1.5 font-medium">
                       <Share className="h-3 w-3" /> Share
                     </span>{" "}
-                    at the bottom
+                    at the bottom</span>
                   </li>
                   <li className="flex items-start gap-3 text-xs text-[var(--foreground)]">
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-800">
                       3
                     </span>
+                    <span className="min-w-0">
                     Scroll and tap{" "}
                     <span className="rounded bg-[var(--surface-2)] px-1.5 font-medium">
                       Add to Home Screen
                     </span>
-                    , then <span className="rounded bg-[var(--surface-2)] px-1.5 font-medium">Add</span>
+                    , then <span className="rounded bg-[var(--surface-2)] px-1.5 font-medium">Add</span></span>
                   </li>
                 </>
               ) : (
@@ -217,30 +226,33 @@ export default function InstallPage() {
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-800">
                       1
                     </span>
+                    <span className="min-w-0">
                     Open{" "}
                     <span className="rounded bg-[var(--surface-2)] px-1.5 font-medium">
                       aito.social
                     </span>{" "}
-                    in Chrome
+                    in Chrome</span>
                   </li>
                   <li className="flex items-start gap-3 text-xs text-[var(--foreground)]">
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-800">
                       2
                     </span>
+                    <span className="min-w-0">
                     Tap{" "}
                     <span className="inline-flex items-center gap-1 rounded bg-[var(--surface-2)] px-1.5 font-medium">
                       <MoreVertical className="h-3 w-3" /> Menu
-                    </span>
+                    </span></span>
                   </li>
                   <li className="flex items-start gap-3 text-xs text-[var(--foreground)]">
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-800">
                       3
                     </span>
+                    <span className="min-w-0">
                     Tap{" "}
                     <span className="rounded bg-[var(--surface-2)] px-1.5 font-medium text-[var(--accent)]">
                       Install app
                     </span>{" "}
-                    or <span className="rounded bg-[var(--surface-2)] px-1.5 font-medium">Add to Home screen</span>
+                    or <span className="rounded bg-[var(--surface-2)] px-1.5 font-medium">Add to Home screen</span></span>
                   </li>
                 </>
               )}
@@ -265,18 +277,21 @@ export default function InstallPage() {
         <ul className="mt-3 flex flex-col gap-2.5 text-xs leading-relaxed text-[var(--muted)]">
           <li className="flex gap-2">
             <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                <span className="min-w-0">
             Phone: home-screen web app for{" "}
-            <span className="text-[var(--foreground)]">aito.social</span> — no App Store fee
+            <span className="text-[var(--foreground)]">aito.social</span> — no App Store fee</span>
           </li>
           {BRAND.windowsStoreUrl && (
             <li className="flex gap-2">
               <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
-              Windows: Microsoft Store (updates via the Store)
+                <span className="min-w-0">
+              Windows: Microsoft Store (updates via the Store)</span>
             </li>
           )}
           <li className="flex gap-2">
             <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
-            Sign in once — the app opens logged in
+                <span className="min-w-0">
+            Sign in once — the app opens logged in</span>
           </li>
         </ul>
       </section>

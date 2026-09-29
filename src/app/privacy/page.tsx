@@ -32,7 +32,7 @@ export default function PrivacyPage() {
           <p>
             {BRAND.name} (“{BRAND.shortName},” “we,” “us”) is a public community where people share how
             AI makes them feel — in words, voice, or video. For privacy or data requests, use our{" "}
-            <Link href="/contact" className="text-[var(--accent)] underline-offset-2 hover:underline">
+            <Link href="/contact" className="text-[var(--accent)] underline underline-offset-2">
               contact form
             </Link>
             .
@@ -284,7 +284,7 @@ export default function PrivacyPage() {
             <li>Turn off push notifications or email digests in You → Daily habits</li>
             <li>
               Contact us about privacy or data requests through our{" "}
-              <Link href="/contact" className="text-[var(--accent)] underline-offset-2 hover:underline">
+              <Link href="/contact" className="text-[var(--accent)] underline underline-offset-2">
                 contact form
               </Link>
             </li>
@@ -349,7 +349,7 @@ export default function PrivacyPage() {
           <h2 className="mb-1 text-base font-semibold text-[var(--foreground)]">15. Contact</h2>
           <p>
             For privacy and data requests, use our{" "}
-            <Link href="/contact" className="text-[var(--accent)] underline-offset-2 hover:underline">
+            <Link href="/contact" className="text-[var(--accent)] underline underline-offset-2">
               contact form
             </Link>
             .
@@ -358,7 +358,7 @@ export default function PrivacyPage() {
             Privacy Policy:{" "}
             <a
               href={`${site}/privacy`}
-              className="break-all text-[var(--accent)] underline-offset-2 hover:underline"
+              className="break-all text-[var(--accent)] underline underline-offset-2"
             >
               {site}/privacy
             </a>
@@ -367,7 +367,7 @@ export default function PrivacyPage() {
             Contact:{" "}
             <a
               href={`${site}/contact`}
-              className="break-all text-[var(--accent)] underline-offset-2 hover:underline"
+              className="break-all text-[var(--accent)] underline underline-offset-2"
             >
               {site}/contact
             </a>

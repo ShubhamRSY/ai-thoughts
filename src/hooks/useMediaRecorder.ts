@@ -21,8 +21,13 @@ function pickMime(kind: "audio" | "video"): string | undefined {
   if (typeof MediaRecorder === "undefined") return undefined;
   const candidates =
     kind === "audio"
-      ? ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/aac"]
+      // MP4 (H.264/AAC) first: it plays on every phone and browser, while
+      // WebM from Chrome doesn't play on older iPhones. Browsers that can't
+      // record MP4 (Firefox) fall through to WebM.
+      ? ["audio/mp4;codecs=mp4a.40.2", "audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/aac"]
       : [
+          "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+          "video/mp4;codecs=avc1,mp4a.40.2",
           "video/webm;codecs=vp9,opus",
           "video/webm;codecs=vp8,opus",
           "video/webm",

@@ -78,6 +78,34 @@ curl -sS -X POST https://YOUR_APP/api/admin/seed \
   -H "Authorization: Bearer $CRON_SECRET"
 ```
 
+## Launch settings (code is in place — these switch it on)
+
+| What | Where | Why |
+| --- | --- | --- |
+| Resend DNS for the sending domain | Resend → Domains → add `aito.social`, then copy its records (MX + SPF TXT on `send.aito.social`, DKIM TXT on `resend._domainkey.aito.social`) into the registrar. Add `_dmarc.aito.social` TXT `v=DMARC1; p=none; rua=mailto:keepers@aito.social`. Set `EMAIL_FROM="AI·Thoughts <hello@aito.social>"`. | As of 2026-09-28 none of these records exist — codes from `@aito.social` get refused or land in spam, and `onboarding@resend.dev` only reaches the Resend account owner. |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` + `TURNSTILE_SECRET_KEY` | Cloudflare → Turnstile (free), hostname `www.aito.social` | CAPTCHA on "Send sign-in code". Without it a few IPs can drain the email cap and block every new sign-in. |
+| `OTP_EMAILS_PER_HOUR` | Vercel env | Site-wide sign-in email cap (default 40). Size to the Resend plan. |
+| `OPENAI_API_KEY` | platform.openai.com (moderation is free) | Screens take text, photos and avatars. Audio/video are not screened — keepers + reports cover them. |
+| `UPSTASH_REDIS_REST_URL` / `_TOKEN` | upstash.com (free tier) | Rate limits shared across serverless instances; without it each instance counts separately. |
+| Error alerts | Sentry (`npx @sentry/wizard -i nextjs`) or Vercel → Observability alerts on 5xx | Routes catch and log their own errors, so alerting must watch logs/5xx, not just crashes. |
+
+After deploying, open `/api/health` once: it builds the new unique index on `users.handle` (checked 2026-09-28: 0 duplicates, so it builds cleanly).
+
+**Before every release:** `npm test`, `npm run test:e2e`, and the live gate `npm run prelaunch` (see `scripts/prelaunch-check.mjs`) against a dev server on a throwaway DB.
+
+**Local dev warning:** `.env.local`'s `MONGODB_URL` points at the Atlas cluster. Use a separate database (or `e2e/start-test-mongo.sh`) for local work and tests so nothing writes to live data.
+
+## Backup restore drill (do once, ~20 min)
+
+1. Atlas → cluster → **Backup**: confirm Cloud Backup is on and a snapshot exists.
+2. **Restore** the latest snapshot to a *new* cluster (never the live one).
+3. Point a local `npm run dev` at it (`MONGODB_URL`, `MONGODB_DB`), sign in, open a profile and the feed.
+4. Write down how long the restore took (that's your recovery time) and the snapshot's age (that's how much data you'd lose). Delete the temporary cluster.
+
+## Moderation promise
+
+The Terms promise action on reports **within 24 hours** (App Store rule 1.2). Someone must check `/keeper` daily.
+
 ## Still host-owned (cannot be coded away)
 
 - Atlas IP allowlist / private networking

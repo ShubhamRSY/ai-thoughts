@@ -450,6 +450,7 @@ export default function ChatPanel({
             }}
             rows={1}
             dir="auto"
+            aria-label="Write a reply"
             placeholder="Write a reply…"
             className="max-h-24 min-h-[36px] flex-1 resize-none bg-transparent py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted)] outline-none"
           />

@@ -32,11 +32,12 @@ export async function authorizeBearer(
     .filter((s): s is string => Boolean(s));
 
   if (candidates.length === 0) {
-    // Never open cron in production without a secret.
-    if (process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production") {
-      return false;
-    }
-    return opts?.allowInsecureDev !== false;
+    // No secret configured → closed, everywhere. `next dev`, self-hosted and
+    // staging all look "non-production", so NODE_ENV alone must never open a
+    // privileged route (it handed out admin via bootstrap). Running without a
+    // secret takes both the route's consent and an explicit local opt-in.
+    if (process.env.NODE_ENV === "production" || process.env.VERCEL_ENV) return false;
+    return opts?.allowInsecureDev === true && process.env.ALLOW_INSECURE_DEV_AUTH === "1";
   }
 
   const header = request.headers.get("authorization") || "";

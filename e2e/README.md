@@ -43,6 +43,6 @@ instead.
   classes, so unrelated styling changes won't break tests.
 - Tests generate a unique `@example.com` address per run instead of a fixed
   one, so re-runs don't collide with the per-email OTP rate limit
-  (3 codes / 15 min — see `src/app/api/auth/sign-in/route.ts`).
+  (5 codes / hour — see `src/app/api/auth/sign-in/route.ts`).
 - `workers: 1` / `fullyParallel: false` because the dev server's rate limiter
   and OTP store are in-process, in-memory state shared across tests.

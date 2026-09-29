@@ -17,7 +17,8 @@ interface AuthContextValue {
   requestCode: (
     email: string,
     displayName: string,
-    username?: string
+    username?: string,
+    turnstileToken?: string
   ) => Promise<{ ok: boolean; error?: string; devCode?: string; alreadySignedIn?: boolean }>;
   verifyCode: (
     email: string,
@@ -72,7 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const requestCode = useCallback(async (email: string, displayName: string, username?: string) => {
+  const requestCode = useCallback(async (email: string, displayName: string, username?: string, turnstileToken?: string) => {
     if (user) {
       return { ok: true, alreadySignedIn: true };
     }
@@ -81,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email, displayName, username }),
+        body: JSON.stringify({ email, displayName, username, turnstileToken }),
       });
       const data = await res.json();
       if (data.alreadySignedIn && data.user) {

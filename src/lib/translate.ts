@@ -29,6 +29,7 @@ export async function translateToEnglish(
   const res = await fetch(url.toString(), {
     headers: { Accept: "application/json" },
     next: { revalidate: 0 },
+    signal: AbortSignal.timeout(8_000),
   });
 
   if (!res.ok) {

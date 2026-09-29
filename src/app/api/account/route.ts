@@ -110,8 +110,18 @@ export async function GET(request: Request) {
         }),
       ]);
 
+    const handleNorm = session.handle.trim().toLowerCase().replace(/^@/, "");
+    const [moods, blocked, muted] = await Promise.all([
+      db.collection("moods").find({ handle_norm: handleNorm }).project({ _id: 0, day: 1, feeling: 1, source: 1 }).toArray(),
+      db.collection("blocks").find({ blocker: { $in: variants } }).project({ _id: 0, blocked: 1, created_at: 1 }).toArray(),
+      db.collection("mutes").find({ muter: { $in: variants } }).project({ _id: 0, muted: 1, created_at: 1 }).toArray(),
+    ]);
+
     const exportPayload = {
       exported_at: new Date().toISOString(),
+      moods,
+      blocked,
+      muted,
       account: {
         id: session.id,
         email: session.email,

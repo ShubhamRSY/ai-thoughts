@@ -27,6 +27,13 @@ function recipientForm(h: string) {
   return h.trim().startsWith("@") ? h.trim() : `@${n}`;
 }
 
+// actor_handle is indexed for the "arrive exactly once" dedup, so it must be a
+// stable canonical form (@-prefixed, lowercase) regardless of caller spelling.
+function actorForm(h: string) {
+  const n = normHandle(h);
+  return `@${n}`;
+}
+
 async function writeActivity(
   db: Db,
   opts: {
@@ -46,17 +53,34 @@ async function writeActivity(
   // Single sink for notifications and push: a blocked pair never reaches each other.
   if (await isBlockedPair(db, opts.recipientHandle, opts.actorHandle)) return;
 
-  await db.collection("notifications").insertOne({
-    recipient_handle: recipientForm(opts.recipientHandle),
-    actor_handle: opts.actorHandle,
-    actor_author: opts.actorAuthor,
-    kind: opts.kind,
-    post_id: opts.postId,
-    preview: opts.preview.slice(0, 160),
-    read: false,
-    emailed: false,
-    created_at: new Date(),
-  } satisfies ActivityDoc);
+  // One row per (recipient, actor, post, kind) — like→unlike→like refreshes
+  // the same inbox row (bubbles it back to the top) instead of stacking three
+  // near-identical notifications. The unique index below guarantees it even
+  // under concurrent writes; the re-sent push (stable tag) replaces, not stacks.
+  await db.collection("notifications").updateOne(
+    {
+      recipient_handle: recipientForm(opts.recipientHandle),
+      actor_handle: actorForm(opts.actorHandle),
+      post_id: opts.postId,
+      kind: opts.kind,
+    },
+    {
+      $set: {
+        actor_author: opts.actorAuthor,
+        preview: opts.preview.slice(0, 160),
+        read: false,
+        emailed: false,
+        created_at: new Date(),
+      },
+      $setOnInsert: {
+        recipient_handle: recipientForm(opts.recipientHandle),
+        actor_handle: actorForm(opts.actorHandle),
+        post_id: opts.postId,
+        kind: opts.kind,
+      },
+    },
+    { upsert: true }
+  );
 
   await sendPushToHandle(db, opts.recipientHandle, {
     title: opts.pushTitle,

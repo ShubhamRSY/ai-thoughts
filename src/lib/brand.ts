@@ -26,7 +26,8 @@ export const BRAND = {
    * Set NEXT_PUBLIC_MS_STORE_URL after Partner Center publishes the app.
    * Empty = no Windows mention anywhere in the UI (no “coming soon”, no GitHub).
    */
-  windowsStoreUrl: (process.env.NEXT_PUBLIC_MS_STORE_URL || "").trim(),
+  // Live listing ("Aito" by Aito Social). NEXT_PUBLIC_MS_STORE_URL overrides it; "" hides it.
+  windowsStoreUrl: (process.env.NEXT_PUBLIC_MS_STORE_URL ?? "https://apps.microsoft.com/detail/9MZ2LT2MJLX1").trim(),
   /** Payment link (Stripe Payment Link / Ko-fi / GitHub Sponsors). Empty = no Support page or footer link. */
   supportUrl: (process.env.NEXT_PUBLIC_SUPPORT_URL || "").trim(),
   windowsStoreLabel: "Get it on Microsoft Store",

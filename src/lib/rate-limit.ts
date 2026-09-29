@@ -100,8 +100,31 @@ export async function rateLimit(
   return rateLimitMemory(key, limit, windowMs);
 }
 
+/**
+ * The caller's IP, for rate-limit keys and audit logs. Forwarding headers are
+ * client-writable, so they're honored only where a known proxy set them:
+ * - Vercel: the edge overwrites x-real-ip / x-forwarded-for, so they're the peer.
+ * - Self-hosted behind your own proxies: set TRUSTED_PROXY_HOPS to how many
+ *   append to X-Forwarded-For (nginx `proxy_add_x_forwarded_for` = 1 per hop);
+ *   the entry that many from the right is the one the outermost proxy saw.
+ * Otherwise (bare `next start`, `next dev`) Next only fills X-Forwarded-For
+ * from the socket when the client didn't send one, so the header can't be told
+ * apart from a forgery and is ignored: every caller shares the "unknown"
+ * bucket. That fails closed (limits still bite) instead of letting one client
+ * mint a fresh bucket per request.
+ */
 export function clientIp(request: Request): string {
-  const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
-  return request.headers.get("x-real-ip") ?? "unknown";
+  const h = request.headers;
+  if (process.env.VERCEL) {
+    return h.get("x-real-ip")?.trim() || h.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
+  }
+  const hops = Number.parseInt(process.env.TRUSTED_PROXY_HOPS ?? "", 10);
+  if (!(hops > 0)) return "unknown";
+  const chain = (h.get("x-forwarded-for") ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  // Fewer entries than hops means the request skipped a proxy — its leftmost is
+  // still the closest thing to the peer we have, and it's not client-appendable.
+  return chain[Math.max(0, chain.length - hops)] ?? "unknown";
 }

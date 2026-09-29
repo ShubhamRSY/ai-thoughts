@@ -1,4 +1,6 @@
 import webpush from "web-push";
+import { lookup } from "node:dns/promises";
+import net from "node:net";
 import type { Db } from "mongodb";
 
 export type PushSubscriptionJSON = {
@@ -45,14 +47,79 @@ function handleVariants(h: string): string[] {
 const PRIVATE_HOSTNAME_RE =
   /^(localhost|127\.|10\.|192\.168\.|169\.254\.|0\.0\.0\.0|::1$|\[::1\]$|(172\.(1[6-9]|2\d|3[0-1]))\.)/i;
 
-export function isSafePushEndpoint(endpoint: string): boolean {
+/** True when an IP literal is private/loopback/link-local/CGNAT (RFC 1918 + 6300). */
+function isPrivateIp(ip: string): boolean {
+  if (ip.includes(":")) {
+    const lower = ip.toLowerCase();
+    return (
+      lower === "::1" ||
+      lower === "::" ||
+      lower.startsWith("fc") || // fc00::/7 unique-local
+      lower.startsWith("fd") ||
+      lower.startsWith("fe8") || // fe80::/10 link-local
+      lower.startsWith("fe9") ||
+      lower.startsWith("fea") ||
+      lower.startsWith("feb")
+    );
+  }
+  const p = ip.split(".").map((n) => Number(n));
+  if (p.length !== 4 || p.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) return false;
+  const [a, b] = p;
+  if (a === 0 || a === 10 || a === 127) return true;
+  if (a === 169 && b === 254) return true; // includes 169.254.169.254 cloud metadata
+  if (a === 100 && b >= 64 && b <= 127) return true; // CGNAT
+  if (a === 172 && b >= 16 && b <= 31) return true;
+  if (a === 192 && b === 168) return true;
+  return false;
+}
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error("dns timeout")), ms);
+    p.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        reject(e);
+      }
+    );
+  });
+}
+
+/**
+ * Fail-closed SSRF guard for the URL the server will POST to unattended.
+ * A literal-IP blocklist alone is bypassed by DNS names that resolve into
+ * private ranges (e.g. metadata.google.internal → 169.254.169.254), so any
+ * hostname that isn't already an IP is resolved and every address checked.
+ */
+export async function isSafePushEndpoint(endpoint: string): Promise<boolean> {
+  let url: URL;
   try {
-    const url = new URL(endpoint);
-    if (url.protocol !== "https:") return false;
-    return !PRIVATE_HOSTNAME_RE.test(url.hostname);
+    url = new URL(endpoint);
   } catch {
     return false;
   }
+  if (url.protocol !== "https:") return false;
+  const hostname = url.hostname.replace(/^\[(.*)\]$/, "$1").toLowerCase();
+  if (PRIVATE_HOSTNAME_RE.test(hostname) || isPrivateIp(hostname)) return false;
+
+  if (net.isIP(hostname)) return true;
+
+  // Resolve with a short timeout — serverless functions must not hang on DNS.
+  let addresses: string;
+  try {
+    const res = await withTimeout(lookup(hostname, { all: true }), 3_000);
+    addresses = res.map((a) => a.address).join(",");
+  } catch {
+    return false; // NXDOMAIN / resolution failure → reject
+  }
+  const ips = addresses.split(",").filter(Boolean);
+  if (ips.length === 0) return false;
+  // One private address (DNS round-robin, rebinding, geo-ANY) poisons the lot.
+  return ips.every((ip) => !isPrivateIp(ip));
 }
 
 export async function savePushSubscription(
@@ -60,7 +127,7 @@ export async function savePushSubscription(
   handle: string,
   sub: PushSubscriptionJSON
 ): Promise<void> {
-  if (!isSafePushEndpoint(sub.endpoint)) {
+  if (!(await isSafePushEndpoint(sub.endpoint))) {
     throw new Error("Invalid subscription endpoint");
   }
   await db.collection("push_subscriptions").updateOne(
@@ -119,7 +186,7 @@ export async function sendPushToHandle(
 
   await Promise.all(
     subs.map(async (s) => {
-      if (!isSafePushEndpoint(String(s.endpoint || ""))) {
+      if (!(await isSafePushEndpoint(String(s.endpoint || "")))) {
         await db.collection("push_subscriptions").deleteOne({ endpoint: s.endpoint });
         return;
       }
@@ -129,7 +196,9 @@ export async function sendPushToHandle(
             endpoint: s.endpoint,
             keys: s.keys,
           },
-          data
+          data,
+          // One slow push service must not stall the whole fan-out (cron digests).
+          { timeout: 10_000 }
         );
       } catch (err: unknown) {
         const status = (err as { statusCode?: number })?.statusCode;

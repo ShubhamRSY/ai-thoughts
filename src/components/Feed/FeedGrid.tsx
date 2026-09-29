@@ -11,6 +11,9 @@ interface FeedGridProps {
   onOpenRoom?: (id: FeelingId) => void;
   onFeelWith?: (handle: string, next: boolean) => void;
   onQuoteRepost?: (postId: string, comment: string) => Promise<boolean>;
+  onOpenTag?: (tag: string) => void;
+  onOpenMention?: (handle: string) => void;
+  onMute?: (handle: string, muted: boolean) => void | Promise<void>;
   followingHandles?: Set<string> | string[];
   currentHandle?: string | null;
   currentAuthor?: string | null;
@@ -32,6 +35,9 @@ export default function FeedGrid({
   onOpenRoom,
   onFeelWith,
   onQuoteRepost,
+  onOpenTag,
+  onOpenMention,
+  onMute,
   followingHandles,
   currentHandle,
   currentAuthor,
@@ -80,6 +86,9 @@ export default function FeedGrid({
             onOpenRoom={onOpenRoom}
             onFeelWith={onFeelWith}
             onQuoteRepost={onQuoteRepost}
+            onOpenTag={onOpenTag}
+            onOpenMention={onOpenMention}
+            onMute={onMute}
             feelingWith={following.has(norm(t.handle))}
             currentHandle={currentHandle}
             currentAuthor={currentAuthor}

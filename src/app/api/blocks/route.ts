@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { rateLimit } from "@/lib/rate-limit";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
 import { blockUser, listBlocked, unblockUser } from "@/lib/blocks";
@@ -21,6 +22,14 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+    // Per account, not per IP: a follow/spam bot rotating IPs is still capped.
+    const { ok: withinLimit, retryInSec } = await rateLimit(`block:${session.id}`, 60, 60 * 60_000);
+    if (!withinLimit) {
+      return NextResponse.json(
+        { error: "Too many blocks — try again shortly", retry_in_sec: retryInSec },
+        { status: 429 }
+      );
+    }
 
     const body = await request.json();
     const handle = typeof body.handle === "string" ? body.handle.trim() : "";

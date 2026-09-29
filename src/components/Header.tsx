@@ -22,7 +22,7 @@ export default function Header({ onShare }: HeaderProps) {
 
   return (
     <header className="safe-top sticky top-0 z-40 border-b border-[var(--border-base)] bg-[var(--surface)]">
-      <div className="app-pad flex min-h-[var(--header-h)] items-center justify-between gap-3 py-2">
+      <div className="app-pad flex min-h-[var(--header-h)] flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2">
         <div className="min-w-0">
           <p className="font-display truncate text-[15px] font-semibold tracking-tight text-[var(--foreground)]">
             {BRAND.shortName}
@@ -30,7 +30,7 @@ export default function Header({ onShare }: HeaderProps) {
           <p className="truncate text-[11px] leading-tight text-[var(--muted)]">{BRAND.tagline}</p>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1">
           <button
             type="button"
             onClick={onShare}

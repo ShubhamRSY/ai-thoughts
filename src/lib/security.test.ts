@@ -51,6 +51,12 @@ describe("authorizeBearer", () => {
   const prevCron = process.env.CRON_SECRET;
   const prevNode = process.env.NODE_ENV;
   const prevVercel = process.env.VERCEL_ENV;
+  const prevHops = process.env.TRUSTED_PROXY_HOPS;
+  const prevOptIn = process.env.ALLOW_INSECURE_DEV_AUTH;
+  // Tests key attempts by XFF, so trust one proxy hop like a real deployment would.
+  beforeEach(() => {
+    process.env.TRUSTED_PROXY_HOPS = "1";
+  });
 
   afterEach(() => {
     if (prevCron === undefined) delete process.env.CRON_SECRET;
@@ -59,6 +65,24 @@ describe("authorizeBearer", () => {
     else process.env.NODE_ENV = prevNode;
     if (prevVercel === undefined) delete process.env.VERCEL_ENV;
     else process.env.VERCEL_ENV = prevVercel;
+    if (prevHops === undefined) delete process.env.TRUSTED_PROXY_HOPS;
+    else process.env.TRUSTED_PROXY_HOPS = prevHops;
+    if (prevOptIn === undefined) delete process.env.ALLOW_INSECURE_DEV_AUTH;
+    else process.env.ALLOW_INSECURE_DEV_AUTH = prevOptIn;
+  });
+
+  it("stays closed without a secret outside production unless explicitly opted in", async () => {
+    process.env.NODE_ENV = "development";
+    delete process.env.VERCEL_ENV;
+    delete process.env.ALLOW_INSECURE_DEV_AUTH;
+    const noSecret = { secrets: [undefined], allowInsecureDev: true };
+    const req = () => new Request("https://example.com", { headers: { "x-forwarded-for": "203.0.113.4" } });
+    assert.equal(await authorizeBearer(req(), noSecret), false); // the bootstrap takeover
+    process.env.ALLOW_INSECURE_DEV_AUTH = "1";
+    assert.equal(await authorizeBearer(req(), noSecret), true);
+    assert.equal(await authorizeBearer(req(), { secrets: [undefined] }), false); // route must consent too
+    process.env.VERCEL_ENV = "preview";
+    assert.equal(await authorizeBearer(req(), noSecret), false); // never on any Vercel deploy
   });
 
   it("accepts valid bearer in production", async () => {
@@ -117,23 +141,28 @@ describe("authorizeBearer", () => {
 });
 
 describe("isSafePushEndpoint (SSRF guard)", () => {
-  it("accepts real push services", () => {
-    assert.equal(isSafePushEndpoint("https://fcm.googleapis.com/fcm/send/abc"), true);
-    assert.equal(isSafePushEndpoint("https://updates.push.services.mozilla.com/wpush/v2/abc"), true);
+  it("accepts real push services", async () => {
+    assert.equal(await isSafePushEndpoint("https://fcm.googleapis.com/fcm/send/abc"), true);
+    assert.equal(await isSafePushEndpoint("https://updates.push.services.mozilla.com/wpush/v2/abc"), true);
   });
-  it("rejects non-https", () => {
-    assert.equal(isSafePushEndpoint("http://fcm.googleapis.com/fcm/send/abc"), false);
+  it("rejects non-https", async () => {
+    assert.equal(await isSafePushEndpoint("http://fcm.googleapis.com/fcm/send/abc"), false);
   });
-  it("rejects loopback / private / link-local hosts", () => {
-    assert.equal(isSafePushEndpoint("https://localhost/x"), false);
-    assert.equal(isSafePushEndpoint("https://127.0.0.1/x"), false);
-    assert.equal(isSafePushEndpoint("https://10.0.0.5/x"), false);
-    assert.equal(isSafePushEndpoint("https://192.168.1.1/x"), false);
-    assert.equal(isSafePushEndpoint("https://169.254.169.254/latest/meta-data"), false);
-    assert.equal(isSafePushEndpoint("https://172.16.0.1/x"), false);
+  it("rejects loopback / private / link-local hosts", async () => {
+    assert.equal(await isSafePushEndpoint("https://localhost/x"), false);
+    assert.equal(await isSafePushEndpoint("https://127.0.0.1/x"), false);
+    assert.equal(await isSafePushEndpoint("https://10.0.0.5/x"), false);
+    assert.equal(await isSafePushEndpoint("https://192.168.1.1/x"), false);
+    assert.equal(await isSafePushEndpoint("https://169.254.169.254/latest/meta-data"), false);
+    assert.equal(await isSafePushEndpoint("https://172.16.0.1/x"), false);
   });
-  it("rejects garbage", () => {
-    assert.equal(isSafePushEndpoint("not-a-url"), false);
+  it("rejects DNS names that resolve to private ranges", async () => {
+    // The literal-IP blocklist alone is bypassable (this hostname resolves to
+    // 169.254.169.254 / link-local) — resolution must catch it.
+    assert.equal(await isSafePushEndpoint("https://metadata.google.internal/"), false);
+  });
+  it("rejects garbage", async () => {
+    assert.equal(await isSafePushEndpoint("not-a-url"), false);
   });
 });
 

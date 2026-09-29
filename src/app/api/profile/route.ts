@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAllowedMediaUrl } from "@/lib/media-sniff";
+import { isFlaggedContent } from "@/lib/content-moderation";
+import { rateLimit } from "@/lib/rate-limit";
 import { ObjectId, type Db } from "mongodb";
 import { connectToDatabase } from "@/lib/mongodb";
 import {
@@ -72,6 +75,14 @@ export async function PUT(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+    // Per account, not per IP: a follow/spam bot rotating IPs is still capped.
+    const { ok: withinLimit, retryInSec } = await rateLimit(`profile-edit:${session.id}`, 30, 10 * 60_000);
+    if (!withinLimit) {
+      return NextResponse.json(
+        { error: "Too many profile edits — try again shortly", retry_in_sec: retryInSec },
+        { status: 429 }
+      );
+    }
 
     const body = await request.json();
     const author =
@@ -86,12 +97,16 @@ export async function PUT(request: NextRequest) {
     // Fields left out of the request keep their saved value (e.g. the onboarding
     // name/username save must not wipe a bio or photo).
     const bio = typeof body.bio === "string" ? body.bio.trim().slice(0, 160) : undefined;
+    // "" clears the photo; anything else must be our own Blob store, like post
+    // media (any https URL let a profile load a third-party tracker for viewers).
+    if (typeof body.avatarUrl === "string" && body.avatarUrl && !isAllowedMediaUrl(body.avatarUrl)) {
+      return NextResponse.json({ error: "Profile photo must be uploaded here" }, { status: 400 });
+    }
     const avatarUrl =
-      typeof body.avatarUrl === "string"
-        ? body.avatarUrl.startsWith("https://")
-          ? body.avatarUrl.slice(0, 500)
-          : null
-        : undefined;
+      typeof body.avatarUrl === "string" ? (body.avatarUrl ? body.avatarUrl.slice(0, 500) : null) : undefined;
+    if (avatarUrl && (await isFlaggedContent({ imageUrl: avatarUrl }))) {
+      return NextResponse.json({ error: "That photo breaks the community guidelines — choose another." }, { status: 400 });
+    }
 
     const { db } = await connectToDatabase();
 

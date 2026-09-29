@@ -64,6 +64,8 @@ async function sendEmail(opts: {
       text: opts.text,
       html: opts.html,
     }),
+    // A hung provider must not hold the sign-in request open until the platform kills it.
+    signal: AbortSignal.timeout(10_000),
   });
 
   if (res.ok) return;
@@ -123,6 +125,36 @@ export async function sendOtpEmail(to: string, code: string): Promise<void> {
   `;
 
   await sendEmail({ to, subject, text, html });
+}
+
+/**
+ * Sent on every sign-in to an existing account. With email-only login a stolen
+ * inbox is a stolen account, so the owner hears about each new device and can
+ * end it from Account → Devices.
+ */
+export async function sendSignInAlertEmail(to: string, device: string): Promise<void> {
+  const when = new Date().toUTCString();
+  const shownDevice = device.slice(0, 160) || "Unknown device";
+  const devicesUrl = `${getSiteUrl()}/app?view=account`;
+  const text = [
+    "New sign-in to your AI·Thoughts account",
+    "",
+    `Device: ${shownDevice}`,
+    `Time: ${when}`,
+    "",
+    `If this wasn't you, sign out everywhere: ${devicesUrl}`,
+  ].join("\n");
+  const html = `
+    <div style="font-family:system-ui,-apple-system,sans-serif;max-width:420px;margin:0 auto;padding:24px;color:#18181b">
+      <p style="font-size:14px;color:#71717a;margin:0 0 16px">AI·Thoughts</p>
+      <h1 style="font-size:20px;margin:0 0 12px">New sign-in to your account</h1>
+      <p style="font-size:14px;line-height:1.5;margin:0">Device: ${escapeHtml(shownDevice)}<br>Time: ${when}</p>
+      <p style="font-size:14px;color:#52525b;line-height:1.5">
+        If this wasn't you, <a href="${devicesUrl}">sign out everywhere</a>.
+      </p>
+    </div>
+  `;
+  await sendEmail({ to, subject: "New sign-in to AI·Thoughts", text, html });
 }
 
 export async function sendActivityDigestEmail(

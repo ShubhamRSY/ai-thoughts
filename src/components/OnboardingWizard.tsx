@@ -383,6 +383,7 @@ export default function OnboardingWizard({
 
             <textarea
               value={text}
+              aria-label="Your answer to today’s prompt"
               onChange={(e) => {
                 setText(e.target.value);
                 setPublishError(null);

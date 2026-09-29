@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
+import { sendSignInAlertEmail } from "@/lib/email";
 import {
   findOrCreateUser,
   createSession,
@@ -116,6 +117,13 @@ export async function POST(request: Request) {
     }
 
     const token = await createSession(user, { userAgent: request.headers.get("user-agent") });
+
+    if (!createdNew) {
+      const device = request.headers.get("user-agent") ?? "";
+      after(() =>
+        sendSignInAlertEmail(normalized, device).catch((e) => console.error("sign-in alert failed:", e))
+      );
+    }
 
     const res = NextResponse.json({
       ok: true,

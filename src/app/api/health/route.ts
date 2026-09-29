@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "crypto";
 import { envStatus, isProductionRuntime } from "@/lib/env";
 import { isMongoConfigured, connectToDatabase } from "@/lib/mongodb";
 import { ensureCoreIndexes } from "@/lib/indexes";
@@ -8,8 +9,38 @@ export const dynamic = "force-dynamic";
 /**
  * GET /api/health — uptime + config presence (no secrets).
  * Returns 503 when production is missing required env, or Mongo ping fails.
+ *
+ * Detail (missing env key NAMES, index state) is only returned when the caller
+ * presents a configured Bearer secret, so an anonymous uptime probe sees the
+ * health state but can't glean deployment internals (e.g. which env vars are
+ * absent lets an attacker tailor a supply-chain or env-confusion attack).
  */
-export async function GET() {
+function hasSecret(request: Request): boolean {
+  const secrets = [
+    process.env.OWNER_DASHBOARD_SECRET,
+    process.env.CRON_SECRET,
+    process.env.ADMIN_SEED_SECRET,
+  ]
+    .map((s) => s?.trim())
+    .filter((s): s is string => Boolean(s));
+  if (secrets.length === 0) return false;
+
+  const header = request.headers.get("authorization") ?? "";
+  const bearer = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+  if (!bearer) return false;
+
+  try {
+    const a = Buffer.from(bearer, "utf8");
+    return secrets.some((s) => {
+      const b = Buffer.from(s, "utf8");
+      return a.length === b.length && timingSafeEqual(a, b);
+    });
+  } catch {
+    return false;
+  }
+}
+
+export async function GET(request: Request) {
   const env = envStatus();
   let mongo: "ok" | "skip" | "error" = "skip";
   let indexes: "ok" | "skip" | "error" = "skip";
@@ -39,6 +70,8 @@ export async function GET() {
     mongo !== "error" &&
     (!isProductionRuntime() || mongo === "ok");
 
+  const authorized = hasSecret(request);
+
   return NextResponse.json(
     {
       ok: healthy,
@@ -46,11 +79,17 @@ export async function GET() {
       time: new Date().toISOString(),
       env: {
         ok: env.ok,
-        missing_required: env.missingRequired,
-        missing_recommended: env.missingRecommended,
+        // Only an authorized caller sees which specific names are missing;
+        // probes/rogue clients just see the aggregate ok/not-ok flag.
+        ...(authorized
+          ? {
+              missing_required: env.missingRequired,
+              missing_recommended: env.missingRecommended,
+            }
+          : {}),
       },
       mongo,
-      indexes,
+      ...(authorized ? { indexes } : {}),
     },
     {
       status: healthy ? 200 : 503,

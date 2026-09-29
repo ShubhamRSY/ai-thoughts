@@ -27,9 +27,18 @@ export async function ensureCoreIndexes(db: Db): Promise<void> {
       { user_id: 1, created_at: -1 },
       { name: "posts_user_created" }
     ),
-    db.collection("users").createIndex(
-      { handle: 1 },
-      { name: "users_handle" }
+    // Main feed: newest-first over all posts. Without it the feed scanned the
+    // whole collection on every load (soak test: latency climbed with post count).
+    // The _id tiebreak makes "load older" pagination exact for same-ms posts.
+    db.collection("posts").createIndex(
+      { created_at: -1, _id: -1 },
+      { name: "posts_created_id" }
+    ),
+    // Reply threads + per-post reply counts on every feed page. Without it each
+    // feed load was a full scan of every reply ever written.
+    db.collection("messages").createIndex(
+      { post_id: 1, created_at: 1 },
+      { name: "messages_post_created" }
     ),
     db.collection("push_subscriptions").createIndex(
       { endpoint: 1 },
@@ -52,6 +61,11 @@ export async function ensureCoreIndexes(db: Db): Promise<void> {
       { unique: true, name: "blocks_pair_unique" }
     ),
     db.collection("blocks").createIndex({ blocked: 1 }, { name: "blocks_blocked" }),
+    db.collection("mutes").createIndex(
+      { muter: 1, muted: 1 },
+      { unique: true, name: "mutes_pair_unique" }
+    ),
+    db.collection("mutes").createIndex({ muter: 1, created_at: -1 }, { name: "mutes_muter_created" }),
     db.collection("sessions").createIndex({ sid: 1 }, { unique: true, name: "sessions_sid_unique" }),
     db.collection("sessions").createIndex({ user_id: 1 }, { name: "sessions_user" }),
     db.collection("sessions").createIndex(
@@ -91,6 +105,31 @@ export async function ensureCoreIndexes(db: Db): Promise<void> {
     }
   }
 
+  // Handles are identity (ownership, deletes, mentions all key on them), so two
+  // sign-ups racing for the same username must not both get it. Replaces the
+  // old non-unique "users_handle" index on the same key.
+  try {
+    const users = db.collection("users");
+    const spec = { handle: 1 } as const;
+    const opts = {
+      unique: true,
+      partialFilterExpression: { handle: { $type: "string" } },
+      name: "users_handle_unique",
+    };
+    try {
+      await users.createIndex(spec, opts);
+    } catch (e) {
+      const code = (e as { code?: number }).code;
+      if (code !== 85 && code !== 86) throw e; // IndexOptionsConflict / IndexKeySpecsConflict
+      await users.dropIndex("users_handle");
+      await users.createIndex(spec, opts);
+    }
+  } catch (e) {
+    // E11000 here means existing duplicate handles — rename one of each pair,
+    // then the next health check builds the index.
+    console.error("ensureCoreIndexes users_handle_unique:", (e as Error)?.message || e);
+  }
+
   // One report queue entry per (post, reporter): collapse legacy duplicates
   // first so the unique index can be built, then enforce it going forward.
   // Best-effort — a failure here must not break boot (the report route also
@@ -120,6 +159,40 @@ export async function ensureCoreIndexes(db: Db): Promise<void> {
     );
   } catch (e) {
     console.warn("ensureCoreIndexes reports:", (e as Error)?.message || e);
+  }
+
+  // One notification row per (recipient, actor, post, kind) — "arrive exactly
+  // once" (see writeActivity's upsert). Collapse legacy duplicates first so the
+  // unique index can be built; best-effort, never blocks boot.
+  try {
+    const notifications = db.collection("notifications");
+    const groups = await notifications
+      .aggregate<{ ids: ObjectId[]; latest: ObjectId }>([
+        {
+          $group: {
+            _id: {
+              recipient_handle: "$recipient_handle",
+              actor_handle: "$actor_handle",
+              post_id: "$post_id",
+              kind: "$kind",
+            },
+            ids: { $push: "$_id" },
+            latest: { $max: "$_id" },
+          },
+        },
+        { $match: { $expr: { $gt: [{ $size: "$ids" }, 1] } } },
+      ])
+      .toArray();
+    const surplus = groups.flatMap((g) => g.ids.filter((id) => !id.equals(g.latest as ObjectId)));
+    if (surplus.length > 0) {
+      await notifications.deleteMany({ _id: { $in: surplus } });
+    }
+    await notifications.createIndex(
+      { recipient_handle: 1, actor_handle: 1, post_id: 1, kind: 1 },
+      { unique: true, name: "notifications_activity_unique" }
+    );
+  } catch (e) {
+    console.warn("ensureCoreIndexes notifications:", (e as Error)?.message || e);
   }
 
   ensured = true;

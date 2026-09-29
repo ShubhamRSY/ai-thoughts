@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   Trash2,
   HeartHandshake,
+  BellOff,
 } from "lucide-react";
 import type { Thought, Reaction, FeelingId, LikedByPerson } from "@/lib/types";
 import { LIKE_REACTION, BOOST_REACTION, BOOKMARK_REACTION, formatLikedBy } from "@/lib/likes";
@@ -41,6 +42,47 @@ function initials(name: string) {
     .toUpperCase();
 }
 
+/**
+ * Renders @handle and #tag tokens inside post text as tappable buttons.
+ * Tapping never steals focus from the card; it opens the search tab (tag) or
+ * the person's profile (mention) via the card's handlers.
+ */
+function linkifyText(
+  text: string,
+  onOpenTag?: (tag: string) => void,
+  onOpenMention?: (handle: string) => void
+) {
+  const parts = text.split(/(#\w+|\uFF03\w+|@[\w.-]+)/g);
+  return parts.map((part, i) => {
+    if (!part || part === " ") return <span key={i}> </span>;
+    if (part.length > 1 && part.startsWith("#")) {
+      return (
+        <button
+          key={i}
+          type="button"
+          onClick={() => onOpenTag?.(part.slice(1))}
+          className="font-semibold text-[var(--accent)] hover:underline"
+        >
+          {part}
+        </button>
+      );
+    }
+    if (part.length > 1 && part.startsWith("@")) {
+      return (
+        <button
+          key={i}
+          type="button"
+          onClick={() => onOpenMention?.(part)}
+          className="font-semibold text-[var(--accent)] hover:underline"
+        >
+          {part}
+        </button>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+
 export type ReportReason =
   | "Hate or harassment"
   | "Unsafe or explicit"
@@ -58,6 +100,12 @@ interface FeedCardProps {
   onOpenRoom?: (id: FeelingId) => void;
   onFeelWith?: (handle: string, next: boolean) => void;
   onQuoteRepost?: (postId: string, comment: string) => Promise<boolean>;
+  /** Tap a #tag in a take's text → jump to search. */
+  onOpenTag?: (tag: string) => void;
+  /** Tap an @mention in a take's text → open that person. */
+  onOpenMention?: (handle: string) => void;
+  /** Mute/unmute the author from the card's menu. */
+  onMute?: (handle: string, muted: boolean) => void | Promise<void>;
   feelingWith?: boolean;
   /** Signed-in handle — only this author sees Delete on their take. */
   currentHandle?: string | null;
@@ -91,11 +139,15 @@ export default function FeedCard({
   onOpenRoom,
   onFeelWith,
   onQuoteRepost,
+  onOpenTag,
+  onOpenMention,
+  onMute,
   feelingWith,
   currentHandle,
   currentAuthor,
   forceChatOpen,
 }: FeedCardProps) {
+  const [muted, setMuted] = useState(false);
   const [liked, setLiked] = useState(Boolean(thought.likedByMe));
   const [likes, setLikes] = useState(
     typeof thought.likeCount === "number"
@@ -365,6 +417,19 @@ export default function FeedCard({
                         {feelingActive ? "Unfollow" : "Follow"}
                       </button>
                     )}
+                    {!isAuthor && onMute && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          void onMute(thought.handle, !muted);
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-[var(--surface-2)]"
+                      >
+                        <BellOff className="h-3.5 w-3.5" />
+                        {muted ? "Unmute" : "Mute"}
+                      </button>
+                    )}
                     {!isAuthor && (
                       <button
                         type="button"
@@ -461,7 +526,7 @@ export default function FeedCard({
           dir="auto"
           className="whitespace-pre-wrap text-[17px] leading-relaxed text-[var(--user-ink)]"
         >
-          {thought.content}
+          {linkifyText(thought.content, onOpenTag, onOpenMention)}
         </p>
         {shouldOfferTranslate(thought.language) && (
           <TranslateToEnglish text={thought.content} sourceLang={thought.language} />
@@ -471,7 +536,14 @@ export default function FeedCard({
             {thought.tags.map((t) => {
               const tag = t.replace(/^#/, "");
               return (
-                <span key={tag}>#{tag}</span>
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => onOpenTag?.(tag)}
+                  className="hover:underline"
+                >
+                  #{tag}
+                </button>
               );
             })}
           </p>
@@ -501,17 +573,17 @@ export default function FeedCard({
                   dir="auto"
                   className="mt-1 line-clamp-4 whitespace-pre-wrap text-[14px] leading-relaxed text-[var(--user-ink)]/85"
                 >
-                  {thought.quotedPost.content}
+                  {linkifyText(thought.quotedPost.content, onOpenTag, onOpenMention)}
                 </p>
               </>
             ) : (
-              <p className="text-[13px] text-[var(--foreground)]/50">This take was removed.</p>
+              <p className="text-[13px] text-[var(--muted)]">This take was removed.</p>
             )}
           </div>
         )}
       </div>
 
-      <div className="relative z-0 mt-4 flex items-center justify-between gap-3 text-[var(--foreground)]/65">
+      <div className="relative z-0 mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 text-[var(--foreground)]/65">
         <button
           type="button"
           onClick={() => void like()}
@@ -561,7 +633,7 @@ export default function FeedCard({
           {commentCount != null && commentCount > 0 ? commentCount : "Reply"}
         </button>
         {typeof thought.viewCount === "number" && thought.viewCount > 0 && (
-          <span className="flex items-center gap-1.5 text-sm font-medium text-[var(--foreground)]/50">
+          <span className="flex items-center gap-1.5 text-sm font-medium text-[var(--muted)]">
             <BarChart2 className="h-5 w-5" strokeWidth={2} />
             {thought.viewCount}
           </span>
@@ -628,6 +700,7 @@ export default function FeedCard({
               <div className="overflow-y-auto overscroll-contain px-5 py-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
                 <textarea
                   value={quoteText}
+                  aria-label="Add a comment"
                   onChange={(e) => setQuoteText(e.target.value.slice(0, 500))}
                   rows={3}
                   placeholder="Add a comment…"

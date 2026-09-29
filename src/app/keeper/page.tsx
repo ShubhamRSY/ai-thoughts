@@ -6,7 +6,7 @@ import { ShieldCheck, ArrowLeft, Flag, RefreshCw, Check } from "lucide-react";
 import {
   fetchReports,
   resolveReport,
-  deletePost,
+  moderateReport,
   isKeeper,
   type ReportRow,
   isLive,
@@ -103,9 +103,15 @@ export default function KeeperPage() {
 
   const handleDelete = async (r: ReportRow) => {
     setWorking(r.id);
-    const ok = await deletePost(r.post_id);
-    if (ok) await resolveReport(r.id);
-    setReports((prev) => prev.filter((x) => x.id !== r.id));
+    const ok = await moderateReport(r.id, "remove_post");
+    if (ok) setReports((prev) => prev.filter((x) => x.id !== r.id));
+    setWorking(null);
+  };
+
+  const handleModerate = async (r: ReportRow, action: string) => {
+    setWorking(r.id);
+    const ok = await moderateReport(r.id, action);
+    if (ok) setReports((prev) => prev.filter((x) => x.id !== r.id));
     setWorking(null);
   };
 
@@ -196,7 +202,14 @@ export default function KeeperPage() {
               key={r.id}
               className="rounded-2xl border border-[var(--border-base)] bg-white p-4 shadow-sm shadow-slate-900/5"
             >
-              <div className="flex items-center gap-2 text-xs text-[var(--muted)]">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]">
+                <span className="rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--foreground)]/70">
+                  {r.target_type === "comment"
+                    ? "Comment"
+                    : r.target_type === "user"
+                      ? "Account"
+                      : "Take"}
+                </span>
                 <Flag className="h-3.5 w-3.5 text-rose-500" />
                 <span className="font-semibold text-rose-700">{r.reason}</span>
                 <span>·</span>
@@ -210,14 +223,42 @@ export default function KeeperPage() {
                   “{r.content_snippet}”
                 </p>
               )}
-              <div className="mt-3 flex items-center gap-2">
-                <button
-                  onClick={() => handleDelete(r)}
-                  disabled={working === r.id}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-rose-500 disabled:opacity-50"
-                >
-                  {working === r.id ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : "Remove take"}
-                </button>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {r.target_type === "comment" ? (
+                  <button
+                    onClick={() => handleModerate(r, "remove_comment")}
+                    disabled={working === r.id}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-rose-500 disabled:opacity-50"
+                  >
+                    {working === r.id ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : "Remove comment"}
+                  </button>
+                ) : r.target_type === "user" ? (
+                  <button
+                    onClick={() => {
+                      if (!window.confirm(`Ban ${r.reported_handle ?? "this account"}? They'll be logged out everywhere and their takes removed.`)) return;
+                      void handleModerate(r, "ban");
+                    }}
+                    disabled={working === r.id}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-rose-500 disabled:opacity-50"
+                  >
+                    {working === r.id ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : "Ban account"}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      if (r.reason === "Spam or coordinated accounts") {
+                        if (!window.confirm(`Remove the take and ban ${r.reported_handle ?? "this account"}?`)) return;
+                        void handleModerate(r, "ban");
+                      } else {
+                        void handleDelete(r);
+                      }
+                    }}
+                    disabled={working === r.id}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-rose-500 disabled:opacity-50"
+                  >
+                    {working === r.id ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : "Remove take"}
+                  </button>
+                )}
                 <button
                   onClick={() => handleResolve(r)}
                   disabled={working === r.id}

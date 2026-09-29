@@ -4,18 +4,24 @@ import { attachDatabasePool } from "@vercel/functions";
 const MONGODB_URI = process.env.MONGODB_URL ?? process.env.MONGODB_URI ?? "";
 const DB_NAME = process.env.MONGODB_DB ?? "aithoughts";
 
-let cachedClient: MongoClient | null = null;
-let cachedDb: Db | null = null;
+// The in-flight connect is cached, not just its result: caching only after
+// `await` let every request in a cold-start burst open its own client + pool
+// (200 concurrent → 412 server connections in a load test).
+let connection: Promise<{ client: MongoClient; db: Db }> | null = null;
 
 export function isMongoConfigured(): boolean {
   return Boolean(MONGODB_URI);
 }
 
-export async function connectToDatabase(): Promise<{ client: MongoClient; db: Db }> {
-  if (cachedClient && cachedDb) {
-    return { client: cachedClient, db: cachedDb };
-  }
+export function connectToDatabase(): Promise<{ client: MongoClient; db: Db }> {
+  connection ??= connect().catch((e) => {
+    connection = null; // let the next request retry instead of caching the failure
+    throw e;
+  });
+  return connection;
+}
 
+async function connect(): Promise<{ client: MongoClient; db: Db }> {
   if (!MONGODB_URI) {
     throw new Error("MONGODB_URI is not set");
   }
@@ -28,8 +34,11 @@ export async function connectToDatabase(): Promise<{ client: MongoClient; db: Db
     },
     autoSelectFamily: false,
     family: 4,
-    serverSelectionTimeoutMS: 30000,
-    connectTimeoutMS: 15000,
+    // Fail fast when the DB is unreachable: at 30s/15s every request hung ~25s
+    // during an outage (load test), pinning function instances and making
+    // /api/health useless as a liveness signal. 5s covers a slow Atlas handshake.
+    serverSelectionTimeoutMS: 5000,
+    connectTimeoutMS: 5000,
     socketTimeoutMS: 45000,
     retryWrites: true,
     tls: true,
@@ -40,10 +49,5 @@ export async function connectToDatabase(): Promise<{ client: MongoClient; db: Db
   // resumed cleanly (prevents connection leaks / exhausted pools on cold starts).
   attachDatabasePool(client);
 
-  const db = client.db(DB_NAME);
-
-  cachedClient = client;
-  cachedDb = db;
-
-  return { client, db };
+  return { client, db: client.db(DB_NAME) };
 }

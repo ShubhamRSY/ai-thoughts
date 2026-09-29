@@ -49,7 +49,7 @@ export default function DailyCheckIn({
             <button
               type="button"
               onClick={onBrowseToday}
-              className="mt-2 text-xs font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
+              className="mt-2 text-xs font-semibold text-[var(--accent)] underline underline-offset-2"
             >
               See how {todayAnswerCount} other{todayAnswerCount === 1 ? "" : "s"} feel →
             </button>

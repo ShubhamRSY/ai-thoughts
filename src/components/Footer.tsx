@@ -9,6 +9,7 @@ export default function Footer({ hideRunBy = false }: { hideRunBy?: boolean }) {
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-[var(--muted)]">
         <Link href="/terms" className="hover:text-[var(--foreground)]">Terms</Link>
         <Link href="/privacy" className="hover:text-[var(--foreground)]">Privacy</Link>
+        <Link href="/dmca" className="hover:text-[var(--foreground)]">DMCA</Link>
         <Link href="/guidelines" className="hover:text-[var(--foreground)]">Guidelines</Link>
         <Link href="/trust" className="hover:text-[var(--foreground)]">Trust</Link>
         {BRAND.supportUrl && (

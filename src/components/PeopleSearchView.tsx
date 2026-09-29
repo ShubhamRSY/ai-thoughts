@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Search, UserPlus, UserCheck } from "lucide-react";
+import { Search, UserPlus, UserCheck, MessageSquare } from "lucide-react";
 
 export type PersonHit = {
   handle: string;
@@ -13,11 +13,25 @@ export type PersonHit = {
   requested?: boolean;
 };
 
+export type SearchPostHit = {
+  id: string;
+  handle: string;
+  author: string;
+  content: string;
+  media_type: string;
+  created_at?: string;
+  tags?: string[];
+};
+
 interface PeopleSearchViewProps {
   signedIn: boolean;
   onNeedSignIn?: () => void;
   onFollow: (handle: string, next: boolean) => void | Promise<void>;
   onOpenPerson?: (handle: string) => void;
+  onOpenPost?: (id: string) => void;
+  onSearch?: (q: string) => void;
+  /** Seed the box with a #tag tapped on a take; the parent clears it on reset. */
+  queryOverride?: string | null;
 }
 
 function initials(name: string) {
@@ -31,14 +45,27 @@ function initials(name: string) {
   );
 }
 
+function timeAgo(iso?: string) {
+  if (!iso) return "";
+  const ms = Date.now() - new Date(iso).getTime();
+  if (ms < 60_000) return "now";
+  if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m`;
+  if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h`;
+  return `${Math.floor(ms / 86_400_000)}d`;
+}
+
 export default function PeopleSearchView({
   signedIn,
   onNeedSignIn,
   onFollow,
   onOpenPerson,
+  onOpenPost,
+  onSearch,
+  queryOverride,
 }: PeopleSearchViewProps) {
   const [query, setQuery] = useState("");
   const [people, setPeople] = useState<PersonHit[]>([]);
+  const [posts, setPosts] = useState<SearchPostHit[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busyHandle, setBusyHandle] = useState<string | null>(null);
@@ -47,7 +74,7 @@ export default function PeopleSearchView({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/people?q=${encodeURIComponent(q)}`, {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`, {
         credentials: "include",
         cache: "no-store",
       });
@@ -55,16 +82,26 @@ export default function PeopleSearchView({
       if (!res.ok) {
         setError(data.error || "Search failed");
         setPeople([]);
+        setPosts([]);
         return;
       }
       setPeople(data.people ?? []);
+      setPosts(data.posts ?? []);
     } catch {
       setError("Network error");
       setPeople([]);
+      setPosts([]);
     } finally {
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (queryOverride !== null && queryOverride !== undefined) {
+      setQuery(queryOverride);
+      onSearch?.(queryOverride);
+    }
+  }, [queryOverride, onSearch]);
 
   useEffect(() => {
     const t = window.setTimeout(() => void load(query.trim()), query.trim() ? 280 : 0);
@@ -109,9 +146,10 @@ export default function PeopleSearchView({
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
         <input
           type="search"
+          aria-label="Search people, takes, and tags"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search people"
+          placeholder="Search people, takes, and #tags"
           autoCapitalize="off"
           autoCorrect="off"
           spellCheck={false}
@@ -120,22 +158,22 @@ export default function PeopleSearchView({
       </div>
 
       <p className="text-[13px] text-[var(--foreground)]/70">
-        {query.trim()
-          ? "People matching your search"
-          : "Suggested people — follow to see them in your circle"}
+        {query.trim() ? "Results across people, takes, and tags" : "Suggested people — follow to see them in your circle"}
       </p>
 
       {error && <p className="text-[13px] text-rose-700">{error}</p>}
 
-      {loading && people.length === 0 ? (
+      {loading && people.length === 0 && posts.length === 0 ? (
         <p className="py-8 text-center text-sm text-[var(--muted)]">Searching…</p>
-      ) : people.length === 0 ? (
+      ) : people.length === 0 && posts.length === 0 && query.trim() ? (
         <p className="rounded-xl border border-dashed border-[var(--border-base)] px-3 py-10 text-center text-sm text-[var(--muted)]">
-          {query.trim() ? "No people found — try another name or @handle." : "No suggestions yet."}
+          No results for “{query.trim()}”. Try another name, @handle, or #tag.
         </p>
       ) : (
-        <ul className="divide-y divide-[var(--border-base)] rounded-xl border border-[var(--border-base)] bg-[var(--surface)]">
-          {people.map((p) => (
+        <>
+          {people.length > 0 ? (
+            <ul className="divide-y divide-[var(--border-base)] rounded-xl border border-[var(--border-base)] bg-[var(--surface)]">
+              {people.map((p) => (
             <li key={p.handle} className="flex items-center gap-3 px-3 py-2.5">
               <button
                 type="button"
@@ -194,7 +232,50 @@ export default function PeopleSearchView({
             </li>
           ))}
         </ul>
-      )}
+      ) : null}
+
+      {posts.length > 0 ? (
+        <>
+          <p className="text-[13px] font-medium text-[var(--foreground)]/60">Takes</p>
+          <ul className="divide-y divide-[var(--border-base)] rounded-xl border border-[var(--border-base)] bg-[var(--surface)]">
+            {posts.map((post) => {
+              const tags = (post.tags ?? []).filter(Boolean);
+              return (
+                <li key={post.id}>
+                  <button
+                    type="button"
+                    onClick={() => onOpenPost?.(post.id)}
+                    className="flex w-full min-w-0 items-center gap-3 px-3 py-2.5 text-left"
+                  >
+                    <MessageSquare className="h-4 w-4 shrink-0 text-[var(--muted)]" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] text-[var(--foreground)]/70">
+                        {post.author}{" "}
+                        <span className="text-[var(--muted)]">{post.handle}</span>
+                        {post.created_at ? (
+                          <span className="ml-1 text-[var(--muted)]">
+                            · {timeAgo(post.created_at)}
+                          </span>
+                        ) : null}
+                      </p>
+                      <p className="line-clamp-2 text-[14px] text-[var(--foreground)]">
+                        {post.content}
+                      </p>
+                      {tags.length > 0 ? (
+                        <p className="mt-0.5 truncate text-[12px] text-[var(--accent)]">
+                          {tags.map((t) => `#${t}`).join(" ")}
+                        </p>
+                      ) : null}
+                    </div>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      ) : null}
+    </>
+    )}
     </div>
   );
 }

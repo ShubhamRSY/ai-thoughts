@@ -49,6 +49,10 @@ export default defineConfig({
             process.env.MONGODB_URL ??
             "mongodb://127.0.0.1:27017/aithoughts-e2e?tlsAllowInvalidCertificates=true",
           MONGODB_DB: process.env.MONGODB_DB ?? "aithoughts-e2e",
+          // Tests give each context its own X-Forwarded-For so rate-limit
+          // buckets stay per-test; clientIp() only honors that header behind a
+          // trusted proxy, so run the server as if behind one hop.
+          TRUSTED_PROXY_HOPS: "1",
         },
       },
 });

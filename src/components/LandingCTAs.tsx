@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import WindowsStoreCta from "@/components/WindowsStoreCta";
+import WindowsStoreCta, { isWindowsBrowser } from "@/components/WindowsStoreCta";
 
 function isDesktopDevice(): boolean {
   if (typeof navigator === "undefined" || typeof window === "undefined") return false;
@@ -28,9 +28,11 @@ export default function LandingCTAs({
 }: LandingCTAsProps) {
   const [desktop, setDesktop] = useState(false);
   const [showPcNotice, setShowPcNotice] = useState(false);
+  const [windows, setWindows] = useState(false);
 
   useEffect(() => {
     setDesktop(isDesktopDevice());
+    setWindows(isWindowsBrowser());
   }, []);
 
   return (
@@ -39,6 +41,13 @@ export default function LandingCTAs({
         <Link href={ctaHref} className="landing-btn landing-btn-primary">
           {ctaLabel}
         </Link>
+        {windows && (
+          <WindowsStoreCta
+            className="contents"
+            buttonClassName="landing-btn landing-btn-ghost"
+            showNote={false}
+          />
+        )}
         {desktop ? (
           <button
             type="button"

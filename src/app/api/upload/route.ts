@@ -6,20 +6,31 @@ import { rateLimit, clientIp } from "@/lib/rate-limit";
 const IP_UPLOAD_LIMIT = 20;
 const IP_UPLOAD_WINDOW_MS = 10 * 60_000;
 
-// Only the audio/video types the recorder can actually produce (plus common
-// fallbacks) are accepted — this is what keeps an uploaded file from ever
-// being served back as executable HTML/JS from our own origin.
+// Only audio/video/image types the app can actually play — nothing that a
+// browser could ever interpret as HTML/JS from our own origin. Mobile cameras
+// commonly export MOV (video/quicktime), iPhones record audio/aac, and Android
+// supplies image/heic, so those are accepted and normalized on the client
+// (video/quicktime and image/heic are re-encoded before upload when possible).
 const ALLOWED_CONTENT_TYPES = [
   "audio/webm",
   "audio/mp4",
   "audio/mpeg",
+  "audio/mp3",
   "audio/ogg",
+  "audio/aac",
+  "audio/wav",
+  "audio/x-wav",
+  "audio/x-m4a",
   "video/webm",
   "video/mp4",
   "video/ogg",
+  "video/quicktime",
+  "video/x-m4v",
   "image/jpeg",
   "image/png",
   "image/webp",
+  "image/heic",
+  "image/heif",
 ];
 const MAX_FILE_BYTES = 150 * 1024 * 1024;
 

@@ -1,4 +1,5 @@
 import { upload } from "@vercel/blob/client";
+import { stripImageMetadata } from "@/lib/image";
 import type { Thought, PublishResult } from "@/lib/types";
 type PublishInput = Omit<Thought, "id" | "reactions" | "timeLabel">;
 
@@ -150,11 +151,14 @@ export async function fetchPulsePosts(opts?: {
   promptDay?: string;
   /** ISO timestamp — return only takes older than this (next page of the feed). */
   before?: string;
+  /** ObjectId tiebreak for `before` so same-ms posts are never skipped. */
+  beforeId?: string;
 }): Promise<Thought[] | null> {
   try {
     const q = new URLSearchParams({ t: String(Date.now()) });
     if (opts?.promptDay) q.set("prompt_day", opts.promptDay);
     if (opts?.before) q.set("before", opts.before);
+    if (opts?.beforeId) q.set("before_id", opts.beforeId);
     const rows = await jsonFetch<RawPost[]>(`${API}/posts?${q}`);
     return rows.map(toThought);
   } catch (e) {
@@ -225,6 +229,8 @@ export interface FollowGraph {
   followState?: "none" | "requested" | "following";
   /** The viewer blocked this account (never set for the blocked side). */
   blockedByMe?: boolean;
+  /** The viewer muted this account — their takes are hidden from the feed. */
+  mutedByMe?: boolean;
   /** Follower/following lists are hidden from this viewer (private/locked). */
   restricted?: boolean;
 }
@@ -244,6 +250,7 @@ export async function publishPost(
 ): Promise<{ thought: Thought } | { error: string; code?: string; retryInSec?: number }> {
   try {
     let mediaUrl = payload.mediaUrl ?? null;
+    if (mediaBlob?.type.startsWith("image/")) mediaBlob = await stripImageMetadata(mediaBlob);
     if (mediaBlob) {
       const ext = mediaBlob.type.includes("webm")
         ? "webm"
@@ -465,6 +472,7 @@ export async function isKeeper(handle: string): Promise<boolean> {
 export interface ReportRow {
   id: string;
   post_id: string;
+  target_type?: "post" | "comment" | "user";
   reason: string;
   reported_handle: string | null;
   content_snippet: string | null;
@@ -487,6 +495,23 @@ export async function resolveReport(reportId: string): Promise<boolean> {
     return true;
   } catch (e) {
     console.error("resolveReport:", e);
+    return false;
+  }
+}
+
+/** Desk action on a report — resolve/dismiss/ignore/remove_post/remove_comment/ban. */
+export async function moderateReport(
+  reportId: string,
+  action: string
+): Promise<boolean> {
+  try {
+    await jsonFetch(`${API}/reports/${reportId}?action=${encodeURIComponent(action)}`, {
+      method: "POST",
+      credentials: "include",
+    });
+    return true;
+  } catch (e) {
+    console.error("moderateReport:", e);
     return false;
   }
 }

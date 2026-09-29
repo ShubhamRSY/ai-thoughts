@@ -41,6 +41,8 @@ export interface UserRecord {
   lastLoginAt: string;
   /** Blue checkmark — granted by admins via /api/admin/controls. */
   verified?: boolean;
+  /** Suspended by a keeper: sign-in, posts, and search are blocked until lifted. */
+  suspended?: boolean;
   /** "Sign out everywhere": tokens issued before this (ms) are rejected. */
   sessions_revoked_before?: number;
 }
@@ -191,56 +193,51 @@ function issuedAt(payload: { iat?: number; exp: number }): number {
   return payload.iat ?? payload.exp - SESSION_MAX_AGE * 1000;
 }
 
+/**
+ * null = the token is invalid or revoked. Throws when the store can't be
+ * reached: "couldn't check" must not read as "signed out", or a DB blip
+ * signs everyone out (proxy.ts cleared the cookie) and skips revocation.
+ */
 export async function validateSession(token: string): Promise<SessionUser | null> {
-  try {
-    const payload = await verifySessionToken(token);
-    if (!payload) return null;
+  const payload = await verifySessionToken(token);
+  if (!payload) return null;
 
-    const { db } = await connectToDatabase();
-    let email = "";
-    let revokedBefore = 0;
-    let verified = false;
-    try {
-      const user = await db.collection<UserRecord>("users").findOne({
-        _id: new ObjectId(payload.id),
-      });
-      email =
-        decryptEmail(user?.emailEnc) ||
-        decryptEmail(user?.email) ||
-        payload.email ||
-        "";
-      revokedBefore = user?.sessions_revoked_before ?? 0;
-      verified = Boolean(user?.verified);
-    } catch {
-      email = payload.email || "";
+  const { db } = await connectToDatabase();
+  const user = await db.collection<UserRecord>("users").findOne({
+    _id: new ObjectId(payload.id),
+  });
+  const email =
+    decryptEmail(user?.emailEnc) ||
+    decryptEmail(user?.email) ||
+    payload.email ||
+    "";
+  const revokedBefore = user?.sessions_revoked_before ?? 0;
+  const verified = Boolean(user?.verified);
+
+  // "Sign out everywhere" — also the only way to end legacy (sid-less) tokens.
+  if (issuedAt(payload) < revokedBefore) return null;
+
+  // A session that was revoked (or expired out of the store) is gone for good.
+  if (payload.sid) {
+    const row = await db.collection("sessions").findOne({ sid: payload.sid });
+    if (!row) return null;
+    const last = row.last_seen_at instanceof Date ? row.last_seen_at.getTime() : 0;
+    if (Date.now() - last > 10 * 60_000) {
+      void db
+        .collection("sessions")
+        .updateOne({ sid: payload.sid }, { $set: { last_seen_at: new Date() } })
+        .catch(() => {}); // best-effort touch; an outage must not become an unhandled rejection
     }
-
-    // "Sign out everywhere" — also the only way to end legacy (sid-less) tokens.
-    if (issuedAt(payload) < revokedBefore) return null;
-
-    // A session that was revoked (or expired out of the store) is gone for good.
-    if (payload.sid) {
-      const row = await db.collection("sessions").findOne({ sid: payload.sid });
-      if (!row) return null;
-      const last = row.last_seen_at instanceof Date ? row.last_seen_at.getTime() : 0;
-      if (Date.now() - last > 10 * 60_000) {
-        void db
-          .collection("sessions")
-          .updateOne({ sid: payload.sid }, { $set: { last_seen_at: new Date() } });
-      }
-    }
-
-    return {
-      id: payload.id,
-      email,
-      handle: payload.handle,
-      displayName: payload.displayName,
-      verified,
-      sid: payload.sid,
-    };
-  } catch {
-    return null;
   }
+
+  return {
+    id: payload.id,
+    email,
+    handle: payload.handle,
+    displayName: payload.displayName,
+    verified,
+    sid: payload.sid,
+  };
 }
 
 export async function getSession(): Promise<SessionUser | null> {
@@ -301,6 +298,11 @@ export async function findOrCreateUser(
   let createdNew = false;
 
   if (user) {
+    if (user.suspended === true) {
+      throw new Error(
+        "This account has been suspended by our moderation team. Contact support if you believe this is a mistake."
+      );
+    }
     // A real, chosen display name always wins. When none is given, drop a
     // stored name that is just the person's email (legacy fallback) so an
     // address never shows up on comments or feelings instead of a name.
@@ -365,8 +367,27 @@ export async function findOrCreateUser(
       createdAt: new Date().toISOString(),
       lastLoginAt: new Date().toISOString(),
     };
-    const result = await users.insertOne(newUser);
-    newUser._id = result.insertedId;
+    // The unique indexes on handle/emailHash are the real guard; the findOne
+    // checks above only make the common case friendly.
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const result = await users.insertOne(newUser);
+        newUser._id = result.insertedId;
+        break;
+      } catch (e) {
+        const dupKey = (e as { code?: number; keyPattern?: Record<string, unknown> });
+        if (dupKey.code !== 11000 || attempt >= 4) throw e;
+        if (dupKey.keyPattern?.emailHash) {
+          // Same email verified twice at once — the other request created it.
+          return findOrCreateUser(email, displayName, preferredHandle);
+        }
+        const chosen = preferredHandle?.trim().toLowerCase().replace(/^@/, "").replace(/\s+/g, "");
+        if (chosen && newUser.handle === `@${chosen}`) {
+          throw new Error(`${newUser.handle} was just taken — try another username.`);
+        }
+        newUser.handle = allocateSafeHandle();
+      }
+    }
     user = newUser;
     createdNew = true;
   }
@@ -439,6 +460,20 @@ export async function deleteUserAccount(session: SessionUser): Promise<void> {
       { follower: { $in: handleVariants } },
       { following: { $in: handleVariants } },
     ],
+  });
+  // Mood check-ins, block/mute lists and view history are personal data too —
+  // "delete my account" must leave none of it behind (GDPR/CCPA erasure).
+  await db.collection("moods").deleteMany({
+    handle_norm: session.handle.trim().toLowerCase().replace(/^@/, ""),
+  });
+  await db.collection("blocks").deleteMany({
+    $or: [{ blocker: { $in: handleVariants } }, { blocked: { $in: handleVariants } }],
+  });
+  await db.collection("mutes").deleteMany({
+    $or: [{ muter: { $in: handleVariants } }, { muted: { $in: handleVariants } }],
+  });
+  await db.collection("post_views").deleteMany({
+    viewer_key: { $in: handleVariants.map((h) => `user:${h}`) },
   });
   await db.collection("sessions").deleteMany({ user_id: session.id });
   await db.collection("user_prefs").deleteMany({ handle: { $in: handleVariants } });

@@ -21,6 +21,9 @@ import {
   hiddenHandles,
 } from "@/lib/visibility";
 import { blockedHandles } from "@/lib/blocks";
+import { mutedHandles } from "@/lib/mutes";
+import { isAllowedMediaUrl, isBlobUrl, isPlayableMediaUrl } from "@/lib/media-sniff";
+import { isFlaggedContent } from "@/lib/content-moderation";
 
 function normHandle(h: string) {
   return h.trim().toLowerCase().replace(/^@/, "");
@@ -29,6 +32,27 @@ function normHandle(h: string) {
 function handleVariants(h: string): string[] {
   const n = normHandle(h);
   return Array.from(new Set([h, `@${n}`, n, `@${n}`.toLowerCase()]));
+}
+
+// Clients send durations like "0:08", "1:23.45" or bare seconds. Cap the
+// claimed value at 10 minutes: anything beyond is nonsense for a 120s
+// recorder cap and could mislead playback/QA UIs.
+function capMediaDuration(raw: string): string | null {
+  const trimmed = raw.trim().slice(0, 12);
+  // parse "M:SS(.f)" as m*60 + s when it looks like a colon form
+  let seconds = Number.NaN;
+  if (trimmed.includes(":")) {
+    const parts = trimmed.split(":").map((p) => Number(p));
+    if (parts.length === 2 && parts.every(Number.isFinite)) seconds = parts[0] * 60 + parts[1];
+  } else {
+    const score = parseInt(trimmed.replace(/[^0-9]/g, "").slice(0, 6), 10);
+    if (score > 0) seconds = score;
+  }
+  if (!Number.isFinite(seconds) || seconds <= 0) return null;
+  if (seconds > 600) return "10:00";
+  const m = Math.floor(seconds / 60);
+  const s = Math.round(seconds % 60);
+  return s < 10 ? `${m}:0${s}` : `${m}:${s}`;
 }
 
 const MEDIA_TYPES = new Set(["audio", "video", "text"]);
@@ -159,11 +183,23 @@ export async function GET(request: NextRequest) {
     const promptDay = request.nextUrl.searchParams.get("prompt_day")?.trim();
     const handleParam = request.nextUrl.searchParams.get("handle")?.trim();
     const taggedParam = request.nextUrl.searchParams.get("tagged")?.trim();
-    // Cursor for "load older": only takes strictly older than this ISO timestamp.
+    // Cursor for "load older": takes strictly older than this ISO timestamp,
+    // with an object-id tiebreak so posts sharing the exact same millisecond
+    // aren't silently skipped between pages. `before_id` is optional for
+    // backward compatibility with callers that only send the time.
     const beforeRaw = request.nextUrl.searchParams.get("before")?.trim();
     const before = beforeRaw ? new Date(beforeRaw) : null;
     if (before && Number.isNaN(before.getTime())) {
       return NextResponse.json({ error: "Invalid before" }, { status: 400 });
+    }
+    const beforeIdRaw = request.nextUrl.searchParams.get("before_id")?.trim();
+    let beforeId: ObjectId | null = null;
+    if (beforeIdRaw) {
+      try {
+        beforeId = new ObjectId(beforeIdRaw);
+      } catch {
+        return NextResponse.json({ error: "Invalid before_id" }, { status: 400 });
+      }
     }
 
     let filter: Record<string, unknown> = {};
@@ -184,6 +220,8 @@ export async function GET(request: NextRequest) {
     // Shared by the author filter, the quote previews and the liked-by list below.
     const blockedP = blockedHandles(db, viewerHandle);
     void blockedP.catch(() => {}); // awaited below; avoids an unhandled rejection if we bail out first
+    const mutedP = mutedHandles(db, viewerHandle);
+    void mutedP.catch(() => {});
     let hidden: string[] | null = null;
     if (request.nextUrl.searchParams.get("archived") === "1") {
       // The caller's own archive: only ever their own takes, newest first.
@@ -192,12 +230,25 @@ export async function GET(request: NextRequest) {
         : { _id: { $in: [] } };
       limit = 100;
     } else {
-      hidden = await hiddenHandles(db, viewerHandle, undefined, blockedP);
+      const baseHidden = await hiddenHandles(db, viewerHandle, undefined, blockedP);
+      // Muted accounts' takes drop out of the feed (one-way, no tie-cutting).
+      const muted = await mutedP;
+      hidden = baseHidden.concat(muted.filter((m) => !baseHidden.includes(m)));
+      const cursorFilter = before
+        ? beforeId
+          ? {
+              $or: [
+                { created_at: { $lt: before } },
+                { created_at: before, _id: { $lt: beforeId } },
+              ],
+            }
+          : { created_at: { $lt: before } }
+        : {};
       filter = {
         $and: [
           filter,
           { archived: { $ne: true } },
-          ...(before ? [{ created_at: { $lt: before } }] : []),
+          ...(Object.keys(cursorFilter).length ? [cursorFilter] : []),
           ...(hidden.length ? [{ handle: { $nin: hidden } }] : []),
         ],
       };
@@ -206,7 +257,7 @@ export async function GET(request: NextRequest) {
     const posts = await db
       .collection<PostDoc>("posts")
       .find(filter)
-      .sort({ created_at: -1 })
+      .sort({ created_at: -1, _id: -1 })
       .limit(limit)
       .toArray();
 
@@ -579,6 +630,53 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Media URLs on audio/video takes are validated to Vercel Blob's CDN host.
+    // A client could otherwise attach an arbitrary external URL (tracking
+    // pixel, phishing link, or a private URL that forces the server/privacy
+    // surfaces to interact with an internal host). Image URLs are checked the
+    // same way so the entire media surface has one rule.
+    const rawMediaUrl = typeof body.media_url === "string" ? body.media_url.trim() : "";
+    let mediaUrl: string | null = null;
+    if (rawMediaUrl) {
+      if (!isAllowedMediaUrl(rawMediaUrl)) {
+        return NextResponse.json(
+          { error: "Media url must point to a Vercel Blob object" },
+          { status: 400 }
+        );
+      }
+      // The declared upload type isn't proof; the file's own bytes are.
+      if (isBlobUrl(rawMediaUrl) && !(await isPlayableMediaUrl(rawMediaUrl))) {
+        return NextResponse.json(
+          { error: "That file isn't a playable photo, audio, or video — it may be corrupted." },
+          { status: 400 }
+        );
+      }
+      mediaUrl = rawMediaUrl;
+    } else if (mediaType !== "text") {
+      return NextResponse.json({ error: "media_url is required" }, { status: 400 });
+    }
+
+    // Photo takes are media_type "text" with a media_url; audio/video aren't screened yet.
+    if (await isFlaggedContent({ text: content, imageUrl: mediaType === "text" ? mediaUrl : null })) {
+      return NextResponse.json(
+        { error: "This take can't be posted — it looks like it breaks the community guidelines.", code: "flagged" },
+        { status: 400 }
+      );
+    }
+
+    // Duration is cosmetic metadata, but cap it so a crafted post can't claim
+    // a 999-hour clip and distort UI/playback affordances.
+    const rawDuration = typeof body.media_duration === "string" ? body.media_duration.trim() : "";
+    const mediaDuration = rawDuration ? capMediaDuration(rawDuration) : null;
+
+    // Integrity is display metadata the client may declare for transparency,
+    // but the *verified* flag is server authority: a client can never mark its
+    // own post "verified", only the server pipeline (seed/sample) may set that.
+    const rawIntegrityHash = typeof body.integrity_hash === "string" ? body.integrity_hash.trim() : "";
+    const integrityHash = rawIntegrityHash ? rawIntegrityHash.slice(0, 64) : null;
+    const integrityLabel =
+      typeof body.integrity_label === "string" ? body.integrity_label.trim().slice(0, 40) : null;
+
     const doc: PostDoc = {
       user_id: session.id,
       handle: session.handle,
@@ -588,8 +686,8 @@ export async function POST(request: NextRequest) {
       media_type: mediaType as PostDoc["media_type"],
       feeling,
       custom_feeling: feeling === "custom" ? customFeeling : null,
-      media_url: typeof body.media_url === "string" ? body.media_url : null,
-      media_duration: typeof body.media_duration === "string" ? body.media_duration : null,
+      media_url: mediaUrl,
+      media_duration: mediaDuration,
       stream_url: null,
       stream_ready: false,
       tags,
@@ -597,9 +695,9 @@ export async function POST(request: NextRequest) {
       quoted_post_id: quotedPostId,
       language: typeof body.language === "string" ? body.language : null,
       language_label: typeof body.language_label === "string" ? body.language_label : null,
-      integrity_hash: typeof body.integrity_hash === "string" ? body.integrity_hash : null,
-      integrity_verified: Boolean(body.integrity_verified),
-      integrity_label: typeof body.integrity_label === "string" ? body.integrity_label : null,
+      integrity_hash: integrityHash,
+      integrity_verified: false, // client claims are never "verified" — server-only
+      integrity_label: integrityLabel,
       transcript: null,
       boosts: 0,
       content_fp: contentFingerprint(content),
@@ -608,6 +706,19 @@ export async function POST(request: NextRequest) {
       created_at: new Date(),
       ...(promptDay ? { prompt_day: promptDay, prompt_text: promptText } : {}),
     };
+
+    // Double-tapped "Post": both requests pass the cooldown (it reads the last
+    // post, which neither has written yet). The limiter's increment is atomic,
+    // so only the first identical take in a minute gets through.
+    // ponytail: per-instance without Upstash; a unique DB key if taps ever split across instances.
+    const { ok: firstTap } = await rateLimit(
+      `post-dedupe:${session.id}:${doc.content_fp}:${mediaUrl ?? ""}`,
+      1,
+      60_000
+    );
+    if (!firstTap) {
+      return NextResponse.json({ error: "That take was already posted", code: "duplicate" }, { status: 409 });
+    }
 
     const result = await db.collection<PostDoc>("posts").insertOne(doc);
     const postId = result.insertedId.toString();

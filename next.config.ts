@@ -5,8 +5,8 @@ import type { NextConfig } from "next";
 // meaningfully strengthens the XSS defense-in-depth story.
 const scriptSrc =
   process.env.NODE_ENV === "development"
-    ? "script-src 'self' 'unsafe-eval' 'unsafe-inline'"
-    : "script-src 'self' 'unsafe-inline'";
+    ? "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://challenges.cloudflare.com"
+    : "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com";
 
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
@@ -37,12 +37,25 @@ const securityHeaders = [
       "connect-src 'self' https://*.public.blob.vercel-storage.com https://blob.vercel-storage.com",
       "media-src 'self' blob: https://*.public.blob.vercel-storage.com",
       "frame-ancestors 'none'",
+      // No fallback to default-src for these three, so they must be explicit.
+      "base-uri 'self'",
+      "form-action 'self'",
+      "object-src 'none'",
+      // Cloudflare Turnstile (sign-in CAPTCHA) renders in an iframe.
+      "frame-src https://challenges.cloudflare.com",
     ].join("; "),
   },
 ];
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  poweredByHeader: false, // don't advertise the framework/version to scanners
+  experimental: {
+    // proxy.ts makes Next buffer every request body in memory (default 10MB).
+    // Our largest real JSON body is a few KB (media goes straight to Blob), so
+    // cap it — 20 parallel 20MB junk posts added ~180MB RSS at the default.
+    proxyClientMaxBodySize: "1mb",
+  },
   async headers() {
     return [
       {

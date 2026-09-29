@@ -47,6 +47,7 @@ export default function TextForm({ value, onChange, image, onImageChange }: Text
     <div className="rounded-xl border border-[var(--border-base)] bg-[var(--surface)]">
       <textarea
         value={value}
+        aria-label="What you feel in your own words"
         onChange={(e) => onChange(e.target.value.slice(0, MAX_CHARS))}
         placeholder="How does AI make you feel right now?"
         rows={5}
