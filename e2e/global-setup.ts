@@ -1,4 +1,4 @@
-import type { FullConfig } from "@playwright/test";
+import { chromium, type FullConfig } from "@playwright/test";
 
 /**
  * `next dev` compiles each route on first request, which can take well over
@@ -69,4 +69,26 @@ export default async function globalSetup(config: FullConfig) {
   if (!cookie) return;
   const headers = { Cookie: cookie, "X-Forwarded-For": "10.250.0.1" };
   for (const route of MEMBER_ROUTES) await warm(new URL(route, baseURL), { headers });
+
+  // Fetching /app only compiles its server side; the browser bundle compiles
+  // when a real browser loads it (~10s here, far longer on a 2-core runner),
+  // and the dev server stalls other requests meanwhile. Do that here, not in
+  // the first test.
+  const browser = await chromium.launch();
+  try {
+    const context = await browser.newContext({ extraHTTPHeaders: { "X-Forwarded-For": "10.250.0.1" } });
+    await context.addCookies(
+      cookie.split("; ").map((pair) => {
+        const i = pair.indexOf("=");
+        return { name: pair.slice(0, i), value: pair.slice(i + 1), url: baseURL };
+      })
+    );
+    const page = await context.newPage();
+    await page.goto(new URL("/app", baseURL).toString(), { timeout: 180_000 });
+    await page.waitForLoadState("networkidle", { timeout: 180_000 });
+  } catch {
+    // Not fatal, like the fetches above.
+  } finally {
+    await browser.close();
+  }
 }

@@ -10,7 +10,7 @@ const SLOW = { timeout: 30_000 };
 let ip = 60;
 async function signIn(page: Page) {
   ip = (ip + 1) % 250;
-  await page.context().setExtraHTTPHeaders({ "X-Forwarded-For": `194.5.0.${ip}` });
+  await page.context().setExtraHTTPHeaders({ "X-Forwarded-For": `194.5.${test.info().retry}.${ip}` });
   const uniq = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
   await page.goto("/sign-in");
   await page.getByLabel("Email", { exact: true }).fill(`e2e-mood-${uniq}@example.com`);

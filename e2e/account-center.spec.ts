@@ -9,6 +9,11 @@ const ORIGIN = new URL(
   process.env.E2E_BASE_URL ?? `http://localhost:${process.env.PORT ?? "3000"}`
 ).origin;
 const norm = (h: string) => h.trim().toLowerCase().replace(/^@/, "");
+// A synthetic client IP per test. The retry gets its own (third octet), since
+// one /app + Account Center run makes ~150 API calls and a retry sharing the
+// first attempt's bucket hit the proxy's 300 / 5 min backstop — the page then
+// renders 429s as disabled controls and the test fails for the wrong reason.
+const ip = (n: number) => `10.78.${test.info().retry}.${n}`;
 
 type Api = { post: (url: string, o: object) => Promise<import("@playwright/test").APIResponse> };
 
@@ -45,8 +50,8 @@ async function skipOnboarding(page: import("@playwright/test").Page) {
 test("account center: pick private, it persists, and follow requests can be approved", async ({
   page,
 }) => {
-  await asClient(page, "10.78.0.1");
-  const ownerHandle = await signIn(page.request, "owner", "10.78.0.1");
+  await asClient(page, ip(1));
+  const ownerHandle = await signIn(page.request, "owner", ip(1));
   await skipOnboarding(page);
 
   await page.goto("/app");
@@ -72,10 +77,10 @@ test("account center: pick private, it persists, and follow requests can be appr
   // Someone else asks to follow; the owner sees the request and approves it.
   const other = await pwRequest.newContext({
     baseURL: ORIGIN,
-    extraHTTPHeaders: { Origin: ORIGIN, "X-Forwarded-For": "10.78.0.2" },
+    extraHTTPHeaders: { Origin: ORIGIN, "X-Forwarded-For": ip(2) },
   });
   try {
-    const otherHandle = await signIn(other, "other", "10.78.0.2");
+    const otherHandle = await signIn(other, "other", ip(2));
     const asked = await other.post("/api/follows", { data: { handle: ownerHandle, action: "follow" } });
     expect(await asked.json()).toMatchObject({ requested: true });
 
@@ -115,15 +120,15 @@ async function openPersonFromSearch(page: import("@playwright/test").Page, handl
 }
 
 test("account center: block from a profile, then unblock from Blocked accounts", async ({ page }) => {
-  await asClient(page, "10.78.0.3");
-  await signIn(page.request, "blocker", "10.78.0.3");
+  await asClient(page, ip(3));
+  await signIn(page.request, "blocker", ip(3));
   await skipOnboarding(page);
   const other = await pwRequest.newContext({
     baseURL: ORIGIN,
-    extraHTTPHeaders: { Origin: ORIGIN, "X-Forwarded-For": "10.78.0.4" },
+    extraHTTPHeaders: { Origin: ORIGIN, "X-Forwarded-For": ip(4) },
   });
   try {
-    const otherHandle = await signIn(other, "blocked", "10.78.0.4");
+    const otherHandle = await signIn(other, "blocked", ip(4));
 
     await page.goto("/app");
     await openPersonFromSearch(page, otherHandle);
@@ -153,15 +158,15 @@ test("account center: block from a profile, then unblock from Blocked accounts",
 });
 
 test("search shows Requested for a private account, not Following", async ({ page }) => {
-  await asClient(page, "10.78.0.5");
-  await signIn(page.request, "asker", "10.78.0.5");
+  await asClient(page, ip(5));
+  await signIn(page.request, "asker", ip(5));
   await skipOnboarding(page);
   const owner = await pwRequest.newContext({
     baseURL: ORIGIN,
-    extraHTTPHeaders: { Origin: ORIGIN, "X-Forwarded-For": "10.78.0.6" },
+    extraHTTPHeaders: { Origin: ORIGIN, "X-Forwarded-For": ip(6) },
   });
   try {
-    const ownerHandle = await signIn(owner, "private-owner", "10.78.0.6");
+    const ownerHandle = await signIn(owner, "private-owner", ip(6));
     expect((await owner.put("/api/account/privacy", { data: { privacy: "private" } })).ok()).toBeTruthy();
 
     await page.goto("/app");
@@ -185,8 +190,8 @@ test("search shows Requested for a private account, not Following", async ({ pag
 test("account center: email digests toggle independently, help links exist, view replaces habits", async ({
   page,
 }) => {
-  await asClient(page, "10.78.0.7");
-  await signIn(page.request, "notif", "10.78.0.7");
+  await asClient(page, ip(7));
+  await signIn(page.request, "notif", ip(7));
   await skipOnboarding(page);
   await page.goto("/app");
   await page.getByRole("button", { name: "You", exact: true }).first().click();
@@ -231,8 +236,8 @@ test("account center: email digests toggle independently, help links exist, view
 });
 
 test("account center: device permissions reflect the browser's real state", async ({ page, context }) => {
-  await asClient(page, "10.78.0.8");
-  await signIn(page.request, "perms", "10.78.0.8");
+  await asClient(page, ip(8));
+  await signIn(page.request, "perms", ip(8));
   await skipOnboarding(page);
   // Chromium reports camera as "prompt" by default; stub it as blocked so the
   // denied path is covered too. Everything else is left to the real browser.
@@ -264,8 +269,8 @@ test("account center: device permissions reflect the browser's real state", asyn
 
 test("account center: see your devices, sign one out, then sign out everywhere", async ({ page }) => {
   const email = `e2e-ui-sessions-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
-  await asClient(page, "10.78.0.9");
-  await signInAs(page.request, email, "10.78.0.9");
+  await asClient(page, ip(9));
+  await signInAs(page.request, email, ip(9));
   await skipOnboarding(page);
 
   // The same account on a second "device".
@@ -273,12 +278,12 @@ test("account center: see your devices, sign one out, then sign out everywhere",
     baseURL: ORIGIN,
     extraHTTPHeaders: {
       Origin: ORIGIN,
-      "X-Forwarded-For": "10.78.0.10",
+      "X-Forwarded-For": ip(10),
       "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:127.0) Gecko/20100101 Firefox/127.0",
     },
   });
   try {
-    await signInAs(other, email, "10.78.0.10");
+    await signInAs(other, email, ip(10));
 
     await page.goto("/app");
     await openAccountCenter(page);
@@ -309,8 +314,8 @@ test("account center: see your devices, sign one out, then sign out everywhere",
 test("account center: archive a take from your profile, see it in Archive and Your activity, restore it", async ({
   page,
 }) => {
-  await asClient(page, "10.78.0.11");
-  await signIn(page.request, "archive", "10.78.0.11");
+  await asClient(page, ip(11));
+  await signIn(page.request, "archive", ip(11));
   await skipOnboarding(page);
   const content = `e2e archive ui ${Date.now()}`;
   const made = await page.request.post("/api/posts", {

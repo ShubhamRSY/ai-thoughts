@@ -9,9 +9,9 @@ name: E2E
 jobs:
   playwright:
     runs-on: ubuntu-latest
-    # Above Playwright's 15-min globalTimeout plus setup, so a stall fails
+    # Above Playwright's 30-min globalTimeout plus setup, so a stall fails
     # with a report instead of hanging until someone cancels it.
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

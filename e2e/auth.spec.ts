@@ -10,7 +10,7 @@ let ipCounter = 10;
 async function isolateIp(page: import("@playwright/test").Page): Promise<void> {
   ipCounter = (ipCounter + 1) % 250;
   await page.context().setExtraHTTPHeaders({
-    "X-Forwarded-For": `194.4.0.${ipCounter}`,
+    "X-Forwarded-For": `194.4.${test.info().retry}.${ipCounter}`,
   });
 }
 

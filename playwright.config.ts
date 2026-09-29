@@ -21,14 +21,17 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   workers: 1,
-  reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
+  // "list" on CI too: one line per test. The github/dot reporter writes dots
+  // with no newline, which Actions only shows once the line ends — so a slow
+  // run looked frozen until it was killed.
+  reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
   // `next dev` compiles each route on first hit (5–7s for some API routes,
   // longer for /app), and a test touching several cold routes blew the old 45s
   // budget and the 5s assertion default. Warm tests still finish in seconds.
   timeout: 120_000,
-  // A CI run twice stalled silently after test 5 until canceled at ~18m. Fail
-  // the whole run instead, so the report says which test hung and gets uploaded.
-  globalTimeout: 15 * 60_000,
+  // Backstop so a genuinely stuck run fails with a report (which test hung)
+  // instead of hanging until the runner is killed. A healthy CI run is ~10–15m.
+  globalTimeout: 30 * 60_000,
   expect: { timeout: 15_000 },
   use: {
     baseURL,
