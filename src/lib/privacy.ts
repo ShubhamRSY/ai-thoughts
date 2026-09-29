@@ -1,10 +1,15 @@
 import { del } from "@vercel/blob";
+import { blobTokenFor } from "./media-access.ts";
 
 /** True when URL is our Vercel Blob media (safe to delete on wipe). */
 export function isOurBlobUrl(url: string): boolean {
   try {
     const host = new URL(url).hostname.toLowerCase();
-    return host.endsWith(".public.blob.vercel-storage.com") || host === "blob.vercel-storage.com";
+    return (
+      host.endsWith(".public.blob.vercel-storage.com") ||
+      host.endsWith(".private.blob.vercel-storage.com") ||
+      host === "blob.vercel-storage.com"
+    );
   } catch {
     return false;
   }
@@ -40,7 +45,7 @@ export async function deleteBlobUrls(
   await Promise.all(
     unique.map(async (url) => {
       try {
-        await del(url);
+        await del(url, { token: blobTokenFor(url) });
         deleted += 1;
       } catch {
         /* already deleted or no token — ignore */

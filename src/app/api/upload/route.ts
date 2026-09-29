@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { getSession } from "@/lib/auth";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { privateBlobToken } from "@/lib/media-access";
 
 const IP_UPLOAD_LIMIT = 20;
 const IP_UPLOAD_WINDOW_MS = 10 * 60_000;
@@ -41,10 +42,20 @@ const MAX_FILE_BYTES = 150 * 1024 * 1024;
 export async function POST(request: Request): Promise<NextResponse> {
   const body = (await request.json()) as HandleUploadBody;
 
+  // Takes go to the private store (lib/media-access.ts); avatars stay public.
+  // The client names every take "take-…" (lib/db.ts publishPost).
+  const blobUrl = body.type === "blob.upload-completed" ? body.payload.blob.url : "";
+  const isTake =
+    body.type === "blob.generate-client-token"
+      ? body.payload.pathname.startsWith("take-")
+      : blobUrl.includes(".private.blob.vercel-storage.com/");
+  const token = (isTake && privateBlobToken()) || undefined;
+
   try {
     const jsonResponse = await handleUpload({
       body,
       request,
+      token,
       onBeforeGenerateToken: async () => {
         const session = await getSession();
         if (!session) throw new Error("Sign in required");

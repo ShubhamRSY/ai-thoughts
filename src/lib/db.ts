@@ -268,7 +268,8 @@ export async function publishPost(
                   ? "jpg"
                   : "webm";
       const uploaded = await upload(`take-${Date.now()}.${ext}`, mediaBlob, {
-        access: "public",
+        // Set at build time from BLOB_PRIVATE_READ_WRITE_TOKEN (next.config.ts).
+        access: process.env.NEXT_PUBLIC_PRIVATE_MEDIA === "1" ? "private" : "public",
         contentType: mediaBlob.type || "application/octet-stream",
         handleUploadUrl: `${API}/upload`,
       });

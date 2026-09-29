@@ -27,10 +27,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const token = process.env.BLOB_READ_WRITE_TOKEN;
+    // Archives need a private store; the main store is public-only.
+    const token = process.env.BLOB_PRIVATE_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN;
     if (!token) {
       return NextResponse.json(
-        { error: "BLOB_READ_WRITE_TOKEN is not set — no place to store the backup" },
+        { error: "BLOB_PRIVATE_READ_WRITE_TOKEN is not set — no place to store the backup" },
         { status: 503 }
       );
     }

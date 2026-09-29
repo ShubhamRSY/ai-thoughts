@@ -202,12 +202,21 @@ export default function PrivacyPage() {
           </h2>
           <p>
             When you choose to upload or record voice, video, or avatar content, the resulting media
-            is stored in cloud object storage used by {BRAND.shortName}. Published voice and video
-            may be served through a public URL so other users can play the content in the feed.
+            is stored in cloud object storage used by {BRAND.shortName}. Voice, video, and photo
+            takes are kept in private storage: they play only through short-lived links that{" "}
+            {BRAND.shortName} gives to people allowed to see the take, and those links expire within
+            about an hour. Avatars are public, because anyone can see them next to your handle.
+          </p>
+          <p className="mt-2">
+            To keep the community safe, the text and photos in a take, and the speech in voice and
+            video takes, may be sent to OpenAI for automated screening against our guidelines. The
+            speech is transcribed to do this, and the transcript is shown as captions on the take. A
+            take flagged by screening is hidden until a keeper reviews it.
           </p>
           <p className="mt-2">
             When you delete a take or your account, we delete the related media files from our
-            storage when those files are hosted by us and are within our control to delete. We may
+            storage when those files are hosted by us and are within our control to delete. The same
+            applies when a keeper removes a take or suspends an account. We may
             compute a SHA-256 fingerprint of media or text to help detect tampering, duplicates, or
             abuse.
           </p>
@@ -241,6 +250,7 @@ export default function PrivacyPage() {
             <li>Transactional email for sign-in codes and optional digests</li>
             <li>Analytics</li>
             <li>Optional translation</li>
+            <li>Automated content screening and transcription (OpenAI)</li>
           </ul>
           <p className="mt-2">
             These providers process information as necessary to provide their services to{" "}

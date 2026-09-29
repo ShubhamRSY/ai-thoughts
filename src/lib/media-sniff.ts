@@ -19,12 +19,13 @@ export function isPlayableMediaHeader(b: Uint8Array): boolean {
 }
 
 // Vercel Blob serves stored objects from <store>.public.blob.vercel-storage.com
-// (or the raw blob.vercel-storage.com host). Anything else on a take's media_url
+// (or <store>.private… for the private store, or the raw blob.vercel-storage.com host). Anything else on a take's media_url
 // (post media and avatars alike) is rejected — the server and privacy surfaces must never interact with a
 // caller-supplied host.
 export const BLOB_HOST_RE = /(^|\.)blob\.vercel-storage\.com$/i;
 
-export function isAllowedMediaUrl(url: string): boolean {
+/** `privateOk`: takes may point at the private store; avatars must stay public. */
+export function isAllowedMediaUrl(url: string, privateOk = false): boolean {
   let u: URL;
   try {
     u = new URL(url);
@@ -35,9 +36,15 @@ export function isAllowedMediaUrl(url: string): boolean {
   // Only *our* store: any Blob store matches BLOB_HOST_RE, so without this a
   // file hosted in someone else's store skipped /api/upload's type and rate
   // checks entirely. The store id is embedded in the read-write token.
-  const storeId =
-    process.env.BLOB_STORE_ID ?? process.env.BLOB_READ_WRITE_TOKEN?.match(/^vercel_blob_rw_([a-z0-9]+)_/i)?.[1];
-  if (storeId) return u.hostname.toLowerCase() === `${storeId.toLowerCase()}.public.blob.vercel-storage.com`;
+  // The public store is the one BLOB_READ_WRITE_TOKEN belongs to. BLOB_STORE_ID
+  // is not used: connecting a second store in Vercel sets it to *that* store.
+  const storeId = process.env.BLOB_READ_WRITE_TOKEN?.match(/^vercel_blob_rw_([a-z0-9]+)_/i)?.[1];
+  const privateStoreId = process.env.BLOB_PRIVATE_READ_WRITE_TOKEN?.match(/^vercel_blob_rw_([a-z0-9]+)_/i)?.[1];
+  const host = u.hostname.toLowerCase();
+  if (privateOk && privateStoreId && host === `${privateStoreId.toLowerCase()}.private.blob.vercel-storage.com`) {
+    return true;
+  }
+  if (storeId) return host === `${storeId.toLowerCase()}.public.blob.vercel-storage.com`;
   if (BLOB_HOST_RE.test(u.hostname)) return true;
   // sample media shipped with the repo, and a local dev blob host, are fine
   // outside Vercel; production is Blob-only (the recorder+image pipeline

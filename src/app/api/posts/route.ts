@@ -25,6 +25,7 @@ import { mutedHandles } from "@/lib/mutes";
 import { isAllowedMediaUrl, isBlobUrl, isPlayableMediaUrl } from "@/lib/media-sniff";
 import { isFlaggedContent } from "@/lib/content-moderation";
 import { screenMediaPost } from "@/lib/moderation";
+import { signMediaUrl } from "@/lib/media-access";
 import { reportError } from "@/lib/report-error";
 
 function normHandle(h: string) {
@@ -394,6 +395,18 @@ export async function GET(request: NextRequest) {
     // Names of blocked users are dropped from "liked by"; the counts are left alone.
     const blockedSet = new Set((await blockedP).map(normHandle));
 
+    // Private files only open through a short-lived signed link, handed out
+    // here because this viewer passed the visibility filters above.
+    const rawUrls = [
+      ...posts.flatMap((p) => [p.media_url, p.stream_url]),
+      ...[...quotedPostsMap.values()].map((q) => q.media_url),
+    ].filter((u): u is string => Boolean(u));
+    const signed = new Map(
+      await Promise.all(rawUrls.map(async (u) => [u, await signMediaUrl(u)] as const))
+    );
+    const sign = (u: string | null | undefined) => (u ? signed.get(u) ?? null : null);
+    for (const q of quotedPostsMap.values()) q.media_url = sign(q.media_url);
+
     const result = posts.map((p) => {
       const id = p._id?.toString() ?? "";
       const reacts = reactMap[id] ?? {};
@@ -442,9 +455,9 @@ export async function GET(request: NextRequest) {
         media_type: p.media_type,
         feeling: p.feeling ?? null,
         custom_feeling: p.custom_feeling ?? null,
-        media_url: p.media_url ?? null,
+        media_url: sign(p.media_url),
         media_duration: p.media_duration ?? null,
-        stream_url: p.stream_url ?? null,
+        stream_url: sign(p.stream_url),
         stream_ready: Boolean(p.stream_ready),
         tags: p.tags ?? [],
         language: p.language ?? null,
@@ -642,14 +655,15 @@ export async function POST(request: NextRequest) {
     const rawMediaUrl = typeof body.media_url === "string" ? body.media_url.trim() : "";
     let mediaUrl: string | null = null;
     if (rawMediaUrl) {
-      if (!isAllowedMediaUrl(rawMediaUrl)) {
+      if (!isAllowedMediaUrl(rawMediaUrl, true)) {
         return NextResponse.json(
           { error: "Media url must point to a Vercel Blob object" },
           { status: 400 }
         );
       }
       // The declared upload type isn't proof; the file's own bytes are.
-      if (isBlobUrl(rawMediaUrl) && !(await isPlayableMediaUrl(rawMediaUrl))) {
+      const readableUrl = await signMediaUrl(rawMediaUrl);
+      if (isBlobUrl(rawMediaUrl) && !(readableUrl && (await isPlayableMediaUrl(readableUrl)))) {
         return NextResponse.json(
           { error: "That file isn't a playable photo, audio, or video — it may be corrupted." },
           { status: 400 }
@@ -805,7 +819,7 @@ export async function POST(request: NextRequest) {
           author: orig.author,
           content: orig.content,
           media_type: orig.media_type,
-          media_url: orig.media_url ?? null,
+          media_url: await signMediaUrl(orig.media_url),
           feeling: orig.feeling ?? null,
         };
       }
@@ -814,6 +828,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       id: postId,
       ...doc,
+      media_url: await signMediaUrl(doc.media_url),
       created_at: doc.created_at.toISOString(),
       reactions: [],
       quoted_post: quotedPostPreview,

@@ -8,6 +8,7 @@ import { checkDignity } from "@/lib/dignity";
 import { extractMentions } from "@/lib/mentions";
 import { contentFingerprint } from "@/lib/anti-abuse";
 import { reportError } from "@/lib/report-error";
+import { signMediaUrl } from "@/lib/media-access";
 
 function parseObjectId(id: string): ObjectId | null {
   try {
@@ -95,9 +96,10 @@ export async function GET(
       content: post.content,
       media_type: post.media_type,
       feeling: post.feeling ?? null,
-      media_url: post.media_url ?? null,
+      // Signed, expiring links: the raw private URL opens nothing.
+      media_url: await signMediaUrl(post.media_url),
       media_duration: post.media_duration ?? null,
-      stream_url: post.stream_url ?? null,
+      stream_url: await signMediaUrl(post.stream_url),
       stream_ready: Boolean(post.stream_ready),
       tags: post.tags ?? [],
       language: post.language ?? null,

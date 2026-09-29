@@ -33,10 +33,10 @@ const securityHeaders = [
       "default-src 'self'",
       scriptSrc,
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com",
+      "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://*.private.blob.vercel-storage.com",
       "font-src 'self'",
-      "connect-src 'self' https://*.public.blob.vercel-storage.com https://blob.vercel-storage.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io",
-      "media-src 'self' blob: https://*.public.blob.vercel-storage.com",
+      "connect-src 'self' https://*.public.blob.vercel-storage.com https://*.private.blob.vercel-storage.com https://blob.vercel-storage.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io",
+      "media-src 'self' blob: https://*.public.blob.vercel-storage.com https://*.private.blob.vercel-storage.com",
       "frame-ancestors 'none'",
       // No fallback to default-src for these three, so they must be explicit.
       "base-uri 'self'",
@@ -50,6 +50,9 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  // Tells the uploader (lib/db.ts) to store takes privately. Derived from the
+  // server secret's presence so the two can't drift; the token itself stays server-side.
+  env: { NEXT_PUBLIC_PRIVATE_MEDIA: process.env.BLOB_PRIVATE_READ_WRITE_TOKEN ? "1" : "" },
   poweredByHeader: false, // don't advertise the framework/version to scanners
   experimental: {
     // proxy.ts makes Next buffer every request body in memory (default 10MB).

@@ -108,6 +108,11 @@ currently the only backup that exists. Re-check this before inviting real users.
 > refuses to upload if the Blob token cannot store the archive as **private** —
 > the archives contain real handles and post text, so a public store is a
 > disqualifying failure, not a fallback.
+>
+> The main store (`BLOB_READ_WRITE_TOKEN`) is **public-only**, so the cron
+> writes to the private store in `BLOB_PRIVATE_READ_WRITE_TOKEN`. Until that is
+> set, every run fails with the "rejected access: private" error. Check
+> `backups/` in that store after the first night.
 
 The point of the drill is to produce numbers you can act on: how long a restore
 takes, and how much data a restore would cost you. Do not accept "it looked

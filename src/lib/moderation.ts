@@ -1,5 +1,7 @@
 import type { Db, ObjectId } from "mongodb";
 import { isFlaggedContent, transcribeMedia } from "./content-moderation.ts";
+import { signMediaUrl } from "./media-access.ts";
+import { deleteBlobUrls, mediaUrlsFromPost } from "./privacy.ts";
 
 // Suspended (banned) accounts keep their row so the same email can't
 // immediately re-register, but they can't sign in and their content is removed.
@@ -27,8 +29,12 @@ export async function deletePostCascade(
   postId: import("mongodb").ObjectId
 ): Promise<boolean> {
   const idStr = postId.toString();
-  const result = await db.collection("posts").deleteOne({ _id: postId });
-  if (result.deletedCount === 0) return false;
+  const post = await db
+    .collection<{ media_url?: string | null; stream_url?: string | null }>("posts")
+    .findOneAndDelete({ _id: postId }, { projection: { media_url: 1, stream_url: 1 } });
+  if (!post) return false;
+  // Removed content must not stay reachable by its file link.
+  await deleteBlobUrls(mediaUrlsFromPost(post));
 
   await Promise.all([
     db.collection("reactions").deleteMany({ post_id: idStr }),
@@ -87,7 +93,8 @@ export async function banUser(db: Db, handle: string): Promise<boolean> {
  * deleted, because a false positive must not destroy someone's recording.
  */
 export async function screenMediaPost(db: Db, postId: ObjectId, mediaUrl: string): Promise<void> {
-  const transcript = await transcribeMedia(mediaUrl);
+  const readableUrl = await signMediaUrl(mediaUrl);
+  const transcript = readableUrl ? await transcribeMedia(readableUrl) : null;
   if (!transcript?.length) return;
   const posts = db.collection("posts");
   if (!(await isFlaggedContent({ text: transcript.map((s) => s.text).join(" ") }))) {

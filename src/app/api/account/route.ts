@@ -12,6 +12,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { listFollowing } from "@/lib/follows";
 import { getPrefs } from "@/lib/prefs";
+import { signMediaUrl } from "@/lib/media-access";
 import { reportError } from "@/lib/report-error";
 
 function handleVariants(session: SessionUser): string[] {
@@ -140,7 +141,9 @@ export async function GET(request: Request) {
       },
       following,
       push_subscription_count: pushCount,
-      posts: posts.map((p) => ({
+      // The export is the owner's own data: signed links let them download
+      // their private files (valid for an hour).
+      posts: await Promise.all(posts.map(async (p) => ({
         id: p._id?.toString(),
         content: p.content,
         media_type: p.media_type,
@@ -149,8 +152,8 @@ export async function GET(request: Request) {
         language: p.language,
         prompt_day: p.prompt_day,
         created_at: p.created_at,
-        media_url: p.media_url,
-      })),
+        media_url: await signMediaUrl(p.media_url),
+      }))),
       messages: messages.map((m) => ({
         id: m._id?.toString(),
         post_id: m.post_id,

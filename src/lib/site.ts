@@ -20,4 +20,4 @@ export const CONTACT_EMAIL =
 
 /** Fixed legal "last updated" date — do not use `new Date()` at render time. */
 export const LEGAL_UPDATED = "September 28, 2026";
-export const PRIVACY_UPDATED = "September 23, 2026";
+export const PRIVACY_UPDATED = "September 29, 2026";
