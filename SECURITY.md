@@ -29,8 +29,8 @@ Sensitive collections if Atlas is exposed: `users` (emailEnc), `user_prefs`, `pu
 
 ## Keepers / admin
 
-- [ ] Set `ADMIN_HANDLES` to your product-owner handle(s) on Vercel; open `/admin` while signed in.
-- [ ] Only add trusted handles to the `keepers` collection (via `/admin` or Atlas).
+- [ ] Set `ADMIN_USER_IDS` to your product-owner user id(s) on Vercel (shown on `/admin` when signed in without access).
+- [ ] Grant keepers from `/admin`. Role rows reference the account (`user_id`), not the handle; a hand-inserted row without `user_id` grants nothing.
 - [ ] Keepers alone can list/resolve reports and contact inbox APIs; `/keeper` is session-gated.
 - [ ] Admins inherit keeper powers and can delete any take, seed the feed, and toggle maintenance.
 - [ ] Do not put keeper/admin handles in public client config.

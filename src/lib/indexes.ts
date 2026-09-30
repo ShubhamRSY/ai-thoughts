@@ -118,6 +118,25 @@ export async function ensureCoreIndexes(db: Db): Promise<void> {
       { post_id: 1, viewer_key: 1 },
       { unique: true, name: "post_views_post_viewer_unique" }
     ),
+    // Roles belong to one account each (H1). Partial: unmigrated legacy rows
+    // have no user_id and must not collide.
+    db.collection("keepers").createIndex(
+      { user_id: 1 },
+      { unique: true, partialFilterExpression: { user_id: { $type: "string" } }, name: "keepers_user_unique" }
+    ),
+    db.collection("admins").createIndex(
+      { user_id: 1 },
+      { unique: true, partialFilterExpression: { user_id: { $type: "string" } }, name: "admins_user_unique" }
+    ),
+    // Handles held after a rename/deletion (lib/handle-reservation.ts).
+    db.collection("reserved_handles").createIndex(
+      { handle_norm: 1 },
+      { unique: true, name: "reserved_handles_handle_unique" }
+    ),
+    db.collection("reserved_handles").createIndex(
+      { reserved_until: 1 },
+      { expireAfterSeconds: 0, name: "reserved_handles_ttl" }
+    ),
   ];
 
   const results = await Promise.allSettled(jobs);

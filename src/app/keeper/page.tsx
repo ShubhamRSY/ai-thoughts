@@ -61,7 +61,7 @@ export default function KeeperPage() {
         }
         return;
       }
-      const keeper = await isKeeper(user.handle);
+      const keeper = await isKeeper();
       if (cancelled) return;
       setAuthorized(keeper);
       if (keeper) {
@@ -78,7 +78,7 @@ export default function KeeperPage() {
 
   const refresh = async () => {
     if (!isLive() || !user) return;
-    const keeper = await isKeeper(user.handle);
+    const keeper = await isKeeper();
     setAuthorized(keeper);
     if (keeper) {
       const rows = await fetchReports();

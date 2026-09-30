@@ -472,15 +472,12 @@ export function subscribeToMessages(
 // Profile / keeper helpers (thin)
 // ---------------------------------------------------------------------------
 
-export async function isKeeper(handle: string): Promise<boolean> {
-  // Simple handle-based keeper check against the keepers collection.
-  // The server independently re-checks this on every keeper-only action —
-  // this is only used to decide what to show in the UI.
-  if (!handle) return false;
+export async function isKeeper(): Promise<boolean> {
+  // Whether the signed-in user is a keeper. The server independently
+  // re-checks this on every keeper-only action — this is only used to decide
+  // what to show in the UI.
   try {
-    const data = await jsonFetch<{ isKeeper: boolean }>(
-      `${API}/keepers?handle=${encodeURIComponent(handle)}`
-    );
+    const data = await jsonFetch<{ isKeeper: boolean }>(`${API}/keepers`);
     return data.isKeeper;
   } catch {
     return false;

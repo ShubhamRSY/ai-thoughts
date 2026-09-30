@@ -20,23 +20,19 @@
 //                   (likely NOT the person it was granted to)
 //   UNKNOWN_DATE    a holder exists but the grant date is unknown — review by hand
 //   OK              the holder's account predates the grant
+//   LINKED          already migrated to a user id (H1) — the handle no longer matters;
+//                   the account it points to is shown
 //
 // Known blind spot: renames aren't logged, so an *older* account that renamed
 // into a freed handle after the grant shows as OK. Eyeball the OK rows too.
 //
 // Exits 0 when nothing needs review, 1 when anything is ORPHANED/OWNER_NEWER/UNKNOWN_DATE, 2 on bad usage.
+//
+// classifyRoles() is also used by scripts/migrate-roles-to-user-id.mjs.
 import { MongoClient, ObjectId } from "mongodb";
+import { pathToFileURL } from "node:url";
 
-const URL_ = process.env.MONGODB_URL ?? process.env.MONGODB_URI;
-const DB = process.env.MONGODB_DB ?? "aithoughts";
-const asJson = process.argv.includes("--json");
-
-if (!URL_) {
-  console.error("Set MONGODB_URL (and MONGODB_DB) to the cluster you are auditing.");
-  process.exit(2);
-}
-
-const norm = (h) => String(h ?? "").trim().toLowerCase().replace(/^@/, "");
+export const norm = (h) => String(h ?? "").trim().toLowerCase().replace(/^@/, "");
 
 /** Best-known date for a row: an explicit field, else the ObjectId's creation time. */
 function dateOf(row, fields) {
@@ -48,19 +44,25 @@ function dateOf(row, fields) {
   return row?._id instanceof ObjectId ? row._id.getTimestamp() : null;
 }
 
-const client = new MongoClient(URL_, { readPreference: "secondaryPreferred" });
-try {
-  await client.connect();
-  const db = client.db(DB);
+export const STATUS_ORDER = { ORPHANED: 0, OWNER_NEWER: 1, UNKNOWN_DATE: 2, OK: 3, LINKED: 4 };
 
+/** One entry per role row (plus env admins), with who holds its handle now. Read-only. */
+export async function classifyRoles(db, envAdmins = []) {
   const roles = [];
   for (const coll of ["admins", "keepers"]) {
     const rows = await db.collection(coll).find({}).toArray();
     for (const r of rows) {
-      roles.push({ role: coll === "admins" ? "admin" : "keeper", source: "db", handle: r.handle, granted: dateOf(r, ["created_at", "createdAt"]) });
+      roles.push({
+        role: coll === "admins" ? "admin" : "keeper",
+        source: "db",
+        collection: coll,
+        row_id: r._id,
+        linked_user_id: typeof r.user_id === "string" ? r.user_id : null,
+        handle: r.handle,
+        granted: dateOf(r, ["created_at", "createdAt"]),
+      });
     }
   }
-  const envAdmins = (process.env.ADMIN_HANDLES ?? "").split(/[,;\s]+/).map(norm).filter(Boolean);
   for (const h of envAdmins) roles.push({ role: "admin", source: "env", handle: `@${h}`, granted: null });
 
   // One query for every handle involved, matched the same way the app matches.
@@ -77,7 +79,34 @@ try {
     holders.get(k).push(u);
   }
 
+  const linkedIds = roles.map((r) => r.linked_user_id).filter((id) => id && ObjectId.isValid(id));
+  const linked = new Map(
+    (
+      await db
+        .collection("users")
+        .find({ _id: { $in: linkedIds.map((id) => new ObjectId(id)) } })
+        .project({ handle: 1, createdAt: 1, created_at: 1, suspended: 1 })
+        .toArray()
+    ).map((u) => [String(u._id), u])
+  );
+
   const out = roles.map((r) => {
+    if (r.linked_user_id) {
+      const u = linked.get(r.linked_user_id) ?? null;
+      return {
+        status: u ? "LINKED" : "ORPHANED",
+        role: r.role,
+        source: r.source,
+        collection: r.collection,
+        row_id: r.row_id,
+        handle: u?.handle ?? r.handle,
+        granted_at: r.granted?.toISOString() ?? null,
+        owner_user_id: u ? r.linked_user_id : null,
+        owner_created_at: u ? dateOf(u, ["createdAt", "created_at"])?.toISOString() ?? null : null,
+        owner_suspended: u?.suspended === true,
+        duplicate_holders: [],
+      };
+    }
     const found = holders.get(norm(r.handle)) ?? [];
     const owner = found[0] ?? null;
     const ownerCreated = owner ? dateOf(owner, ["createdAt", "created_at"]) : null;
@@ -90,6 +119,8 @@ try {
       status,
       role: r.role,
       source: r.source,
+      collection: r.collection,
+      row_id: r.row_id,
       handle: r.handle,
       granted_at: r.granted?.toISOString() ?? null,
       owner_user_id: owner ? String(owner._id) : null,
@@ -100,8 +131,33 @@ try {
     };
   });
 
-  const order = { ORPHANED: 0, OWNER_NEWER: 1, UNKNOWN_DATE: 2, OK: 3 };
-  out.sort((a, b) => order[a.status] - order[b.status] || a.handle.localeCompare(b.handle));
+  out.sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status] || String(a.handle).localeCompare(String(b.handle)));
+  return out;
+}
+
+export function envAdminHandles() {
+  return (process.env.ADMIN_HANDLES ?? "").split(/[,;\s]+/).map(norm).filter(Boolean);
+}
+
+export async function withDb(fn) {
+  const url = process.env.MONGODB_URL ?? process.env.MONGODB_URI;
+  if (!url) {
+    console.error("Set MONGODB_URL (and MONGODB_DB) to the cluster you are auditing.");
+    process.exit(2);
+  }
+  const client = new MongoClient(url);
+  try {
+    await client.connect();
+    return await fn(client.db(process.env.MONGODB_DB ?? "aithoughts"));
+  } finally {
+    await client.close();
+  }
+}
+
+async function main() {
+  const asJson = process.argv.includes("--json");
+  const envAdmins = envAdminHandles();
+  const out = await withDb((db) => classifyRoles(db, envAdmins));
 
   if (asJson) {
     console.log(JSON.stringify(out, null, 2));
@@ -122,8 +178,8 @@ try {
     if (!envAdmins.length) console.log("\nNote: ADMIN_HANDLES not set here, so env admins were not checked.");
   }
 
-  const needsReview = out.filter((o) => o.status !== "OK").length;
+  const needsReview = out.filter((o) => o.status !== "OK" && o.status !== "LINKED").length;
   process.exitCode = needsReview ? 1 : 0;
-} finally {
-  await client.close();
 }
+
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) await main();

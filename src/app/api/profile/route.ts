@@ -15,6 +15,7 @@ import { getVisibility } from "@/lib/visibility";
 import { upsertPrefs } from "@/lib/prefs";
 import { decryptEmail } from "@/lib/secure";
 import { reportError } from "@/lib/report-error";
+import { isHandleReserved, releaseReservation, reserveHandle } from "@/lib/handle-reservation";
 
 /** Up to 3 unused usernames close to `norm`, for the "already taken" message. */
 async function freeHandlesLike(db: Db, norm: string): Promise<string[]> {
@@ -28,7 +29,13 @@ async function freeHandlesLike(db: Db, norm: string): Promise<string[]> {
     .find({ handle: { $in: candidates.map((c) => `@${c}`) } }, { projection: { handle: 1 } })
     .toArray();
   const usedSet = new Set(used.map((u) => u.handle.replace(/^@/, "")));
-  return candidates.filter((c) => !usedSet.has(c)).slice(0, 3);
+  const free: string[] = [];
+  for (const c of candidates) {
+    if (usedSet.has(c) || (await isHandleReserved(db, c, null))) continue;
+    free.push(c);
+    if (free.length === 3) break;
+  }
+  return free;
 }
 
 export async function GET(request: NextRequest) {
@@ -140,7 +147,9 @@ export async function PUT(request: NextRequest) {
         _id: { $ne: new ObjectId(session.id) },
         handle: { $in: [candidate, candidate.toLowerCase()] },
       });
-      if (taken) {
+      // Held after someone renamed away from it or deleted their account (H1);
+      // the previous owner alone may take it back.
+      if (taken || (await isHandleReserved(db, candidate, session.id))) {
         return NextResponse.json(
           {
             error: `@${norm} is already taken — try another username.`,
@@ -162,7 +171,7 @@ export async function PUT(request: NextRequest) {
       const userNow = await db.collection("users").findOneAndUpdate(
         { _id: new ObjectId(session.id) },
         { $set: { handle: candidate, displayName: author, lastLoginAt: new Date().toISOString() } },
-        { returnDocument: "after" }
+        { returnDocument: "before" }
       );
       if (!userNow) {
         return NextResponse.json({ error: "Could not rename — try again." }, { status: 500 });
@@ -240,6 +249,11 @@ export async function PUT(request: NextRequest) {
         { user_id: session.id },
         { $set: { handle: candidate } }
       );
+
+      // Hold the old name so nobody else can pick it up and pass as this
+      // person; releasing the new one covers someone reclaiming their own.
+      await reserveHandle(db, String(userNow.handle ?? oldHandle), session.id, "renamed");
+      await releaseReservation(db, candidate, session.id);
 
       handle = candidate;
     } else {

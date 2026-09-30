@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { connectToDatabase } from "@/lib/mongodb";
-import { getSession, isKeeperHandle } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
+import { isKeeperUser } from "@/lib/admin";
 import { redactForStorage } from "@/lib/privacy";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { canViewPost } from "@/lib/visibility";
@@ -31,7 +32,7 @@ export async function GET() {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
-    if (!(await isKeeperHandle(session.handle))) {
+    if (!(await isKeeperUser(session.id))) {
       return NextResponse.json({ error: "Keepers only" }, { status: 403 });
     }
 

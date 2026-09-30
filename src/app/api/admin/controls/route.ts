@@ -12,6 +12,7 @@ import {
   setUserVerified,
   getSiteSettings,
   setSiteSettings,
+  resolveUserByHandle,
 } from "@/lib/admin";
 import { authorizeBearer } from "@/lib/cron-auth";
 import { logSecurityEvent } from "@/lib/audit";
@@ -138,15 +139,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "handle required" }, { status: 400 });
     }
     try {
-      await addAdmin(handle);
+      // Granted to the account holding the handle now (by id), never to the name.
+      const admin = await addAdmin(handle);
       const { db } = await connectToDatabase();
       await logSecurityEvent(db, {
         action: "bootstrap_admin",
-        actorHandle: `@${normHandle(handle)}`,
+        actorHandle: admin.handle,
         via: "bearer",
+        detail: { user_id: admin.id },
         ip: clientIp(request),
       });
-      return NextResponse.json({ ok: true, handle: `@${normHandle(handle)}` });
+      return NextResponse.json({ ok: true, handle: admin.handle, user_id: admin.id });
     } catch (e) {
       return NextResponse.json(
         { error: e instanceof Error ? e.message : "Failed" },
@@ -204,14 +207,15 @@ export async function POST(request: NextRequest) {
       case "add_admin": {
         const handle = String(body.handle || "").trim();
         if (!handle) return NextResponse.json({ error: "handle required" }, { status: 400 });
-        await addAdmin(handle);
-        await audit("add_admin", { handle: `@${normHandle(handle)}` });
+        const admin = await addAdmin(handle);
+        await audit("add_admin", { handle: admin.handle, user_id: admin.id });
         return NextResponse.json({ ok: true, admins: await listAdmins() });
       }
       case "remove_admin": {
         const handle = String(body.handle || "").trim();
         if (!handle) return NextResponse.json({ error: "handle required" }, { status: 400 });
-        if (normHandle(handle) === normHandle(gate.session.handle)) {
+        const { db } = await connectToDatabase();
+        if ((await resolveUserByHandle(db, handle))?.id === gate.session.id) {
           return NextResponse.json({ error: "Cannot remove yourself" }, { status: 400 });
         }
         await removeAdmin(handle);

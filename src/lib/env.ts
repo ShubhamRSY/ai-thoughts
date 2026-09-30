@@ -52,8 +52,26 @@ export function envStatus(): {
   };
 }
 
+/**
+ * Break-glass admins, by user id (ObjectId hex), comma/space separated.
+ * Ids, not handles: a handle can be renamed away and registered by someone
+ * else, who would then inherit admin.
+ */
+export function parseAdminUserIds(raw: string | undefined): string[] {
+  return (raw ?? "")
+    .split(/[,;\s]+/)
+    .map((s) => s.trim().toLowerCase())
+    .filter((s) => /^[0-9a-f]{24}$/.test(s));
+}
+
 /** Log once on boot in production if critical env is missing. */
 export function warnIfProductionEnvIncomplete(): void {
+  if (process.env.ADMIN_HANDLES?.trim()) {
+    console.error(
+      "[ai-thoughts] ADMIN_HANDLES is no longer honored (handles can be re-registered by someone else). " +
+        "Set ADMIN_USER_IDS to the admins' user ids instead — shown on /admin when signed in."
+    );
+  }
   if (!isProductionRuntime()) return;
   const status = envStatus();
   if (!status.ok) {

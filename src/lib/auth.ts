@@ -252,20 +252,6 @@ export async function getSession(): Promise<SessionUser | null> {
   return validateSession(token);
 }
 
-export async function isKeeperHandle(handle: string): Promise<boolean> {
-  if (!handle) return false;
-  // Global admins inherit keeper moderation powers.
-  const { isAdminHandle } = await import("@/lib/admin");
-  if (await isAdminHandle(handle)) return true;
-
-  const { db } = await connectToDatabase();
-  const n = handle.trim().toLowerCase().replace(/^@/, "");
-  const keeper = await db.collection("keepers").findOne({
-    handle: { $in: [handle, `@${n}`, n, `@${n}`.toLowerCase()] },
-  });
-  return Boolean(keeper);
-}
-
 export async function setSessionCookie(token: string): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE, token, sessionCookieOptions());
@@ -355,11 +341,14 @@ export async function findOrCreateUser(
       }
     }
     if (!handle) handle = allocateSafeHandle();
-    // Extremely unlikely collision — retry a few times
+    // Extremely unlikely collision — retry a few times. A handle in its
+    // post-rename/deletion hold counts as taken (sign-in already refused it;
+    // this only catches a hold that started in between).
+    const { isHandleReserved } = await import("@/lib/handle-reservation");
     for (let i = 0; i < 5; i++) {
-      const taken = await users.findOne({
-        handle: { $in: [handle, handle.toLowerCase()] },
-      });
+      const taken =
+        (await users.findOne({ handle: { $in: [handle, handle.toLowerCase()] } })) ||
+        (await isHandleReserved(db, handle, null));
       if (!taken) break;
       handle = allocateSafeHandle();
     }
@@ -499,6 +488,18 @@ export async function deleteUserAccount(session: SessionUser): Promise<void> {
       ...(session.email ? [{ email: session.email.toLowerCase() }] : []),
     ],
   });
+
+  // Roles belong to the account and end with it; the handle is held so nobody
+  // can register it straight away (H1). Reserve the handle the DB has now — a
+  // cookie from before a rename can still carry the old one.
+  const { deleteRolesForUser } = await import("@/lib/admin");
+  const { reserveHandle } = await import("@/lib/handle-reservation");
+  await deleteRolesForUser(db, session.id);
+  const current = await db
+    .collection<UserRecord>("users")
+    .findOne({ _id: new ObjectId(session.id) }, { projection: { handle: 1 } })
+    .catch(() => null);
+  await reserveHandle(db, current?.handle ?? session.handle, session.id, "deleted");
 
   try {
     await db.collection("users").deleteOne({ _id: new ObjectId(session.id) });

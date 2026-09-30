@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
-import { getSession, isKeeperHandle } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
+import { isKeeperUser } from "@/lib/admin";
 import { canViewPost } from "@/lib/visibility";
 import { blockedHandles } from "@/lib/blocks";
 import { checkDignity } from "@/lib/dignity";
@@ -225,7 +226,7 @@ export async function DELETE(
     if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     const isAuthor = normHandle(String(post.handle || "")) === normHandle(session.handle);
-    const isKeeper = await isKeeperHandle(session.handle);
+    const isKeeper = await isKeeperUser(session.id);
     if (!isAuthor && !isKeeper) {
       return NextResponse.json({ error: "Only the author can delete this take" }, { status: 403 });
     }

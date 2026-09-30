@@ -11,6 +11,7 @@ import {
 import { getSiteSettings } from "@/lib/admin";
 import { connectToDatabase } from "@/lib/mongodb";
 import { hashEmail } from "@/lib/secure";
+import { isHandleReserved } from "@/lib/handle-reservation";
 import { reportError } from "@/lib/report-error";
 
 const SIGN_IN_LIMIT = 8;
@@ -189,7 +190,10 @@ export async function POST(request: Request) {
           email: { $ne: normalized },
         }),
       ]);
-      if (taken) {
+      // A handle in its post-rename/deletion hold reads as taken (same message,
+      // so the hold itself isn't an oracle); only its previous owner may reclaim.
+      const reserved = await isHandleReserved(db, norm, existing ? String(existing._id) : null);
+      if (taken || reserved) {
         return NextResponse.json(
           { error: `@${norm} is already taken — try another username.` },
           { status: 409 }

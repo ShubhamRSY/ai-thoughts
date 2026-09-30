@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { connectToDatabase } from "@/lib/mongodb";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
-import { getSession, isKeeperHandle } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
+import { isKeeperUser } from "@/lib/admin";
 import { reportError } from "@/lib/report-error";
 
 const CONTACT_LIMIT = 5;
@@ -11,7 +12,7 @@ const CONTACT_WINDOW_MS = 60 * 60_000;
 export async function GET() {
   try {
     const session = await getSession();
-    if (!session || !(await isKeeperHandle(session.handle))) {
+    if (!session || !(await isKeeperUser(session.id))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -41,7 +42,7 @@ export async function GET() {
 export async function PATCH(request: Request) {
   try {
     const session = await getSession();
-    if (!session || !(await isKeeperHandle(session.handle))) {
+    if (!session || !(await isKeeperUser(session.id))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

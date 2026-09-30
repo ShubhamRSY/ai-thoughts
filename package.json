@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --experimental-strip-types --test src/lib/security.test.ts src/lib/anti-abuse.test.ts src/lib/trust.test.ts src/lib/privacy.test.ts src/lib/likes.test.ts src/lib/visibility.test.ts src/lib/device.test.ts src/lib/daily-prompt.test.ts src/lib/mentions.test.ts src/lib/rate-limit-window.test.ts src/lib/dignity.test.ts src/lib/mood.test.ts src/lib/media-sniff.test.ts src/lib/safe-redirect.test.ts src/lib/report-error.test.ts src/lib/backup.test.ts src/lib/mongodb.test.ts src/lib/media-access.test.ts",
+    "test": "node --experimental-strip-types --test src/lib/security.test.ts src/lib/anti-abuse.test.ts src/lib/trust.test.ts src/lib/privacy.test.ts src/lib/likes.test.ts src/lib/visibility.test.ts src/lib/device.test.ts src/lib/daily-prompt.test.ts src/lib/mentions.test.ts src/lib/rate-limit-window.test.ts src/lib/dignity.test.ts src/lib/mood.test.ts src/lib/media-sniff.test.ts src/lib/safe-redirect.test.ts src/lib/report-error.test.ts src/lib/backup.test.ts src/lib/mongodb.test.ts src/lib/media-access.test.ts src/lib/handle-reservation.test.ts",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "seed": "node scripts/seed-mongo.mjs",

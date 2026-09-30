@@ -6,8 +6,10 @@ Not linked from Voices. Bookmark:
 
 `https://YOUR_APP/admin`
 
-1. Set `ADMIN_HANDLES` on Vercel to your handle, e.g. `@yourname` (comma-separated for more).
-2. Sign in on the site as that handle → open `/admin`.
+1. Sign in on the site and open `/admin`. It shows "No admin access" with your **user id**.
+2. Set `ADMIN_USER_IDS` on Vercel to that id (comma-separated for more), redeploy, reload `/admin`.
+   Roles follow the account, not the handle, so renaming yourself keeps admin and nobody who later
+   registers your old handle gets it. (`ADMIN_HANDLES` is no longer honored.)
 3. From there you can: seed the feed, add/remove keepers & admins, toggle maintenance, delete any take, jump to `/owner` metrics and `/keeper` moderation.
 
 **One-time bootstrap** (if you prefer DB over env):
@@ -200,7 +202,7 @@ The Terms promise action on reports **within 24 hours** (App Store rule 1.2). So
   tier without access to that project — request an invite, or manage billing via
   Vercel.
 - **No admin on production.** The `admins` and `site_settings` collections do
-  not exist, so `ADMIN_HANDLES` is unset and the bootstrap `curl` above has
+  not exist, so no `ADMIN_USER_IDS` is set and the bootstrap `curl` above has
   never been run. `/admin` is unusable.
 - **Missing index.** `messages.messages_post_created` is absent on production
   (an older `messages.post_id_1_created_at_1` is there instead), so
