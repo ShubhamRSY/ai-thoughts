@@ -63,6 +63,23 @@ export default defineConfig({
           // buckets stay per-test; clientIp() only honors that header behind a
           // trusted proxy, so run the server as if behind one hop.
           TRUSTED_PROXY_HOPS: "1",
+          // `next dev` also loads .env.local, which holds real credentials.
+          // A key already set here (even to "") wins over .env.local, so blank
+          // every external service: tests must never reach Blob, email,
+          // OpenAI, Turnstile, Upstash or Vercel with a real token.
+          BLOB_READ_WRITE_TOKEN: "",
+          BLOB_PRIVATE_READ_WRITE_TOKEN: "",
+          VERCEL_OIDC_TOKEN: "",
+          RESEND_API_KEY: "",
+          OPENAI_API_KEY: "",
+          TURNSTILE_SECRET_KEY: "",
+          UPSTASH_REDIS_REST_URL: "",
+          UPSTASH_REDIS_REST_TOKEN: "",
+          KV_REST_API_URL: "",
+          KV_REST_API_TOKEN: "",
+          VAPID_PRIVATE_KEY: "",
+          SENTRY_AUTH_TOKEN: "",
+          NEXT_PUBLIC_SENTRY_DSN: "",
         },
       },
 });
