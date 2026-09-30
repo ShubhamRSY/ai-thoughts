@@ -1,8 +1,63 @@
 # Security Audit — AiTo (ai-thoughts)
 
-**Date:** 2026-09-30  **Scope:** this local repository only (web app, API, Electron shell, Capacitor config, git history). No requests were sent to production or any live service. `npm audit` was the only network call; it sends package names and versions to the npm registry.
+**Date:** 2026-09-30  **Scope:** this local repository only (web app, API, Electron shell, Capacitor config, git history). During the audit, no requests were sent to production or any live service; `npm audit` was the only network call (package names and versions to the npm registry). Outside requests made later, while testing the fixes, are listed in §0.
 
 ---
+
+## 0. Remediation status (2026-09-30, branch `security-fixes`)
+
+Every High, Medium and Low finding has its own commit (L8 and L9 are partly
+left to you or deferred — see their rows), with tests that fail on the old
+code where that could be run safely. The full suite at the end: 165 unit
+tests and 119 end-to-end tests passing, lint and typecheck clean, and the CSP
+suite also run against a production build.
+
+| ID | Status | Commit |
+|---|---|---|
+| H1 | Fixed | `cdc368e` |
+| H2 | Fixed | `ef61675` |
+| H3 | Fixed | `f9b082a` |
+| H4 | Fixed | `00c7eb1` |
+| M1 | Fixed | `91bd93e` |
+| M2 | Fixed | `40b82bd` |
+| M3 | Fixed | `98514be` |
+| M4 | Fixed | `1041326` |
+| M5 | Fixed | `8adc758` |
+| L1 | Fixed | `3108abd` |
+| L2 | Fixed | `7ad70e5` |
+| L3 | Fixed | `954bd69` |
+| L4 | Fixed | `30ce5ad` |
+| L5 | Fixed | `b301afd` |
+| L6 | Fixed | `5a8e140` |
+| L7 | Fixed | `1fa876f` |
+| L8 | Partially fixed | no commit |
+| L9 | Partially fixed | `3b130c8` |
+
+Also on the branch: `8683bb7` (e2e server no longer inherits real
+credentials from `.env.local`), `2423db3` (non-string reply body → 400, was
+500), `9d46d6d` (script to remove mood rows orphaned by pre-H2 renames).
+
+### Before deploying — in this order
+
+Every script is a dry run unless given `--apply`; each has `--revert`.
+
+1. `node scripts/audit-role-owners.mjs` (read-only) — review ORPHANED / OWNER_NEWER rows.
+2. `node scripts/migrate-roles-to-user-id.mjs`, then `--apply` (use `--approve @handle` for reviewed rows). **Must run before deploy**, or keepers/admins lose access until it does.
+3. Set `ADMIN_USER_IDS` in Vercel (your id is shown on `/admin`). `ADMIN_HANDLES` is no longer honored.
+4. `node scripts/migrate-blocks-mutes-to-user-id.mjs`, then `--apply`.
+5. `npm run -s backfill:uploads`, then `-- --apply`. CONFLICT rows are where the old attach bug may already have been used.
+6. Optionally `node scripts/cleanup-orphaned-moods.mjs`, then `--apply` (backs up what it deletes).
+7. Set Upstash (`UPSTASH_REDIS_REST_URL` + `_TOKEN`, or the `KV_*` pair) and `OWNER_DASHBOARD_SECRET`.
+8. After deploy: upload a real photo and audio take on a preview; after a few days of dry-run logs from `/api/cron/cleanup-uploads`, set `UPLOAD_CLEANUP_APPLY=1`.
+
+### Residual risks and notes
+
+- **Not AI-screened:** custom feeling text (40 chars), profile bio (160) and display names still get only the local word filter.
+- **Pre-H3 files nothing references** stay in Blob until a one-off store-vs-database comparison is run (not written).
+- **Rename history isn't recorded before H1**, so the V1 script can't see an older account that renamed into a freed handle; its OK rows deserve a look.
+- **Local development uses the production Atlas cluster** (the `aithoughts_dev` database) and the production `AUTH_SECRET` from `.env.local`. Separate dev credentials would be safer.
+- **Outside requests made while testing:** one Vercel Blob delete request with the real token, for a non-existent path on a non-existent store (fixed by `8683bb7`; rotating that token is prudent), and about ten OpenAI moderation requests carrying only the fake key `e2e-fake-key` and synthetic text, during an old-code comparison run for M2.
+- **Windows desktop builds are unsigned**, so update integrity relies on GitHub HTTPS and the sha512 in `latest.yml`.
 
 ## 1. What the app is
 
@@ -58,6 +113,8 @@ Separately, media files have no owner, so one user can delete another user's upl
 ## 3. Findings (sorted by severity)
 
 ### H1 — Moderator/admin powers can be inherited by claiming a freed handle
+**Status: Fixed** — `cdc368e` (stale-cookie side completed by M5 `8adc758`; V1 check `cea3a96`). Needs the role migration run before deploy and `ADMIN_USER_IDS` set — see §0.
+
 **Severity:** High (Critical if an orphaned row exists in production)
 **Files:**
 - [src/lib/admin.ts:24-36](src/lib/admin.ts#L24-L36) (`isAdminHandle`)
@@ -88,6 +145,8 @@ Finding a target is easy. `GET /api/keepers?handle=X` answers `isKeeper: true` e
 ---
 
 ### H2 — Renaming breaks blocks and mutes (block evasion)
+**Status: Fixed** — `ef61675`. Run the blocks/mutes migration; rows it flags stay matched by handle, as before, until reviewed.
+
 **Severity:** High (safety impact on a social app)
 **Files:**
 - [src/app/api/profile/route.ts:171-242](src/app/api/profile/route.ts#L171-L242): `blocks`, `mutes` and `moods` are not migrated
@@ -107,6 +166,8 @@ Mood history (`moods.handle_norm`) is also orphaned. That is a data-loss and pri
 ---
 
 ### H3 — Media files have no owner: users can delete others' media or republish private media
+**Status: Fixed** — `f9b082a`. Run the upload-owner backfill. A real upload + attach was not tested end-to-end (tests don't talk to Blob): check once on a preview deploy.
+
 **Severity:** High
 **Files:**
 - [src/app/api/posts/route.ts:655-671](src/app/api/posts/route.ts#L655-L671) (checks the host only)
@@ -132,6 +193,8 @@ Then reject `media_url`/`avatarUrl` values the caller does not own, and only del
 ---
 
 ### H4 — Outdated Electron desktop shell (many high advisories)
+**Status: Fixed** — `00c7eb1`. Electron 44.5.1 packaged locally; the app itself was not launched — open the next installer once before release.
+
 **Severity:** High
 **Files:**
 - [desktop/package.json](desktop/package.json) (`electron ^37.2.0`)
@@ -150,6 +213,8 @@ I found no user-controlled `href`s in the UI today, so the `openExternal` part h
 ---
 
 ### M1 — Rate limits are per-instance unless Upstash is set, and fail open on Redis errors
+**Status: Fixed** — `91bd93e`. Limits are still per-instance until Upstash env vars are set in production (boot now logs an error).
+
 **Severity:** Medium (*Needs verification:* production env)
 **File:** [src/lib/rate-limit.ts:8-10, 38-45, 71-91](src/lib/rate-limit.ts#L8-L91)
 
@@ -170,6 +235,8 @@ When Upstash *is* configured, any Redis error returns `ok: true` for **every** k
 ---
 
 ### M2 — Editing a take bypasses AI content screening
+**Status: Fixed** — `40b82bd`. Replies are screened too, and edits are rate-limited.
+
 **Severity:** Medium
 **Files:**
 - [src/app/api/posts/[id]/route.ts:171-201](src/app/api/posts/%5Bid%5D/route.ts#L171-L201)
@@ -186,6 +253,8 @@ Replies ([messages/route.ts:88](src/app/api/posts/%5Bid%5D/messages/route.ts#L88
 ---
 
 ### M3 — Any member can instantly hide any take by filing a "child safety" report
+**Status: Fixed** — `98514be`. Thresholds as approved: trusted = 7 days / <2 rejections in 90 days; otherwise 2 reporters ≥24h old or 3 of any age; 5/day per account.
+
 **Severity:** Medium (business-logic abuse)
 **Files:**
 - [src/app/api/reports/route.ts:179-182](src/app/api/reports/route.ts#L179-L182)
@@ -203,6 +272,8 @@ Replies ([messages/route.ts:88](src/app/api/posts/%5Bid%5D/messages/route.ts#L88
 ---
 
 ### M4 — Upload storage and cost abuse
+**Status: Fixed** — `1041326`. Cleanup only reports until `UPLOAD_CLEANUP_APPLY=1`. Files uploaded before H3 that nothing references are not covered.
+
 **Severity:** Medium
 **File:** [src/app/api/upload/route.ts:36, 63-65](src/app/api/upload/route.ts#L36-L65)
 
@@ -221,6 +292,8 @@ Replies ([messages/route.ts:88](src/app/api/posts/%5Bid%5D/messages/route.ts#L88
 ---
 
 ### M5 — Session identity comes from the cookie, not the database
+**Status: Fixed** — `8adc758`.
+
 **Severity:** Medium
 **Files:**
 - [src/lib/auth.ts:206-246](src/lib/auth.ts#L206-L246)
@@ -237,41 +310,57 @@ This is about 3 lines, and the user row is already loaded. Longer term, check po
 ---
 
 ### L1 — `/api/translate` is an unauthenticated open relay
+**Status: Fixed** — `3108abd`.
+
 **File:** [src/app/api/translate/route.ts](src/app/api/translate/route.ts)
 
 Anyone can use your server to call MyMemory. That burns its per-server-IP free quota for real users. It also writes an unbounded `translations` cache (up to 4.5 KB per entry, no TTL), and upstream error text is echoed back. **Fix:** require a session, and add a TTL index on `translations`.
 
 ### L2 — `/api/health` does work for anonymous callers, and its secret check is not attempt-limited
+**Status: Fixed** — `7ad70e5`. Correction: indexes were already built once per instance; what remained was concurrent first builds and the un-limited secret check.
+
 **File:** [src/app/api/health/route.ts:19-60](src/app/api/health/route.ts#L19-L60)
 
 Every anonymous hit runs `ensureCoreIndexes` (dozens of `createIndex` calls). `hasSecret` duplicates the Bearer logic and skips the per-IP attempt limiter in `authorizeBearer`. **Fix:** run the index check only for authorized callers or once per instance, and reuse `authorizeBearer`.
 
 ### L3 — CSP allows inline scripts in production
+**Status: Fixed** — `954bd69`. All pages now render per request (needed for nonces). Verified against a production build.
+
 **File:** [next.config.ts:10](next.config.ts#L10)
 
 `script-src 'unsafe-inline'` removes most of the protection CSP would give if an XSS bug ever appears. **Fix:** switch to nonce-based CSP, which Next supports through middleware/proxy nonces.
 
 ### L4 — Temporary Sentry test route and page are still shipped
+**Status: Fixed** — `30ce5ad`.
+
 **Files:** [src/app/api/sentry-example-api/route.ts:1-2](src/app/api/sentry-example-api/route.ts#L1-L2), `src/app/sentry-example-page/`
 
 The code itself says to delete them once verified. They let anyone generate Sentry events (rate-limited). **Fix:** delete both.
 
 ### L5 — Reporters can put misleading text in the keeper queue
+**Status: Fixed** — `b301afd`.
+
 **Files:** [src/app/api/reports/route.ts:104-107](src/app/api/reports/route.ts#L104-L107), [posts/[id]/report/route.ts:83-86](src/app/api/posts/%5Bid%5D/report/route.ts#L83-L86)
 
 For post reports, `content_snippet` comes from the client, so a keeper may act on text the post never contained. **Fix:** always build the snippet from the stored post or comment.
 
 ### L6 — Anonymous view-count inflation
+**Status: Fixed** — `5a8e140`.
+
 **File:** [src/app/api/posts/[id]/view/route.ts:49-51](src/app/api/posts/%5Bid%5D/view/route.ts#L49-L51)
 
 A client that drops the `aithoughts.anon` cookie gets a fresh viewer ID on every call. That allows about 300 fake views per 10 minutes per IP. **Fix:** count only signed-in views, or dedupe anonymous views by IP+UA hash.
 
 ### L7 — Owner dashboard secret falls back to `CRON_SECRET` and is kept in `sessionStorage`
+**Status: Fixed** — `1fa876f`. Set `OWNER_DASHBOARD_SECRET` in production, or /owner stays off.
+
 **Files:** [src/app/owner/page.tsx:146](src/app/owner/page.tsx#L146), [src/app/api/owner/metrics/route.ts:18](src/app/api/owner/metrics/route.ts#L18)
 
 An XSS (made easier by L3) could read the secret. If `OWNER_DASHBOARD_SECRET` is unset, that secret is `CRON_SECRET`, which also unlocks backups, seeding and admin bootstrap. **Fix:** set a dedicated `OWNER_DASHBOARD_SECRET` and remove the `CRON_SECRET` fallback, or gate `/owner` behind the admin session instead.
 
 ### L8 — Sensitive files on this machine (not in git)
+**Status: Partially fixed** — no commit (local files). `../jar.txt` deleted. The local backup was kept deliberately (deleting is irreversible) — encrypt or move it. Rotating tokens is yours to do.
+
 None of these is committed, and `.gitignore` covers each one. They are still worth cleaning up on a laptop:
 - `../jar.txt` (outside the repo) holds a **live session cookie** (localhost, expires Dec 2026).
 - `backups/aithoughts-2026-09-29….json.gz` is a real database dump with handles, posts and encrypted emails.
@@ -281,6 +370,8 @@ None of these is committed, and `.gitignore` covers each one. They are still wor
 **Fix:** delete `jar.txt`, move or encrypt local backups, and rotate the tokens if this machine is shared or backed up to a cloud drive.
 
 ### L9 — Dependency findings (web app)
+**Status: Partially fixed** — `3b130c8`. brace-expansion patched, next 16.3.7. Deferred: 3 moderate advisories via `@capacitor/cli` → xcode → uuid (build-time only; the only fix offered is a forced downgrade).
+
 `npm audit` found 1 high and 3 moderate issues, all **dev or build-time only**:
 - `brace-expansion` ReDoS, via eslint and `@capacitor/cli` → `rimraf`/`glob`
 - `uuid` and `xcode`, via `@capacitor/cli`
@@ -304,7 +395,7 @@ None of these runs in production request handling. `next` is pinned at 16.3.4 wh
 
 ---
 
-## 5. Quick wins you can do today
+## 5. Quick wins you can do today (original list — all done or superseded by §0)
 
 1. **(5 min, do first)** In Atlas, list `keepers` and `admins` rows whose handle matches no `users.handle`, and delete them. Also confirm every `ADMIN_HANDLES` entry is a registered account. This closes H1's live exposure.
 2. **(10 min)** `validateSession`: reject missing or suspended users and return the handle from the DB (M5).
