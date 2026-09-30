@@ -96,3 +96,10 @@ test("L6: guests can't add views", async () => {
   const reader = await member("reader");
   expect((await (await reader.post(`/api/posts/${postId}/view`)).json()).view_count).toBe(1);
 });
+
+test("L7: the owner dashboard doesn't accept CRON_SECRET", async () => {
+  const CRON_SECRET = process.env.CRON_SECRET ?? "e2e-test-cron-secret";
+  const anon = await guest();
+  const res = await anon.get("/api/owner/metrics", { headers: { Authorization: `Bearer ${CRON_SECRET}` } });
+  expect(res.status()).toBe(401);
+});

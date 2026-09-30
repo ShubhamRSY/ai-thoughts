@@ -29,7 +29,7 @@ Not linked from Voices. Bookmark:
 
 `https://YOUR_APP/owner`
 
-1. Set `OWNER_DASHBOARD_SECRET` on Vercel (or reuse `CRON_SECRET`).
+1. Set `OWNER_DASHBOARD_SECRET` on Vercel — its own value, not `CRON_SECRET` (which is no longer accepted here).
 2. Open `/owner`, paste the secret, Refresh.
 3. See today / 7d / 30d users & takes, WoW trend, feelings mix, active posters.
 

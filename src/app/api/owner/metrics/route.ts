@@ -9,13 +9,16 @@ export const dynamic = "force-dynamic";
 
 /**
  * GET /api/owner/metrics — product-owner engagement snapshot.
- * Auth: Authorization: Bearer <OWNER_DASHBOARD_SECRET|CRON_SECRET>
+ * Auth: Authorization: Bearer <OWNER_DASHBOARD_SECRET>. Its own secret, with
+ * no fallback to CRON_SECRET (L7): /owner keeps the secret in the browser's
+ * sessionStorage, where a page bug could expose it — and CRON_SECRET also
+ * unlocks backups, seeding and admin bootstrap.
  * Not linked from the public product.
  */
 export async function GET(request: Request) {
   if (
     !(await authorizeBearer(request, {
-      secrets: [process.env.OWNER_DASHBOARD_SECRET, process.env.CRON_SECRET],
+      secrets: [process.env.OWNER_DASHBOARD_SECRET],
       allowInsecureDev: false,
     }))
   ) {
