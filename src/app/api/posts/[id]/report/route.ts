@@ -57,7 +57,7 @@ export async function POST(
     const { db } = await connectToDatabase();
     const post = await db
       .collection("posts")
-      .findOne({ _id: objectId }, { projection: { handle: 1, archived: 1 } });
+      .findOne({ _id: objectId }, { projection: { handle: 1, archived: 1, content: 1 } });
     // A report must point at a real, currently-viewable take — otherwise the
     // reports queue fills with junk aimed at ghosts.
     if (!post || !(await canViewPost(db, session.handle, post))) {
@@ -89,11 +89,9 @@ export async function POST(
             : typeof body.reported_handle === "string"
               ? body.reported_handle.slice(0, MAX_REPORTED_HANDLE)
               : null,
-        // Short, PII-scrubbed hint for keepers — never raw emails/phones.
-        content_snippet:
-          typeof body.content_snippet === "string"
-            ? redactForStorage(body.content_snippet, 120)
-            : null,
+        // Short, PII-scrubbed hint for keepers, from the stored take — never
+        // from the reporter (L5).
+        content_snippet: redactForStorage(typeof post.content === "string" ? post.content : "", 120) || null,
         status: "open",
         ...(reason === CHILD_SAFETY ? { priority: "high" } : {}),
         created_at: new Date(),

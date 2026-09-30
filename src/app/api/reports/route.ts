@@ -136,10 +136,9 @@ export async function POST(request: NextRequest) {
     // Resolve the reported handle from the row itself — client-supplied
     // handles are never trusted for who "owned" the content.
     let reportedHandle: string | null = null;
-    let contentSnippet: string | null =
-      typeof body.content_snippet === "string"
-        ? redactForStorage(body.content_snippet, 120)
-        : null;
+    // What keepers see is taken from the stored content, never from the
+    // reporter (L5) — a crafted snippet could misdescribe what was posted.
+    let contentSnippet: string | null = null;
     let viewCheckFailed = false;
 
     if (targetType === "post" || targetType === "comment") {
@@ -148,11 +147,12 @@ export async function POST(request: NextRequest) {
       if (targetType === "post") {
         const post = await db
           .collection("posts")
-          .findOne({ _id: objectId }, { projection: { handle: 1, reported: 1 } });
+          .findOne({ _id: objectId }, { projection: { handle: 1, reported: 1, content: 1 } });
         if (!post || !(await canViewPost(db, session.handle, post))) {
           viewCheckFailed = true;
-        } else if (typeof post.handle === "string") {
-          reportedHandle = post.handle;
+        } else {
+          if (typeof post.handle === "string") reportedHandle = post.handle;
+          contentSnippet = redactForStorage(typeof post.content === "string" ? post.content : "", 120) || null;
         }
       } else {
         // A comment is only reportable while its parent take is viewable.
@@ -170,9 +170,7 @@ export async function POST(request: NextRequest) {
             viewCheckFailed = true;
           } else {
             reportedHandle = typeof msg.handle === "string" ? msg.handle : reportedHandle;
-            contentSnippet =
-              contentSnippet ??
-              redactForStorage(typeof msg.body === "string" ? msg.body : "", 120);
+            contentSnippet = redactForStorage(typeof msg.body === "string" ? msg.body : "", 120) || null;
           }
         }
       }

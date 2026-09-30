@@ -50,3 +50,36 @@ test("L4: the temporary Sentry test page and route are gone", async () => {
   expect((await anon.get("/api/sentry-example-api")).status()).toBe(404);
   expect((await anon.get("/sentry-example-page")).status()).toBe(404);
 });
+
+test("L5: keepers see the reported take's own text, not the reporter's", async () => {
+  const CRON_SECRET = process.env.CRON_SECRET ?? "e2e-test-cron-secret";
+  const keeper = await member("keeper");
+  const me = await (await keeper.get("/api/auth/me")).json();
+  const bs = await keeper.post("/api/admin/controls", {
+    headers: { Authorization: `Bearer ${CRON_SECRET}` },
+    data: { action: "bootstrap", handle: me.user.handle },
+  });
+  expect(bs.ok(), await bs.text()).toBeTruthy();
+
+  const author = await member("author");
+  const real = `e2e the real words ${uniq()}`;
+  const created = await author.post("/api/posts", { data: { content: real, media_type: "text" } });
+  expect(created.ok(), await created.text()).toBeTruthy();
+  const postId = (await created.json()).id;
+
+  const reporter = await member("reporter");
+  for (const [path, data] of [
+    ["/api/reports", { target_type: "post", target_id: postId, reason: "Hate or harassment" }],
+    [`/api/posts/${postId}/report`, { reason: "Hate or harassment" }],
+  ] as const) {
+    // Each route is used once per reporter, so use a fresh one for the second.
+    const who = path === "/api/reports" ? reporter : await member("reporter2");
+    const res = await who.post(path, { data: { ...data, content_snippet: "something the author never wrote" } });
+    expect(res.ok(), await res.text()).toBeTruthy();
+  }
+  const rows = ((await (await keeper.get("/api/reports")).json()) as { post_id: string; content_snippet: string }[]).filter(
+    (r) => r.post_id === postId
+  );
+  expect(rows.length).toBe(2);
+  for (const r of rows) expect(r.content_snippet).toBe(real);
+});
