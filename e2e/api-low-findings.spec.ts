@@ -44,3 +44,9 @@ test("L2: the health secret is attempt-limited like the other bearer routes", as
   for (let i = 0; i < 20; i++) await detail(`wrong-${i}`);
   expect(await detail(CRON_SECRET)).toBe(false);
 });
+
+test("L4: the temporary Sentry test page and route are gone", async () => {
+  const anon = await guest();
+  expect((await anon.get("/api/sentry-example-api")).status()).toBe(404);
+  expect((await anon.get("/sentry-example-page")).status()).toBe(404);
+});
