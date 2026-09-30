@@ -77,9 +77,11 @@ export async function banUser(db: Db, handle: string): Promise<boolean> {
     .findOne({ handle: { $in: [norm(handle), h] } }, { projection: { _id: 1, suspended: 1 } });
   if (!user) return false;
 
+  // Suspended accounts fail validateSession outright; stamping revocation
+  // too ends any legacy (sid-less) cookie even if suspension is lifted later.
   await db.collection("users").updateOne(
     { _id: user._id },
-    { $set: { suspended: true, suspended_at: new Date() } }
+    { $set: { suspended: true, suspended_at: new Date(), sessions_revoked_before: Date.now() } }
   );
   // Revoke sessions by user id — banned accounts are logged out everywhere.
   await db.collection("sessions").deleteMany({ user_id: user._id.toString() });

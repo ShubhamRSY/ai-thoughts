@@ -216,8 +216,13 @@ export async function validateSession(token: string): Promise<SessionUser | null
     decryptEmail(user?.email) ||
     payload.email ||
     "";
-  const revokedBefore = user?.sessions_revoked_before ?? 0;
-  const verified = Boolean(user?.verified);
+  // The account is the authority, not the cookie (SECURITY_AUDIT.md M5): a
+  // deleted or suspended account has no session, whatever cookie it holds,
+  // and the handle is the one the account has now — a device that missed a
+  // rename must not keep acting under a name someone else may hold.
+  if (!user || user.suspended === true) return null;
+  const revokedBefore = user.sessions_revoked_before ?? 0;
+  const verified = Boolean(user.verified);
 
   // "Sign out everywhere" — also the only way to end legacy (sid-less) tokens.
   if (issuedAt(payload) < revokedBefore) return null;
@@ -238,8 +243,8 @@ export async function validateSession(token: string): Promise<SessionUser | null
   return {
     id: payload.id,
     email,
-    handle: payload.handle,
-    displayName: payload.displayName,
+    handle: user.handle || payload.handle,
+    displayName: user.displayName || payload.displayName,
     verified,
     sid: payload.sid,
   };

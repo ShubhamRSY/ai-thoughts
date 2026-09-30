@@ -129,6 +129,12 @@ function normHandle(h: string) {
   return h.trim().toLowerCase().replace(/^@/, "");
 }
 
+/** By account id where the post has one; legacy posts fall back to the handle. */
+function isAuthorOf(post: Record<string, unknown>, session: { id: string; handle: string }): boolean {
+  if (typeof post.user_id === "string" && post.user_id) return post.user_id === session.id;
+  return normHandle(String(post.handle || "")) === normHandle(session.handle);
+}
+
 const MAX_CONTENT_LENGTH = 500;
 
 /**
@@ -161,7 +167,7 @@ export async function PATCH(
     const { db } = await connectToDatabase();
     const post = await db.collection("posts").findOne({ _id: objectId });
     if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    if (normHandle(String(post.handle || "")) !== normHandle(session.handle)) {
+    if (!isAuthorOf(post, session)) {
       return NextResponse.json({ error: "Only the author can edit this take" }, { status: 403 });
     }
     if (post.archived === true) {
@@ -241,7 +247,7 @@ export async function DELETE(
     const post = await db.collection("posts").findOne({ _id: objectId });
     if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-    const isAuthor = normHandle(String(post.handle || "")) === normHandle(session.handle);
+    const isAuthor = isAuthorOf(post, session);
     const isKeeper = await isKeeperUser(session.id);
     if (!isAuthor && !isKeeper) {
       return NextResponse.json({ error: "Only the author can delete this take" }, { status: 403 });
