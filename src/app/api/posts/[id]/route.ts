@@ -11,6 +11,8 @@ import { contentFingerprint } from "@/lib/anti-abuse";
 import { reportError } from "@/lib/report-error";
 import { signMediaUrl } from "@/lib/media-access";
 import { deletePostCascade } from "@/lib/moderation";
+import { flaggedBody, isFlaggedContent } from "@/lib/content-moderation";
+import { rateLimit } from "@/lib/rate-limit";
 
 function parseObjectId(id: string): ObjectId | null {
   try {
@@ -142,6 +144,15 @@ export async function PATCH(
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+    // Per account: each edit is a moderation call, so edits can't be used to
+    // probe the screening in bulk (M2).
+    const { ok: withinLimit, retryInSec } = await rateLimit(`post-edit:${session.id}`, 30, 10 * 60_000);
+    if (!withinLimit) {
+      return NextResponse.json(
+        { error: "Too many edits — try again shortly", retry_in_sec: retryInSec },
+        { status: 429 }
+      );
+    }
 
     const { id } = await params;
     const objectId = parseObjectId(id);
@@ -172,6 +183,11 @@ export async function PATCH(
     const dignity = checkDignity(content);
     if (!dignity.ok) {
       return NextResponse.json({ error: dignity.reason }, { status: 400 });
+    }
+    // The same AI screening a new take gets — otherwise a take could pass it
+    // and then be edited into what it would have blocked (M2).
+    if (await isFlaggedContent({ text: content })) {
+      return NextResponse.json(flaggedBody("edit"), { status: 400 });
     }
 
     // Re-resolve @mentions against real users (a handle could have been taken

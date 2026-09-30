@@ -1,5 +1,22 @@
 import { reportError } from "./report-error.ts";
 import type { TranscriptSegment } from "./types.ts";
+import { isProductionRuntime } from "./env.ts";
+
+/**
+ * OpenAI's API, or — outside production only — a local stand-in named by
+ * OPENAI_BASE_URL (the E2E suite runs a fake moderation server). Production
+ * ignores the override, so it can never be pointed elsewhere by env.
+ */
+function openaiBase(): string {
+  const override = process.env.OPENAI_BASE_URL?.trim();
+  return override && !isProductionRuntime() ? override.replace(/\/$/, "") : "https://api.openai.com";
+}
+
+/** The one response for screened-out text, shared by new takes, edits and replies. */
+export function flaggedBody(what: "take" | "edit" | "reply") {
+  const noun = { take: "This take can't be posted", edit: "This edit can't be saved", reply: "This reply can't be posted" }[what];
+  return { error: `${noun} — it looks like it breaks the community guidelines.`, code: "flagged" as const };
+}
 /**
  * Automated screening of a take's text and photo with OpenAI's free
  * omni-moderation model. Off unless OPENAI_API_KEY is set.
@@ -16,7 +33,7 @@ export async function isFlaggedContent(opts: { text?: string; imageUrl?: string 
   if (opts.imageUrl) input.push({ type: "image_url", image_url: { url: opts.imageUrl } });
   if (input.length === 0) return false;
   try {
-    const res = await fetch("https://api.openai.com/v1/moderations", {
+    const res = await fetch(`${openaiBase()}/v1/moderations`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({ model: "omni-moderation-latest", input }),
@@ -56,7 +73,7 @@ export async function transcribeMedia(url: string): Promise<TranscriptSegment[] 
     form.append("file", file, new URL(url).pathname.split("/").pop() || "take.webm");
     form.append("model", "whisper-1");
     form.append("response_format", "verbose_json");
-    const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    const res = await fetch(`${openaiBase()}/v1/audio/transcriptions`, {
       method: "POST",
       headers: { Authorization: `Bearer ${key}` },
       body: form,

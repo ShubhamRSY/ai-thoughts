@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { FAKE_MODERATION_PORT } from "./e2e/fake-moderation";
 
 const PORT = process.env.PORT ?? "3000";
 // Must be "localhost", not "127.0.0.1": next dev's allowedDevOrigins check
@@ -71,7 +72,9 @@ export default defineConfig({
           BLOB_PRIVATE_READ_WRITE_TOKEN: "",
           VERCEL_OIDC_TOKEN: "",
           RESEND_API_KEY: "",
-          OPENAI_API_KEY: "",
+          // Screening goes to the local fake in e2e/fake-moderation.ts.
+          OPENAI_API_KEY: "e2e-fake-key",
+          OPENAI_BASE_URL: `http://127.0.0.1:${FAKE_MODERATION_PORT}`,
           TURNSTILE_SECRET_KEY: "",
           UPSTASH_REDIS_REST_URL: "",
           UPSTASH_REDIS_REST_TOKEN: "",

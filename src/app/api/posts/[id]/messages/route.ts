@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
 import { checkDignity } from "@/lib/dignity";
+import { flaggedBody, isFlaggedContent } from "@/lib/content-moderation";
 import { notifyPostOwner, notifyMentions } from "@/lib/activity";
 import { extractMentions, normHandle } from "@/lib/mentions";
 import { ObjectId } from "mongodb";
@@ -88,6 +89,11 @@ export async function POST(
     const dignity = checkDignity(trimmed);
     if (!dignity.ok) {
       return NextResponse.json({ error: dignity.reason }, { status: 400 });
+    }
+    // Replies get the same AI screening as takes (M2). What's stored is the
+    // first 600 characters, so that's what is screened.
+    if (await isFlaggedContent({ text: trimmed.slice(0, 600) })) {
+      return NextResponse.json(flaggedBody("reply"), { status: 400 });
     }
 
     const { db } = await connectToDatabase();

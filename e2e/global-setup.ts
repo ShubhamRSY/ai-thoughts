@@ -1,4 +1,5 @@
 import { chromium, type FullConfig } from "@playwright/test";
+import { startFakeModeration } from "./fake-moderation";
 
 /**
  * `next dev` compiles each route on first request, which can take well over
@@ -60,6 +61,13 @@ async function devSessionCookie(baseURL: string): Promise<string | null> {
 }
 
 export default async function globalSetup(config: FullConfig) {
+  // Up for the whole run; Playwright calls the returned function at the end.
+  const stopModeration = await startFakeModeration();
+  await warmUp(config);
+  return stopModeration;
+}
+
+async function warmUp(config: FullConfig) {
   const baseURL = config.projects[0]?.use?.baseURL;
   if (!baseURL) return;
 

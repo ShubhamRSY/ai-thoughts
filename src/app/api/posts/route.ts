@@ -23,7 +23,7 @@ import {
 import { blockedHandles } from "@/lib/blocks";
 import { mutedHandles } from "@/lib/mutes";
 import { isAllowedMediaUrl, isBlobUrl, isPlayableMediaUrl } from "@/lib/media-sniff";
-import { isFlaggedContent } from "@/lib/content-moderation";
+import { flaggedBody, isFlaggedContent } from "@/lib/content-moderation";
 import { checkAttach, claimAttachment, releaseAttachment } from "@/lib/uploads";
 import { screenMediaPost } from "@/lib/moderation";
 import { signMediaUrl } from "@/lib/media-access";
@@ -687,10 +687,7 @@ export async function POST(request: NextRequest) {
     // Photo takes are media_type "text" with a media_url; audio/video are
     // screened from their transcript after publishing (screenMediaPost below).
     if (await isFlaggedContent({ text: content, imageUrl: mediaType === "text" ? mediaUrl : null })) {
-      return NextResponse.json(
-        { error: "This take can't be posted — it looks like it breaks the community guidelines.", code: "flagged" },
-        { status: 400 }
-      );
+      return NextResponse.json(flaggedBody("take"), { status: 400 });
     }
 
     // Duration is cosmetic metadata, but cap it so a crafted post can't claim
