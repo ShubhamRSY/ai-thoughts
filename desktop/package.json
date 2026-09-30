@@ -11,6 +11,7 @@
     "url": "https://github.com/ShubhamRSY/ai-thoughts.git"
   },
   "scripts": {
+    "test": "node --test",
     "start": "electron .",
     "pack:win": "electron-builder --win nsis --x64",
     "pack:msstore": "electron-builder --win appx --x64",
@@ -21,13 +22,14 @@
   "build": {
     "appId": "com.aithoughts.app",
     "productName": "AiTo",
-    "copyright": "Copyright © AiTo",
+    "copyright": "Copyright \u00a9 AiTo",
     "directories": {
       "output": "dist"
     },
     "files": [
       "main.js",
       "preload.js",
+      "safe-external.js",
       "package.json"
     ],
     "publish": [
@@ -79,7 +81,7 @@
     "electron-updater": "^6.6.2"
   },
   "devDependencies": {
-    "electron": "^37.2.0",
+    "electron": "^44.5.1",
     "electron-builder": "^26.0.12"
   }
 }
