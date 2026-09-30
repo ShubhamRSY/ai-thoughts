@@ -8,7 +8,7 @@ import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { canViewPost } from "@/lib/visibility";
 import { reportError } from "@/lib/report-error";
 import { CHILD_SAFETY, isReportReason } from "@/lib/report-reasons";
-import { holdPost } from "@/lib/moderation";
+import { holdIfWarranted, reporterStandings, withinChildSafetyLimit } from "@/lib/report-trust";
 
 const IP_REPORT_LIMIT = 20;
 const IP_REPORT_WINDOW_MS = 10 * 60_000;
@@ -37,14 +37,31 @@ export async function GET() {
     }
 
     const { db } = await connectToDatabase();
-    const reports = await db
-      .collection("reports")
-      .find({ status: "open" })
-      .sort({ created_at: -1 })
-      .limit(100)
-      .toArray();
-    // Child-safety reports jump the queue (stable sort keeps newest-first within each group).
-    reports.sort((a, b) => Number(b.reason === CHILD_SAFETY) - Number(a.reason === CHILD_SAFETY));
+    // Child-safety reports come first and are fetched first, so a backlog of
+    // other reports can never push one off the page (M3).
+    const open = (reason: object) =>
+      db.collection("reports").find({ status: "open", reason }).sort({ created_at: -1 }).limit(100).toArray();
+    const [urgent, rest] = await Promise.all([open({ $eq: CHILD_SAFETY }), open({ $ne: CHILD_SAFETY })]);
+    const reports = [...urgent, ...rest].slice(0, Math.max(100, urgent.length));
+
+    // For child-safety rows: is the take hidden yet, and how have this
+    // reporter's earlier child-safety reports turned out?
+    const heldIds = new Set(
+      (
+        await db
+          .collection("posts")
+          .find({
+            _id: { $in: urgent.map((r) => parseObjectId(String(r.post_id))).filter((x): x is ObjectId => x !== null) },
+            moderation_hold: true,
+          })
+          .project({ _id: 1 })
+          .toArray()
+      ).map((p) => p._id.toString())
+    );
+    const standing = await reporterStandings(
+      db,
+      urgent.map((r) => r.reporter_id).filter((id): id is string => typeof id === "string")
+    );
     return NextResponse.json(
       reports.map((r) => ({
         id: r._id.toString(),
@@ -57,6 +74,13 @@ export async function GET() {
         content_snippet: r.content_snippet ?? null,
         status: r.status,
         created_at: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+        ...(r.reason === CHILD_SAFETY
+          ? {
+              priority: "high",
+              post_held: heldIds.has(String(r.post_id)),
+              reporter_standing: (typeof r.reporter_id === "string" && standing.get(r.reporter_id)) || null,
+            }
+          : {}),
       }))
     );
   } catch (error) {
@@ -95,6 +119,16 @@ export async function POST(request: NextRequest) {
         { error: "Invalid report reason or missing target" },
         { status: 400 }
       );
+    }
+
+    if (reason === CHILD_SAFETY) {
+      const { ok, retryInSec } = await withinChildSafetyLimit(session.id);
+      if (!ok) {
+        return NextResponse.json(
+          { error: "You've sent several child-safety reports today — keepers are reviewing them. Try again later.", retry_in_sec: retryInSec },
+          { status: 429 }
+        );
+      }
     }
 
     const { db } = await connectToDatabase();
@@ -173,14 +207,18 @@ export async function POST(request: NextRequest) {
         target_type: targetType,
         reason,
         reporter_handle: session.handle,
+        reporter_id: session.id,
         reported_handle: reportedHandle,
         content_snippet: contentSnippet,
         status: "open",
+        ...(reason === CHILD_SAFETY ? { priority: "high" } : {}),
         created_at: new Date(),
       });
-      // Child safety: hide the take now; a keeper's "Keep & resolve" puts it back.
+      // Child safety: hide the take now if this reporter is trusted or enough
+      // independent people reported it (lib/report-trust.ts); either way it's
+      // at the top of the keeper queue. "Keep & resolve" puts a hidden take back.
       if (reason === CHILD_SAFETY && targetType === "post") {
-        await holdPost(db, parseObjectId(targetId)!);
+        await holdIfWarranted(db, parseObjectId(targetId)!, session.id);
       }
     } catch (error) {
       if (

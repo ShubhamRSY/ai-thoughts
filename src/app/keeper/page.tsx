@@ -229,9 +229,23 @@ export default function KeeperPage() {
                   “{r.content_snippet}”
                 </p>
               )}
+              {r.reason === CHILD_SAFETY && r.reporter_standing && (
+                <p className="mt-1 text-[11px] text-[var(--muted)]">
+                  Reporter&apos;s earlier child-safety reports: {r.reporter_standing.upheld} upheld ·{" "}
+                  {r.reporter_standing.rejected_90d} rejected (90 days)
+                  {r.reporter_standing.low_trust && (
+                    <span className="ml-1 font-semibold text-amber-700">· low-trust reporter</span>
+                  )}
+                </p>
+              )}
               {r.reason === CHILD_SAFETY && (
                 <p className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-800">
-                  The take is already hidden. If it sexualises or exploits a child: remove it (a copy
+                  {r.target_type !== "post" && r.target_type !== undefined
+                    ? "Review this now."
+                    : r.post_held === false
+                      ? "The take is still visible — one report from a newer account doesn't hide it on its own. Review it now."
+                      : "The take is already hidden."}{" "}
+                  If it sexualises or exploits a child: remove it (a copy
                   is preserved automatically for 1 year), ban the account, and file a report with
                   NCMEC&apos;s{" "}
                   <a

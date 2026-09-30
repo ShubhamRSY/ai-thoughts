@@ -7,6 +7,7 @@ import { logSecurityEvent } from "@/lib/audit";
 import { clientIp } from "@/lib/rate-limit";
 import { deletePostCascade, banUser, releaseModerationHold } from "@/lib/moderation";
 import { reportError } from "@/lib/report-error";
+import { recordOutcome } from "@/lib/report-trust";
 
 // Keepers can also delete via DELETE /api/posts/[id] or archive; these are the
 // "handle it here" desk buttons a report row knows how to resolve:
@@ -59,11 +60,14 @@ export async function POST(
     const { db } = await connectToDatabase();
     const report = await db.collection("reports").findOne(
       { _id: objectId },
-      { projection: { post_id: 1, reported_handle: 1, target_type: 1, status: 1 } }
+      { projection: { post_id: 1, reported_handle: 1, target_type: 1, status: 1, reason: 1, reporter_id: 1 } }
     );
     if (!report) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
+
+    // Credit reporters before acting: removing a take deletes its reports (M3).
+    if (report.status !== "resolved") await recordOutcome(db, report, action);
 
     // ---------- the actual moderation ----------
     if (action === "remove_post") {

@@ -7,7 +7,7 @@ import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { canViewPost } from "@/lib/visibility";
 import { reportError } from "@/lib/report-error";
 import { CHILD_SAFETY, REPORT_REASONS, isReportReason } from "@/lib/report-reasons";
-import { holdPost } from "@/lib/moderation";
+import { holdIfWarranted, withinChildSafetyLimit } from "@/lib/report-trust";
 
 const IP_REPORT_LIMIT = 20;
 const IP_REPORT_WINDOW_MS = 10 * 60_000;
@@ -45,6 +45,15 @@ export async function POST(
         { status: 400 }
       );
     }
+    if (reason === CHILD_SAFETY) {
+      const { ok, retryInSec } = await withinChildSafetyLimit(session.id);
+      if (!ok) {
+        return NextResponse.json(
+          { error: "You've sent several child-safety reports today — keepers are reviewing them. Try again later.", retry_in_sec: retryInSec },
+          { status: 429 }
+        );
+      }
+    }
     const { db } = await connectToDatabase();
     const post = await db
       .collection("posts")
@@ -71,6 +80,7 @@ export async function POST(
         post_id: id,
         reason,
         reporter_handle: session.handle,
+        reporter_id: session.id,
         // The reported author comes from the post itself — never trust the
         // client with who "owned" the content.
         reported_handle:
@@ -85,10 +95,11 @@ export async function POST(
             ? redactForStorage(body.content_snippet, 120)
             : null,
         status: "open",
+        ...(reason === CHILD_SAFETY ? { priority: "high" } : {}),
         created_at: new Date(),
       });
-      // Child safety: hide the take now; a keeper's "Keep & resolve" puts it back.
-      if (reason === CHILD_SAFETY) await holdPost(db, objectId);
+      // Child safety: hide now if trusted/independently reported (lib/report-trust.ts).
+      if (reason === CHILD_SAFETY) await holdIfWarranted(db, objectId, session.id);
     } catch (error) {
       // Another request won the (post, reporter) dedupe race.
       if (

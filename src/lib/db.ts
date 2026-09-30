@@ -493,6 +493,10 @@ export interface ReportRow {
   content_snippet: string | null;
   status: "open" | "resolved";
   created_at: string;
+  /** Child-safety rows only: is the take hidden yet, and the reporter's record. */
+  priority?: "high";
+  post_held?: boolean;
+  reporter_standing?: { upheld: number; rejected_90d: number; low_trust: boolean } | null;
 }
 
 export async function fetchReports(): Promise<ReportRow[] | null> {

@@ -18,6 +18,7 @@ import { authorizeBearer } from "@/lib/cron-auth";
 import { logSecurityEvent } from "@/lib/audit";
 import { clientIp } from "@/lib/rate-limit";
 import { collectSentimentSnapshot } from "@/lib/sentiment";
+import { lowTrustReporters } from "@/lib/report-trust";
 import { reportError } from "@/lib/report-error";
 
 function normHandle(h: string) {
@@ -37,7 +38,7 @@ export async function GET() {
 
   try {
     const { db } = await connectToDatabase();
-    const [admins, keepers, settings, users, posts, reportsOpen, messages, auditRows, sentiment] =
+    const [admins, keepers, settings, users, posts, reportsOpen, messages, auditRows, sentiment, lowTrust] =
       await Promise.all([
         listAdmins(),
         listKeepers(),
@@ -53,6 +54,7 @@ export async function GET() {
           .limit(50)
           .toArray(),
         collectSentimentSnapshot(db),
+        lowTrustReporters(db),
       ]);
 
     const recentPosts = await db
@@ -90,6 +92,7 @@ export async function GET() {
       admins,
       keepers,
       verifiedUsers,
+      lowTrustReporters: lowTrust,
       sentiment,
       auditLog: auditRows.map((r) => ({
         id: r._id.toString(),

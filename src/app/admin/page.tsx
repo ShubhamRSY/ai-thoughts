@@ -46,6 +46,7 @@ type AdminData = {
   admins: { handle: string; source: "env" | "db" }[];
   keepers: string[];
   verifiedUsers: string[];
+  lowTrustReporters?: { handle: string; rejected_90d: number; upheld: number }[];
   sentiment: SentimentSnapshot;
   auditLog: AuditEntry[];
   recentPosts: {
@@ -431,6 +432,27 @@ export default function AdminPage() {
                 Verify
               </button>
             </form>
+          </section>
+
+          <section className="mt-6 rounded-2xl border border-[var(--border-base)] p-4">
+            <h2 className="text-sm font-semibold">Low-trust reporters</h2>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              Three or more child-safety reports rejected by keepers in 90 days. Their reports are still
+              queued, but no longer hide a take on their own.
+            </p>
+            <ul className="mt-3 space-y-1.5 text-sm">
+              {(data.lowTrustReporters ?? []).length === 0 && (
+                <li className="text-[var(--muted)]">None.</li>
+              )}
+              {(data.lowTrustReporters ?? []).map((r) => (
+                <li key={r.handle}>
+                  {r.handle}{" "}
+                  <span className="text-xs text-[var(--muted)]">
+                    {r.rejected_90d} rejected · {r.upheld} upheld
+                  </span>
+                </li>
+              ))}
+            </ul>
           </section>
 
           <section className="mt-6 rounded-2xl border border-[var(--border-base)] p-4">
