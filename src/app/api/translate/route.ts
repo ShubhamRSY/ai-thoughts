@@ -4,12 +4,19 @@ import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { translateToEnglish, isEnglishLang } from "@/lib/translate";
 import { connectToDatabase, isMongoConfigured } from "@/lib/mongodb";
 import { reportError } from "@/lib/report-error";
+import { getSession } from "@/lib/auth";
 
 const LIMIT = 30;
 const WINDOW_MS = 10 * 60_000;
 
 export async function POST(request: Request) {
   try {
+    // Members only (L1): the button is only in the members' feed, and an open
+    // endpoint let anyone use this server to call the translation service and
+    // fill the cache.
+    if (!(await getSession())) {
+      return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+    }
     const ip = clientIp(request);
     const { ok, retryInSec } = await rateLimit(`translate:${ip}`, LIMIT, WINDOW_MS);
     if (!ok) {
@@ -72,6 +79,7 @@ export async function POST(request: Request) {
               sourceLang: sourceLang ?? null,
               targetLang: "en",
               updatedAt: new Date().toISOString(),
+              cached_at: new Date(), // TTL (lib/indexes.ts)
             },
           },
           { upsert: true }
