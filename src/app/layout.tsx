@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { connection } from "next/server";
 import { Fraunces, Manrope } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
@@ -60,7 +61,11 @@ export const viewport: Viewport = {
   themeColor: "#f2f0eb",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // Every page renders per request: the CSP nonce (src/proxy.ts) is fresh
+  // for each response, and Next stamps it on its scripts only while
+  // rendering (SECURITY_AUDIT.md L3).
+  await connection();
   return (
     <html
       lang="en"

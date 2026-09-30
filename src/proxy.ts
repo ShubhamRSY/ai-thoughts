@@ -98,6 +98,48 @@ async function hasMalformedJsonBody(request: NextRequest): Promise<boolean> {
   }
 }
 
+/**
+ * Page CSP with a fresh nonce per response (SECURITY_AUDIT.md L3). Next reads
+ * the nonce from the request's CSP header while rendering and stamps it on its
+ * own scripts; 'strict-dynamic' then trusts what those load (Turnstile,
+ * Vercel Analytics), so no inline script runs without the nonce. Inline
+ * *style attributes* still need 'unsafe-inline' in style-src; nonces don't
+ * cover attributes, and styles can't run code.
+ */
+function pageCsp(nonce: string): string {
+  const dev = process.env.NODE_ENV === "development";
+  const blob = "https://*.public.blob.vercel-storage.com https://*.private.blob.vercel-storage.com";
+  return [
+    "default-src 'self'",
+    // 'unsafe-eval' only for dev: React uses eval there for error stacks.
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ""}`,
+    "style-src 'self' 'unsafe-inline'",
+    `img-src 'self' data: blob: ${blob}`,
+    "font-src 'self'",
+    `connect-src 'self' ${blob} https://blob.vercel-storage.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io`,
+    `media-src 'self' blob: ${blob}`,
+    "frame-ancestors 'none'",
+    // No fallback to default-src for these three, so they must be explicit.
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'",
+    // Cloudflare Turnstile (sign-in CAPTCHA) renders in an iframe.
+    "frame-src https://challenges.cloudflare.com",
+  ].join("; ");
+}
+
+/** Continue to the page with a per-request nonce CSP on request and response. */
+function nextWithCsp(request: NextRequest) {
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+  const csp = pageCsp(nonce);
+  const headers = new Headers(request.headers);
+  headers.set("x-nonce", nonce);
+  headers.set("Content-Security-Policy", csp);
+  const res = NextResponse.next({ request: { headers } });
+  res.headers.set("Content-Security-Policy", csp);
+  return res;
+}
+
 function under(pathname: string, paths: string[]): boolean {
   return paths.some((p) => pathname === p || pathname.startsWith(p + "/"));
 }
@@ -147,7 +189,7 @@ export async function proxy(request: NextRequest) {
       res.cookies.set(SESSION_COOKIE, "", { ...sessionCookieOptions(0), maxAge: 0 });
       return res;
     }
-    return NextResponse.next();
+    return nextWithCsp(request);
   }
 
   // Already joined → never show join / landing again
@@ -157,7 +199,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL(dest, request.url));
   }
 
-  return NextResponse.next();
+  return nextWithCsp(request);
 }
 
 export const config = {

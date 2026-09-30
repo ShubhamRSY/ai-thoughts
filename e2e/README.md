@@ -46,3 +46,21 @@ instead.
   (5 codes / hour — see `src/app/api/auth/sign-in/route.ts`).
 - `workers: 1` / `fullyParallel: false` because the dev server's rate limiter
   and OTP store are in-process, in-memory state shared across tests.
+
+## CSP against a production build
+
+The page CSP (per-request nonce, `src/proxy.ts`) differs between `next dev`
+and a production build, so check `e2e/csp.spec.ts` against a build before
+changing it. `next build`/`next start` also load `.env.local`, so blank every
+real credential first:
+
+```bash
+export AUTH_SECRET=e2e-test-secret-not-for-prod CRON_SECRET=e2e-test-cron-secret \
+  MONGODB_URL="mongodb://127.0.0.1:27017/aithoughts-e2e?tlsAllowInvalidCertificates=true" \
+  MONGODB_DB=aithoughts-e2e TRUSTED_PROXY_HOPS=1 \
+  BLOB_READ_WRITE_TOKEN= BLOB_PRIVATE_READ_WRITE_TOKEN= VERCEL_OIDC_TOKEN= RESEND_API_KEY= \
+  OPENAI_API_KEY= UPSTASH_REDIS_REST_URL= UPSTASH_REDIS_REST_TOKEN= KV_REST_API_URL= \
+  KV_REST_API_TOKEN= SENTRY_AUTH_TOKEN= NEXT_PUBLIC_SENTRY_DSN=
+npm run build && npx next start -p 3100 &
+E2E_BASE_URL=http://localhost:3100 E2E_DB_NAME=aithoughts-e2e npx playwright test e2e/csp.spec.ts
+```
