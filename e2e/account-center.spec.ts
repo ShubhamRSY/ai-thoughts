@@ -328,9 +328,11 @@ test("account center: archive a take from your profile, see it in Archive and Yo
   await page.getByRole("button", { name: "You", exact: true }).first().click();
   await expect(page.getByText(content).first()).toBeVisible();
 
+  // Archive lives in the take card's ··· menu.
+  await page.getByRole("button", { name: "More" }).first().click();
   const [archived] = await Promise.all([
     page.waitForResponse((r) => r.url().endsWith("/archive") && r.request().method() === "POST"),
-    page.getByRole("button", { name: "Archive take" }).first().click(),
+    page.getByRole("button", { name: "Archive", exact: true }).click(),
   ]);
   expect(archived.ok()).toBeTruthy();
   await expect(page.getByText(content)).toHaveCount(0); // gone from your own profile

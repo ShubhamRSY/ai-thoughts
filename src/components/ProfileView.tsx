@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Archive, ArrowLeft, Ban, Bookmark, Camera, Check, Download, Flag, Lock, PencilLine, Settings, Trash2, UserPlus, UserCheck, BellOff } from "lucide-react";
+import { ArrowLeft, Ban, Bookmark, Camera, Check, Download, Flag, Lock, PencilLine, Settings, UserPlus, UserCheck, BellOff } from "lucide-react";
 import ReportDialog from "@/components/ReportDialog";
 import { upload } from "@vercel/blob/client";
 import { stripImageMetadata } from "@/lib/image";
@@ -35,9 +35,8 @@ interface ProfileViewProps {
   /** Takes you've reposted/quote-reposted — own profile only. */
   repostedThoughts?: Thought[];
   onCreate: () => void;
-  onDelete?: (thoughtId: string) => void;
-  /** Hide a take from everyone but you (reversible from the Account Center). */
-  onArchive?: (thoughtId: string) => void;
+  /** Renders the profile's takes as full feed cards (the page owns their actions). */
+  renderPosts: (posts: Thought[]) => ReactNode;
   onUnsave?: (thoughtId: string) => void;
   /** Handle to view. Omitted/own handle = your own editable profile. */
   viewHandle?: string;
@@ -69,8 +68,7 @@ export default function ProfileView({
   savedThoughts = [],
   repostedThoughts = [],
   onCreate,
-  onDelete,
-  onArchive,
+  renderPosts,
   onUnsave,
   viewHandle,
   onFollowToggle,
@@ -625,6 +623,30 @@ export default function ProfileView({
         </div>
       )}
 
+      <div className="mt-6">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+          {isOwn ? "Your takes" : "Posts"}
+        </p>
+        {postsList.length === 0 ? (
+          isOwn ? (
+            <button
+              type="button"
+              onClick={onCreate}
+              className="w-full rounded-2xl border border-dashed border-[var(--border-base)] bg-[var(--surface)] px-4 py-8 text-center transition hover:border-[var(--accent)]"
+            >
+              <p className="text-sm font-medium text-[var(--foreground)]">Share your first take</p>
+              <p className="mt-1 text-xs text-[var(--muted)]">{BRAND.tagline}</p>
+            </button>
+          ) : (
+            <p className="rounded-2xl border border-dashed border-[var(--border-base)] bg-[var(--surface)] px-4 py-8 text-center text-sm text-[var(--muted)]">
+              No takes yet.
+            </p>
+          )
+        ) : (
+          renderPosts(postsList)
+        )}
+      </div>
+
       {isOwn && user && onOpenAccount && (
         <button
           type="button"
@@ -775,69 +797,6 @@ export default function ProfileView({
           </div>
         </div>
       )}
-
-      <div className="mt-6">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-          {isOwn ? "Your takes" : "Posts"}
-        </p>
-        {postsList.length === 0 ? (
-          isOwn ? (
-            <button
-              type="button"
-              onClick={onCreate}
-              className="w-full rounded-2xl border border-dashed border-[var(--border-base)] bg-[var(--surface)] px-4 py-8 text-center transition hover:border-[var(--accent)]"
-            >
-              <p className="text-sm font-medium text-[var(--foreground)]">Share your first take</p>
-              <p className="mt-1 text-xs text-[var(--muted)]">{BRAND.tagline}</p>
-            </button>
-          ) : (
-            <p className="rounded-2xl border border-dashed border-[var(--border-base)] bg-[var(--surface)] px-4 py-8 text-center text-sm text-[var(--muted)]">
-              No takes yet.
-            </p>
-          )
-        ) : (
-          <div className="flex flex-col gap-2">
-            {postsList.map((t) => (
-              <div
-                key={t.id}
-                className="flex items-center gap-3 rounded-xl border border-[var(--border-base)] bg-[var(--surface)] px-3 py-2.5"
-              >
-                <p dir="auto" className="min-w-0 flex-1 truncate text-sm text-[var(--foreground)]">
-                  {t.content}
-                </p>
-                <span className="shrink-0 text-xs tabular-nums text-[var(--muted)]">{t.timeLabel}</span>
-                {isOwn && onArchive && (
-                  <button
-                    type="button"
-                    aria-label="Archive take"
-                    onClick={() => onArchive(t.id)}
-                    className="shrink-0 rounded-md p-1.5 text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
-                  >
-                    <Archive className="h-3.5 w-3.5" />
-                  </button>
-                )}
-                {isOwn && onDelete && (
-                  <button
-                    type="button"
-                    aria-label="Delete take"
-                    onClick={() => {
-                      if (
-                        !window.confirm("Delete this take? It will be removed for everyone.")
-                      ) {
-                        return;
-                      }
-                      onDelete(t.id);
-                    }}
-                    className="shrink-0 rounded-md p-1.5 text-[var(--muted)] hover:bg-rose-50 hover:text-rose-700"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
 
       {taggedThoughts.length > 0 && (
         <div className="mt-6">

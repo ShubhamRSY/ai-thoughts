@@ -8,6 +8,7 @@ interface FeedGridProps {
   onReact?: (thoughtId: string, reaction: Reaction) => void | Promise<boolean>;
   onReport?: (thoughtId: string, reason: ReportReason) => void | Promise<boolean>;
   onDelete?: (thoughtId: string) => void;
+  onArchive?: (thoughtId: string) => void;
   onOpenRoom?: (id: FeelingId) => void;
   onFeelWith?: (handle: string, next: boolean) => void;
   onQuoteRepost?: (postId: string, comment: string) => Promise<boolean>;
@@ -32,6 +33,7 @@ export default function FeedGrid({
   onReact,
   onReport,
   onDelete,
+  onArchive,
   onOpenRoom,
   onFeelWith,
   onQuoteRepost,
@@ -83,6 +85,7 @@ export default function FeedGrid({
             onReact={onReact}
             onReport={onReport}
             onDelete={onDelete}
+            onArchive={onArchive}
             onOpenRoom={onOpenRoom}
             onFeelWith={onFeelWith}
             onQuoteRepost={onQuoteRepost}

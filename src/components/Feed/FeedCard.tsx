@@ -12,6 +12,7 @@ import {
   MoreHorizontal,
   Flag,
   Trash2,
+  Archive,
   HeartHandshake,
   BellOff,
 } from "lucide-react";
@@ -91,6 +92,8 @@ interface FeedCardProps {
   onReact?: (thoughtId: string, reaction: Reaction) => void | Promise<boolean>;
   onReport?: (thoughtId: string, reason: ReportReason) => void | Promise<boolean>;
   onDelete?: (thoughtId: string) => void;
+  /** Hide a take from everyone but its author (reversible from the Account Center). */
+  onArchive?: (thoughtId: string) => void;
   onOpenRoom?: (id: FeelingId) => void;
   onFeelWith?: (handle: string, next: boolean) => void;
   onQuoteRepost?: (postId: string, comment: string) => Promise<boolean>;
@@ -120,6 +123,7 @@ export default function FeedCard({
   onReact,
   onReport,
   onDelete,
+  onArchive,
   onOpenRoom,
   onFeelWith,
   onQuoteRepost,
@@ -335,6 +339,19 @@ export default function FeedCard({
                     onClick={() => setMenuOpen(false)}
                   />
                   <div className="absolute right-0 top-7 z-20 w-44 overflow-hidden rounded-lg border border-[var(--border-base)] bg-[var(--surface)] shadow-md">
+                    {isAuthor && onArchive && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          onArchive(thought.id);
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-[var(--foreground)] hover:bg-[var(--surface-2)]"
+                      >
+                        <Archive className="h-3.5 w-3.5" />
+                        Archive
+                      </button>
+                    )}
                     {isAuthor && onDelete && (
                       <button
                         type="button"

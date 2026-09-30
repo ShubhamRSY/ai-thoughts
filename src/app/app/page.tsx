@@ -34,6 +34,7 @@ import type { MediaType, Thought, FeelingId, Reaction, PublishResult } from "@/l
 import { FEED_PAGE_SIZE } from "@/lib/types";
 import {
   fetchPulsePosts,
+  fetchPostsByHandle,
   isLive,
   publishPost,
   addReaction,
@@ -497,7 +498,12 @@ export default function Home() {
       }
       const silent = Boolean(opts?.silent);
       if (!silent) setFeedStatus("loading");
-      const posts = await fetchPulsePosts();
+      // Own takes come from their own query: filtering the newest feed page
+      // dropped anything older than it from the profile.
+      const [posts, own] = await Promise.all([
+        fetchPulsePosts(),
+        identityHandle ? fetchPostsByHandle(identityHandle) : Promise.resolve([]),
+      ]);
       if (!posts) {
         if (!silent) {
           setThoughts([]);
@@ -519,7 +525,7 @@ export default function Home() {
         setThoughts(posts);
         setFeedCursor(last ? { ts: last.timestamp, id: last.id } : null);
       }
-      setMine(posts.filter((t) => sameAuthor(t.handle, identityHandle)));
+      setMine(own);
       setFeedStatus("ready");
     },
     [identityHandle]
@@ -608,6 +614,41 @@ export default function Home() {
     for (const t of thoughts) if (t.feeling) m[t.feeling] = (m[t.feeling] ?? 0) + 1;
     return m;
   }, [thoughts]);
+
+  // Actions shared by every list of full take cards (Voices feed and profiles).
+  const cardActions = {
+    onReact,
+    onReport,
+    onDelete,
+    currentHandle: user?.handle ?? null,
+    currentAuthor: identityAuthor ?? null,
+    onOpenRoom: handleOpenRoom,
+    onFeelWith: user ? onFeelWith : undefined,
+    onQuoteRepost: user ? onQuoteRepost : undefined,
+    onOpenTag: (tag: string) => {
+      setSearchQuery(tag);
+      setTab("search");
+    },
+    onOpenMention: (handle: string) => {
+      setViewProfileHandle(handle.replace(/^@/, ""));
+      setTab("you");
+    },
+    onMute: async (handle: string, muted: boolean) => {
+      if (!user) return;
+      await fetch("/api/mutes", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          handle: handle.replace(/^@/, ""),
+          action: muted ? "mute" : "unmute",
+        }),
+      });
+      reloadFeed();
+    },
+    followingHandles: followingSet,
+    othersMap,
+  };
 
   // Hold the feed until we know who's here and whether they still need
   // onboarding, so a new account never sees Voices flash before the wizard.
@@ -721,37 +762,7 @@ export default function Home() {
                   </div>
                   <FeedGrid
                     thoughts={filtered}
-                    onReact={onReact}
-                    onReport={onReport}
-                    onDelete={onDelete}
-                    currentHandle={user?.handle ?? null}
-                    currentAuthor={identityAuthor ?? null}
-                    onOpenRoom={handleOpenRoom}
-                    onFeelWith={user ? onFeelWith : undefined}
-                    onQuoteRepost={user ? onQuoteRepost : undefined}
-                    onOpenTag={(tag) => {
-                      setSearchQuery(tag);
-                      setTab("search");
-                    }}
-                    onOpenMention={(handle) => {
-                      setViewProfileHandle(handle.replace(/^@/, ""));
-                      setTab("you");
-                    }}
-                    onMute={async (handle, muted) => {
-                      if (!user) return;
-                      await fetch("/api/mutes", {
-                        method: "POST",
-                        credentials: "include",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          handle: handle.replace(/^@/, ""),
-                          action: muted ? "mute" : "unmute",
-                        }),
-                      });
-                      reloadFeed();
-                    }}
-                    followingHandles={followingSet}
-                    othersMap={othersMap}
+                    {...cardActions}
                     loading={feedStatus === "loading"}
                     focusPostId={focusPostId}
                     emptyHint={
@@ -843,8 +854,13 @@ export default function Home() {
                 savedThoughts={saved}
                 repostedThoughts={reposted}
                 onCreate={() => openShare("text")}
-                onDelete={user ? onDelete : undefined}
-                onArchive={user ? onArchive : undefined}
+                renderPosts={(posts) => (
+                  <FeedGrid
+                    thoughts={posts}
+                    {...cardActions}
+                    onArchive={user ? onArchive : undefined}
+                  />
+                )}
                 onUnsave={onUnsave}
                 viewHandle={viewingOther ? viewProfileHandle! : undefined}
                 onFollowToggle={(handle, next) => onFeelWith(handle, next)}
