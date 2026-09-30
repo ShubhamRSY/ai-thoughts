@@ -4,15 +4,23 @@ import { ensurePairIndexes } from "./user-pairs.ts";
 import { BLOCKS } from "./blocks.ts";
 import { MUTES } from "./mutes.ts";
 
-let ensured = false;
+// One build per instance; concurrent first callers share it (L2).
+let ensuring: Promise<void> | null = null;
 
 /** How long a viewer is remembered before their next view counts again. */
 const VIEW_DEDUPE_DAYS = 30;
 const ONE_YEAR_S = 60 * 60 * 24 * 365;
 
 /** Idempotent indexes for lookups that matter for auth, prompts, and push. */
-export async function ensureCoreIndexes(db: Db): Promise<void> {
-  if (ensured) return;
+export function ensureCoreIndexes(db: Db): Promise<void> {
+  ensuring ??= buildCoreIndexes(db).catch((e) => {
+    ensuring = null; // a failed build is retried by the next caller
+    throw e;
+  });
+  return ensuring;
+}
+
+async function buildCoreIndexes(db: Db): Promise<void> {
 
   const jobs: Array<Promise<unknown>> = [
     db.collection("users").createIndex(
@@ -273,5 +281,4 @@ export async function ensureCoreIndexes(db: Db): Promise<void> {
     reportError(e, { route: "lib/indexes", service: "mongodb" });
   }
 
-  ensured = true;
 }

@@ -30,3 +30,17 @@ test("L1: translation is for signed-in members only", async () => {
   expect(res.ok(), await res.text()).toBeTruthy();
   expect((await res.json()).alreadyEnglish).toBe(true);
 });
+
+test("L2: the health secret is attempt-limited like the other bearer routes", async () => {
+  const CRON_SECRET = process.env.CRON_SECRET ?? "e2e-test-cron-secret";
+  const probe = await guest();
+  const detail = async (secret?: string) =>
+    "indexes" in (await (await probe.get("/api/health", secret ? { headers: { Authorization: `Bearer ${secret}` } } : {})).json());
+  expect(await detail(CRON_SECRET)).toBe(true);
+  // Plain probes don't count against the budget…
+  for (let i = 0; i < 25; i++) expect(await detail()).toBe(false);
+  expect(await detail(CRON_SECRET)).toBe(true);
+  // …guesses do: after 20 attempts from this IP even the right secret is refused.
+  for (let i = 0; i < 20; i++) await detail(`wrong-${i}`);
+  expect(await detail(CRON_SECRET)).toBe(false);
+});

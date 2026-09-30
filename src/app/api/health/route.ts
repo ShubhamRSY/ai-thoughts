@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { timingSafeEqual } from "crypto";
 import { envStatus, isProductionRuntime } from "@/lib/env";
 import { isMongoConfigured, connectToDatabase } from "@/lib/mongodb";
 import { ensureCoreIndexes } from "@/lib/indexes";
 import { reportError } from "@/lib/report-error";
+import { authorizeBearer } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -16,29 +16,17 @@ export const dynamic = "force-dynamic";
  * health state but can't glean deployment internals (e.g. which env vars are
  * absent lets an attacker tailor a supply-chain or env-confusion attack).
  */
-function hasSecret(request: Request): boolean {
-  const secrets = [
-    process.env.OWNER_DASHBOARD_SECRET,
-    process.env.CRON_SECRET,
-    process.env.ADMIN_SEED_SECRET,
-  ]
-    .map((s) => s?.trim())
-    .filter((s): s is string => Boolean(s));
-  if (secrets.length === 0) return false;
-
-  const header = request.headers.get("authorization") ?? "";
-  const bearer = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
-  if (!bearer) return false;
-
-  try {
-    const a = Buffer.from(bearer, "utf8");
-    return secrets.some((s) => {
-      const b = Buffer.from(s, "utf8");
-      return a.length === b.length && timingSafeEqual(a, b);
-    });
-  } catch {
-    return false;
-  }
+/**
+ * Same Bearer check as cron/admin routes, attempt-limited per IP (L2) — but
+ * only when a secret is offered, so plain uptime probes don't spend the IP's
+ * attempt budget.
+ */
+function hasSecret(request: Request): Promise<boolean> {
+  if (!request.headers.get("authorization")) return Promise.resolve(false);
+  return authorizeBearer(request, {
+    secrets: [process.env.OWNER_DASHBOARD_SECRET, process.env.CRON_SECRET, process.env.ADMIN_SEED_SECRET],
+    allowInsecureDev: false,
+  });
 }
 
 export async function GET(request: Request) {
@@ -73,7 +61,7 @@ export async function GET(request: Request) {
     mongo !== "error" &&
     (!isProductionRuntime() || mongo === "ok");
 
-  const authorized = hasSecret(request);
+  const authorized = await hasSecret(request);
 
   return NextResponse.json(
     {
