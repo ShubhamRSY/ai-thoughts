@@ -72,6 +72,51 @@ export function deletableUrls(
   });
 }
 
+// ---- Size caps and quotas (SECURITY_AUDIT.md M4) ----------------------------
+
+const MB = 1024 * 1024;
+const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
+const AUDIO_TYPES = ["audio/webm", "audio/mp4", "audio/mpeg", "audio/mp3", "audio/ogg", "audio/aac", "audio/wav", "audio/x-wav", "audio/x-m4a"];
+const VIDEO_TYPES = ["video/webm", "video/mp4", "video/ogg", "video/quicktime", "video/x-m4v"];
+
+/**
+ * What a token for `pathname` may upload. The extension picks the family;
+ * webm/mp4/ogg can be audio or video, so they get the video cap. Avatars are
+ * photos only. null = not an upload name we issue tokens for.
+ */
+export function uploadCaps(pathname: string): { maxBytes: number; contentTypes: string[] } | null {
+  const parsed = parseUploadPathname(pathname);
+  if (!parsed) return null;
+  const ext = pathname.slice(pathname.lastIndexOf(".") + 1);
+  const image = ["jpg", "jpeg", "png", "webp", "heic", "heif"].includes(ext);
+  if (parsed.kind === "avatar") return image ? { maxBytes: 10 * MB, contentTypes: IMAGE_TYPES } : null;
+  if (image) return { maxBytes: 10 * MB, contentTypes: IMAGE_TYPES };
+  if (["m4a", "mp3", "wav", "aac"].includes(ext)) return { maxBytes: 25 * MB, contentTypes: AUDIO_TYPES };
+  return { maxBytes: 150 * MB, contentTypes: [...AUDIO_TYPES, ...VIDEO_TYPES] };
+}
+
+/** Per-account upload quotas: [count, window] pairs per kind. */
+export const UPLOAD_QUOTAS: Record<UploadKind, { max: number; windowMs: number }[]> = {
+  take: [
+    { max: 10, windowMs: 60 * 60_000 },
+    { max: 30, windowMs: 24 * 60 * 60_000 },
+  ],
+  avatar: [{ max: 5, windowMs: 24 * 60 * 60_000 }],
+};
+
+/** Seconds until the next upload is allowed, given recent upload times; 0 = allowed now. */
+export function quotaWaitSec(kind: UploadKind, recent: Date[], now = Date.now()): number {
+  let wait = 0;
+  for (const { max, windowMs } of UPLOAD_QUOTAS[kind]) {
+    const inWindow = recent.map((d) => d.getTime()).filter((t) => now - t < windowMs).sort((a, b) => a - b);
+    if (inWindow.length >= max) wait = Math.max(wait, Math.ceil((inWindow[inWindow.length - max] + windowMs - now) / 1000));
+  }
+  return wait;
+}
+
+/** Uploads older than this that never made it into a post or profile are removed. */
+export const UNATTACHED_GRACE_MS = 24 * 60 * 60_000;
+
 // ---- DB wrappers -----------------------------------------------------------
 
 const uploads = (db: Db) => db.collection<UploadRow>("uploads");
@@ -102,6 +147,16 @@ export async function claimUpload(db: Db, pathname: string, ownerId: string, isP
   const row = await uploads(db).findOne({ key });
   if (!row || row.owner_id !== ownerId || row.kind !== parsed.kind) throw new Error("Upload name already in use");
   return parsed.kind;
+}
+
+/** Per-account quota check before a token is issued (counts recorded uploads, so it holds across instances). */
+export async function uploadQuotaWaitSec(db: Db, ownerId: string, kind: UploadKind): Promise<number> {
+  const longest = Math.max(...UPLOAD_QUOTAS[kind].map((q) => q.windowMs));
+  const recent = await uploads(db)
+    .find({ owner_id: ownerId, kind, created_at: { $gt: new Date(Date.now() - longest) } })
+    .project<{ created_at: Date }>({ created_at: 1 })
+    .toArray();
+  return quotaWaitSec(kind, recent.map((r) => r.created_at));
 }
 
 export type AttachCheck = { ok: true; key: string } | { ok: false; status: 400 | 403 | 409; error: string };

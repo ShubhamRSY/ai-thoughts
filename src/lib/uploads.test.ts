@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { deletableUrls, parseUploadPathname, uploadKeyForUrl } from "./uploads.ts";
+import { deletableUrls, parseUploadPathname, quotaWaitSec, uploadCaps, uploadKeyForUrl } from "./uploads.ts";
 
 const U = "3f2b9c1e-8a7d-4e6f-9b0c-1d2e3f4a5b6c";
 
@@ -57,5 +57,42 @@ describe("which files go with deleted content (H3)", () => {
   it("never deletes someone else's file, even when a moderator removes the post", () => {
     // A keeper removing an attacker's post that embedded the victim's file.
     assert.deepEqual(deletableUrls([theirs], "attacker", owners, new Set()), []);
+  });
+});
+
+describe("upload size caps (M4)", () => {
+  const MB = 1024 * 1024;
+  it("caps photos at 10 MB, audio-only at 25 MB, audio/video at 150 MB", () => {
+    assert.equal(uploadCaps(`take-${U}.jpg`)?.maxBytes, 10 * MB);
+    assert.equal(uploadCaps(`avatar-${U}.png`)?.maxBytes, 10 * MB);
+    assert.equal(uploadCaps(`take-${U}.m4a`)?.maxBytes, 25 * MB);
+    assert.equal(uploadCaps(`take-${U}.webm`)?.maxBytes, 150 * MB);
+    assert.equal(uploadCaps(`take-${U}.mov`)?.maxBytes, 150 * MB);
+  });
+  it("only lets a photo token upload photos, and avatars be photos", () => {
+    assert.ok(uploadCaps(`avatar-${U}.jpg`)!.contentTypes.every((t) => t.startsWith("image/")));
+    assert.equal(uploadCaps(`avatar-${U}.webm`), null);
+    assert.equal(uploadCaps("take-123.webm"), null);
+  });
+});
+
+describe("upload quotas (M4)", () => {
+  const now = Date.parse("2026-09-30T12:00:00Z");
+  const minsAgo = (m: number) => new Date(now - m * 60_000);
+  it("allows 10 takes an hour, then says when the oldest frees up", () => {
+    const nine = Array.from({ length: 9 }, (_, i) => minsAgo(i));
+    assert.equal(quotaWaitSec("take", nine, now), 0);
+    const ten = [...nine, minsAgo(50)];
+    assert.equal(quotaWaitSec("take", ten, now), 10 * 60);
+  });
+  it("allows 30 takes a day even when spread out", () => {
+    const thirty = Array.from({ length: 30 }, (_, i) => minsAgo(90 + i * 30));
+    assert.ok(quotaWaitSec("take", thirty, now) > 0);
+    assert.equal(quotaWaitSec("take", thirty.slice(1), now), 0);
+  });
+  it("allows 5 avatars a day", () => {
+    const five = Array.from({ length: 5 }, (_, i) => minsAgo(60 * (i + 1)));
+    assert.ok(quotaWaitSec("avatar", five, now) > 0);
+    assert.equal(quotaWaitSec("avatar", five.slice(1), now), 0);
   });
 });
