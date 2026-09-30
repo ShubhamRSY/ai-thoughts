@@ -55,6 +55,13 @@ async function passesTurnstile(token: unknown, ip: string): Promise<boolean> {
   }
 }
 
+/** The shared rate limiter is down and sign-in fails closed (SECURITY_AUDIT.md M1). */
+const briefUnavailable = () =>
+  NextResponse.json(
+    { error: "Sign-in is briefly unavailable — try again in a moment", retry_in_sec: 30 },
+    { status: 503, headers: { "Retry-After": "30" } }
+  );
+
 export async function POST(request: Request) {
   try {
     const existing = await getSession();
@@ -79,7 +86,8 @@ export async function POST(request: Request) {
     }
 
     const ip = clientIp(request);
-    const { ok, retryInSec } = await rateLimit(`sign-in:${ip}`, SIGN_IN_LIMIT, SIGN_IN_WINDOW_MS);
+    const { ok, retryInSec, unavailable } = await rateLimit(`sign-in:${ip}`, SIGN_IN_LIMIT, SIGN_IN_WINDOW_MS);
+    if (unavailable) return briefUnavailable();
     if (!ok) {
       return NextResponse.json(
         { error: "Too many attempts — try again shortly", retry_in_sec: retryInSec },
@@ -98,11 +106,12 @@ export async function POST(request: Request) {
     }
 
     if (!isDevCodeMode) {
-      const { ok: globalOk, retryInSec: globalRetry } = await rateLimit(
+      const { ok: globalOk, retryInSec: globalRetry, unavailable: globalDown } = await rateLimit(
         "sign-in:global",
         GLOBAL_OTP_LIMIT,
         GLOBAL_OTP_WINDOW_MS
       );
+      if (globalDown) return briefUnavailable();
       if (!globalOk) {
         return NextResponse.json(
           { error: "Sign-in is temporarily busy — try again soon", retry_in_sec: globalRetry },
@@ -132,11 +141,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: disposable.reason, code: disposable.code }, { status: 400 });
     }
 
-    const { ok: emailOk, retryInSec: emailRetry } = await rateLimit(
+    const { ok: emailOk, retryInSec: emailRetry, unavailable: emailDown } = await rateLimit(
       `sign-in-email:${normalized}`,
       EMAIL_OTP_LIMIT,
       EMAIL_OTP_WINDOW_MS
     );
+    if (emailDown) return briefUnavailable();
     if (!emailOk) {
       return NextResponse.json(
         { error: "Too many codes for this email — try again shortly", retry_in_sec: emailRetry },

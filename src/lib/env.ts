@@ -73,6 +73,17 @@ export function warnIfProductionEnvIncomplete(): void {
     );
   }
   if (!isProductionRuntime()) return;
+  // Same pairs lib/rate-limit.ts reads (URL and token may come from either).
+  const upstash =
+    Boolean(process.env.UPSTASH_REDIS_REST_URL?.trim() || process.env.KV_REST_API_URL?.trim()) &&
+    Boolean(process.env.UPSTASH_REDIS_REST_TOKEN?.trim() || process.env.KV_REST_API_TOKEN?.trim());
+  if (!upstash) {
+    console.error(
+      "[ai-thoughts] Rate limits are per server instance: Upstash is not configured. " +
+        "Set UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN (or KV_REST_API_URL + KV_REST_API_TOKEN) " +
+        "so sign-in and abuse limits hold across instances."
+    );
+  }
   const status = envStatus();
   if (!status.ok) {
     console.error(

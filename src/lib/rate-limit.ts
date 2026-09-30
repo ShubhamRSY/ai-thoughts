@@ -7,28 +7,54 @@ import { reportError } from "./report-error.ts";
 // KV_REST_API_* are the names Vercel's Upstash integration injects.
 const redisUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
 const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
-const redis = redisUrl && redisToken ? new Redis({ url: redisUrl, token: redisToken }) : null;
+type RedisLike = Pick<Redis, "pipeline" | "expire">;
+let redis: RedisLike | null = redisUrl && redisToken ? new Redis({ url: redisUrl, token: redisToken }) : null;
+
+/** Tests only: swap in a fake Redis (or null for in-memory). */
+export function setRedisForTests(fake: RedisLike | null): void {
+  redis = fake;
+}
 
 export function isDistributedRateLimitConfigured(): boolean {
   return redis !== null;
 }
 
-async function rateLimitRedis(
-  key: string,
-  limit: number,
-  windowMs: number
-): Promise<{ ok: boolean; retryInSec: number }> {
+export type RateLimitResult = {
+  ok: boolean;
+  retryInSec: number;
+  /** The shared limiter is down and this key fails closed — answer 503, not 429. */
+  unavailable?: boolean;
+};
+
+// When Upstash is configured but unreachable (SECURITY_AUDIT.md M1):
+// - keys guarding sign-in emails, bearer secrets and account deletion fail
+//   CLOSED — a brief "try again" beats unmetered code sends or secret guessing;
+// - everything else (OTP verify included: codes also have a DB-backed attempt
+//   cap) falls back to this instance's memory at half its normal limit.
+const FAIL_CLOSED = /^(sign-in|sign-in-email|bearer-auth|account-delete):/;
+const REDIS_TIMEOUT_MS = 1_000;
+const REPORT_EVERY_MS = 60_000;
+let lastReport = 0;
+
+function withTimeout<T>(p: Promise<T>): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error("redis rate limit timed out")), REDIS_TIMEOUT_MS)),
+  ]);
+}
+
+async function rateLimitRedis(key: string, limit: number, windowMs: number): Promise<RateLimitResult> {
   const windowSec = Math.max(1, Math.ceil(windowMs / 1000));
   const redisKey = `rl:${key}`;
   try {
     const pipeline = redis!.pipeline();
     pipeline.incr(redisKey);
     pipeline.ttl(redisKey);
-    const [count, ttl] = (await pipeline.exec()) as [number, number];
+    const [count, ttl] = (await withTimeout(pipeline.exec())) as [number, number];
 
     // First hit in this window (or the key expired mid-race) — arm the TTL.
     if (count === 1 || ttl < 0) {
-      await redis!.expire(redisKey, windowSec);
+      await withTimeout(redis!.expire(redisKey, windowSec));
     }
 
     if (count > limit) {
@@ -36,12 +62,18 @@ async function rateLimitRedis(
     }
     return { ok: true, retryInSec: 0 };
   } catch (e) {
-    // Upstash hiccup — fail open. Availability beats strict limiting here,
-    // and the in-memory limiter isn't a fallback mid-request (state isn't
-    // shared), so this is the safest default.
-    console.error("redis rate limit failed, failing open:", e);
-    reportError(e, { route: "lib/rate-limit", service: "redis" });
-    return { ok: true, retryInSec: 0 };
+    // Once a minute per instance is enough to see an outage without flooding.
+    if (Date.now() - lastReport > REPORT_EVERY_MS) {
+      lastReport = Date.now();
+      console.error("redis rate limit unavailable, using fallback:", e);
+      try {
+        reportError(e, { route: "lib/rate-limit", service: "redis" });
+      } catch {
+        // Reporting must never turn the fallback into a 500.
+      }
+    }
+    if (FAIL_CLOSED.test(key)) return { ok: false, retryInSec: 30, unavailable: true };
+    return rateLimitMemory(`fallback:${key}`, Math.max(1, Math.floor(limit / 2)), windowMs);
   }
 }
 
@@ -72,7 +104,7 @@ function rateLimitMemory(
   key: string,
   limit: number,
   windowMs: number
-): { ok: boolean; retryInSec: number } {
+): RateLimitResult {
   const now = Date.now();
   sweep(now);
 
@@ -90,11 +122,7 @@ function rateLimitMemory(
   return { ok: true, retryInSec: 0 };
 }
 
-export async function rateLimit(
-  key: string,
-  limit: number,
-  windowMs: number
-): Promise<{ ok: boolean; retryInSec: number }> {
+export async function rateLimit(key: string, limit: number, windowMs: number): Promise<RateLimitResult> {
   if (redis) return rateLimitRedis(key, limit, windowMs);
   return rateLimitMemory(key, limit, windowMs);
 }

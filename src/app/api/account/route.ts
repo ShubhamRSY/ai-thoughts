@@ -205,7 +205,14 @@ export async function DELETE(request: Request) {
     }
 
     const ip = clientIp(request);
-    const { ok, retryInSec } = await rateLimit(`account-delete:${ip}`, 5, 60 * 60_000);
+    const { ok, retryInSec, unavailable } = await rateLimit(`account-delete:${ip}`, 5, 60 * 60_000);
+    // The shared limiter is down and deletion fails closed (M1).
+    if (unavailable) {
+      return NextResponse.json(
+        { error: "Account deletion is briefly unavailable — try again in a moment", retry_in_sec: 30 },
+        { status: 503, headers: { "Retry-After": "30" } }
+      );
+    }
     if (!ok) {
       return NextResponse.json(
         { error: "Too many attempts — try again later", retry_in_sec: retryInSec },
