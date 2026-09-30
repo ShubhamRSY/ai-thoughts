@@ -83,3 +83,16 @@ test("L5: keepers see the reported take's own text, not the reporter's", async (
   expect(rows.length).toBe(2);
   for (const r of rows) expect(r.content_snippet).toBe(real);
 });
+
+test("L6: guests can't add views", async () => {
+  const author = await member("viewed");
+  const created = await author.post("/api/posts", { data: { content: `e2e views ${uniq()}`, media_type: "text" } });
+  expect(created.ok(), await created.text()).toBeTruthy();
+  const postId = (await created.json()).id;
+  for (let i = 0; i < 5; i++) {
+    const anon = await guest(); // a fresh cookie jar each time, as a script would
+    expect((await anon.post(`/api/posts/${postId}/view`)).status()).toBe(401);
+  }
+  const reader = await member("reader");
+  expect((await (await reader.post(`/api/posts/${postId}/view`)).json()).view_count).toBe(1);
+});
