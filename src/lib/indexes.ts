@@ -1,5 +1,8 @@
 import type { Db, ObjectId } from "mongodb";
 import { reportError } from "./report-error.ts";
+import { ensurePairIndexes } from "./user-pairs.ts";
+import { BLOCKS } from "./blocks.ts";
+import { MUTES } from "./mutes.ts";
 
 let ensured = false;
 
@@ -61,16 +64,12 @@ export async function ensureCoreIndexes(db: Db): Promise<void> {
       { privacy: 1 },
       { sparse: true, name: "profiles_privacy" }
     ),
-    db.collection("blocks").createIndex(
-      { blocker: 1, blocked: 1 },
-      { unique: true, name: "blocks_pair_unique" }
-    ),
     db.collection("blocks").createIndex({ blocked: 1 }, { name: "blocks_blocked" }),
-    db.collection("mutes").createIndex(
-      { muter: 1, muted: 1 },
-      { unique: true, name: "mutes_pair_unique" }
-    ),
     db.collection("mutes").createIndex({ muter: 1, created_at: -1 }, { name: "mutes_muter_created" }),
+    // Blocks/mutes are keyed by user id (H2); this also retires the old
+    // handle-pair unique indexes, which reject id-only rows.
+    ensurePairIndexes(db, BLOCKS),
+    ensurePairIndexes(db, MUTES),
     db.collection("sessions").createIndex({ sid: 1 }, { unique: true, name: "sessions_sid_unique" }),
     db.collection("sessions").createIndex({ user_id: 1 }, { name: "sessions_user" }),
     db.collection("sessions").createIndex(

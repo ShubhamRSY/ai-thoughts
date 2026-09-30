@@ -249,6 +249,21 @@ export async function PUT(request: NextRequest) {
         { user_id: session.id },
         { $set: { handle: candidate } }
       );
+      // Mood history follows the person. (Blocks and mutes are keyed by
+      // user id, so they need nothing here — lib/user-pairs.ts.)
+      // A same-day row already under the new name (left by an account renamed
+      // before this was fixed) trips the (handle_norm, day) unique index;
+      // that mustn't fail the rename, so the clashing days stay behind.
+      await db
+        .collection("moods")
+        .updateMany(
+          { handle_norm: { $in: oldVariants.map((h) => h.toLowerCase().replace(/^@/, "")) } },
+          { $set: { handle_norm: norm } }
+        )
+        .catch((e) => {
+          if ((e as { code?: number }).code !== 11000) throw e;
+          reportError(e, { route: "api/profile", service: "mongodb" });
+        });
 
       // Hold the old name so nobody else can pick it up and pass as this
       // person; releasing the new one covers someone reclaiming their own.

@@ -465,12 +465,11 @@ export async function deleteUserAccount(session: SessionUser): Promise<void> {
   await db.collection("moods").deleteMany({
     handle_norm: session.handle.trim().toLowerCase().replace(/^@/, ""),
   });
-  await db.collection("blocks").deleteMany({
-    $or: [{ blocker: { $in: handleVariants } }, { blocked: { $in: handleVariants } }],
-  });
-  await db.collection("mutes").deleteMany({
-    $or: [{ muter: { $in: handleVariants } }, { muted: { $in: handleVariants } }],
-  });
+  const { rowsOfUserFilter } = await import("@/lib/user-pairs");
+  const { BLOCKS } = await import("@/lib/blocks");
+  const { MUTES } = await import("@/lib/mutes");
+  await db.collection("blocks").deleteMany(rowsOfUserFilter(BLOCKS, session.id, handleVariants, "both"));
+  await db.collection("mutes").deleteMany(rowsOfUserFilter(MUTES, session.id, handleVariants, "both"));
   await db.collection("post_views").deleteMany({
     viewer_key: { $in: handleVariants.map((h) => `user:${h}`) },
   });
