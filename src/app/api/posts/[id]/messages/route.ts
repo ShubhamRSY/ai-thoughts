@@ -83,7 +83,8 @@ export async function POST(
 
     const { id } = await params;
     const body = await request.json();
-    const trimmed = (body.body ?? "").trim();
+    // A non-string body used to throw here and answer 500.
+    const trimmed = typeof body.body === "string" ? body.body.trim() : "";
     if (!trimmed) return NextResponse.json({ error: "Empty message" }, { status: 400 });
 
     const dignity = checkDignity(trimmed);

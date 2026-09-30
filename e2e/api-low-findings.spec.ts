@@ -103,3 +103,13 @@ test("L7: the owner dashboard doesn't accept CRON_SECRET", async () => {
   const res = await anon.get("/api/owner/metrics", { headers: { Authorization: `Bearer ${CRON_SECRET}` } });
   expect(res.status()).toBe(401);
 });
+
+test("a reply with a non-text body is a 400, not a server error", async () => {
+  const author = await member("replied");
+  const created = await author.post("/api/posts", { data: { content: `e2e reply types ${uniq()}`, media_type: "text" } });
+  expect(created.ok(), await created.text()).toBeTruthy();
+  const postId = (await created.json()).id;
+  for (const body of [42, { $gt: "" }, ["x"], null]) {
+    expect((await author.post(`/api/posts/${postId}/messages`, { data: { body } })).status()).toBe(400);
+  }
+});
