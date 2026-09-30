@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAllowedMediaUrl } from "@/lib/media-sniff";
+import { isAllowedMediaUrl, isBlobUrl } from "@/lib/media-sniff";
+import { checkAttach, markAvatar } from "@/lib/uploads";
 import { isFlaggedContent } from "@/lib/content-moderation";
 import { rateLimit } from "@/lib/rate-limit";
 import { ObjectId, type Db } from "mongodb";
@@ -113,11 +114,27 @@ export async function PUT(request: NextRequest) {
     }
     const avatarUrl =
       typeof body.avatarUrl === "string" ? (body.avatarUrl ? body.avatarUrl.slice(0, 500) : null) : undefined;
-    if (avatarUrl && (await isFlaggedContent({ imageUrl: avatarUrl }))) {
-      return NextResponse.json({ error: "That photo breaks the community guidelines — choose another." }, { status: 400 });
-    }
 
     const { db } = await connectToDatabase();
+
+    // A new photo must be one you uploaded as an avatar (H3) — otherwise
+    // anyone's photo could be set here and then deleted with this account.
+    // Re-saving the photo you already have is always fine.
+    let avatarKey: string | null = null;
+    if (avatarUrl) {
+      const current = await db
+        .collection("profiles")
+        .findOne({ handle: session.handle }, { projection: { avatar_url: 1, avatarUrl: 1 } });
+      const changed = avatarUrl !== current?.avatar_url && avatarUrl !== current?.avatarUrl;
+      if (changed && isBlobUrl(avatarUrl)) {
+        const attach = await checkAttach(db, avatarUrl, session.id, "avatar");
+        if (!attach.ok) return NextResponse.json({ error: attach.error }, { status: attach.status });
+        avatarKey = attach.key;
+      }
+      if (changed && (await isFlaggedContent({ imageUrl: avatarUrl }))) {
+        return NextResponse.json({ error: "That photo breaks the community guidelines — choose another." }, { status: 400 });
+      }
+    }
 
     const oldHandle = session.handle;
     let handle = oldHandle;
@@ -296,6 +313,8 @@ export async function PUT(request: NextRequest) {
       },
       { upsert: true }
     );
+
+    if (avatarKey) await markAvatar(db, avatarKey, session.id);
 
     // Saving a profile completes the onboarding profile step for good, so a
     // member who leaves mid-wizard is never asked for it again.

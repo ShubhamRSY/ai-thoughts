@@ -424,11 +424,19 @@ export async function deleteUserAccount(session: SessionUser): Promise<void> {
   // Deleting your account must not destroy child-safety evidence.
   const { preserveChildSafetyEvidence } = await import("@/lib/moderation");
   const keepFiles = await preserveChildSafetyEvidence(db, postIds, `account-deletion:${session.handle}`);
-  const blobUrls = [
-    ...posts.flatMap((p) => mediaUrlsFromPost(p)),
-    ...profiles.flatMap((p) => mediaUrlsFromPost(p)),
-  ].filter((u) => !keepFiles.has(u));
+  // Only this account's own files — never one someone else uploaded that
+  // ended up on these posts/profiles (H3).
+  const { filterDeletableMedia, forgetUploads } = await import("@/lib/uploads");
+  const blobUrls = await filterDeletableMedia(
+    db,
+    [...posts.flatMap((p) => mediaUrlsFromPost(p)), ...profiles.flatMap((p) => mediaUrlsFromPost(p))].filter(
+      (u) => !keepFiles.has(u)
+    ),
+    session.id,
+    { postIds: posts.map((p) => p._id), profileIds: profiles.map((p) => p._id) }
+  );
   await deleteBlobUrls(blobUrls);
+  await forgetUploads(db, blobUrls);
 
   if (postIds.length) {
     await db.collection("messages").deleteMany({ post_id: { $in: postIds } });

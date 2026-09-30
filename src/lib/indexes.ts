@@ -127,6 +127,8 @@ export async function ensureCoreIndexes(db: Db): Promise<void> {
       { user_id: 1 },
       { unique: true, partialFilterExpression: { user_id: { $type: "string" } }, name: "admins_user_unique" }
     ),
+    // One uploader per file name — the first claim wins (lib/uploads.ts, H3).
+    db.collection("uploads").createIndex({ key: 1 }, { unique: true, name: "uploads_key_unique" }),
     // Handles held after a rename/deletion (lib/handle-reservation.ts).
     db.collection("reserved_handles").createIndex(
       { handle_norm: 1 },

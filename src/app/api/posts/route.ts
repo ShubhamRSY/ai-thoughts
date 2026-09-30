@@ -24,6 +24,7 @@ import { blockedHandles } from "@/lib/blocks";
 import { mutedHandles } from "@/lib/mutes";
 import { isAllowedMediaUrl, isBlobUrl, isPlayableMediaUrl } from "@/lib/media-sniff";
 import { isFlaggedContent } from "@/lib/content-moderation";
+import { checkAttach, claimAttachment, releaseAttachment } from "@/lib/uploads";
 import { screenMediaPost } from "@/lib/moderation";
 import { signMediaUrl } from "@/lib/media-access";
 import { reportError } from "@/lib/report-error";
@@ -654,12 +655,21 @@ export async function POST(request: NextRequest) {
     // same way so the entire media surface has one rule.
     const rawMediaUrl = typeof body.media_url === "string" ? body.media_url.trim() : "";
     let mediaUrl: string | null = null;
+    let mediaKey: string | null = null;
     if (rawMediaUrl) {
       if (!isAllowedMediaUrl(rawMediaUrl, true)) {
         return NextResponse.json(
           { error: "Media url must point to a Vercel Blob object" },
           { status: 400 }
         );
+      }
+      // Only a file you uploaded, not yet part of another take — checked
+      // before the server fetches anything from the URL (H3). Dev-only sample
+      // and localhost media isn't on Blob and has no uploader to check.
+      if (isBlobUrl(rawMediaUrl)) {
+        const attach = await checkAttach(db, rawMediaUrl, session.id, "take");
+        if (!attach.ok) return NextResponse.json({ error: attach.error }, { status: attach.status });
+        mediaKey = attach.key;
       }
       // The declared upload type isn't proof; the file's own bytes are.
       const readableUrl = await signMediaUrl(rawMediaUrl);
@@ -739,7 +749,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "That take was already posted", code: "duplicate" }, { status: 409 });
     }
 
-    const result = await db.collection<PostDoc>("posts").insertOne(doc);
+    // Bind the file to this post first, atomically: two posts racing for one
+    // upload can't both get it.
+    const newId = new ObjectId();
+    if (mediaKey && !(await claimAttachment(db, mediaKey, session.id, newId))) {
+      return NextResponse.json({ error: "That file is already part of another take" }, { status: 409 });
+    }
+    let result;
+    try {
+      result = await db.collection<PostDoc>("posts").insertOne({ ...doc, _id: newId });
+    } catch (e) {
+      if (mediaKey) await releaseAttachment(db, mediaKey, newId);
+      throw e;
+    }
     const postId = result.insertedId.toString();
     if (mediaUrl && mediaType !== "text") {
       const insertedId = result.insertedId;

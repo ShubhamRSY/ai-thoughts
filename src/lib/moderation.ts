@@ -3,6 +3,7 @@ import { put } from "@vercel/blob";
 import { isFlaggedContent, transcribeMedia } from "./content-moderation.ts";
 import { privateBlobToken, signMediaUrl } from "./media-access.ts";
 import { deleteBlobUrls, mediaUrlsFromPost } from "./privacy.ts";
+import { filterDeletableMedia, forgetUploads } from "./uploads.ts";
 import { CHILD_SAFETY } from "./report-reasons.ts";
 import { reportError } from "./report-error.ts";
 
@@ -31,11 +32,19 @@ export async function deletePostCascade(db: Db, postId: ObjectId, by = "system")
   const idStr = postId.toString();
   const keepFiles = await preserveChildSafetyEvidence(db, [idStr], by);
   const post = await db
-    .collection<{ media_url?: string | null; stream_url?: string | null }>("posts")
-    .findOneAndDelete({ _id: postId }, { projection: { media_url: 1, stream_url: 1 } });
+    .collection<{ media_url?: string | null; stream_url?: string | null; user_id?: string }>("posts")
+    .findOneAndDelete({ _id: postId }, { projection: { media_url: 1, stream_url: 1, user_id: 1 } });
   if (!post) return false;
-  // Removed content must not stay reachable by its file link.
-  await deleteBlobUrls(mediaUrlsFromPost(post).filter((u) => !keepFiles.has(u)));
+  // Removed content must not stay reachable by its file link — but only the
+  // author's own files go with it, never a file someone else uploaded (H3).
+  const files = await filterDeletableMedia(
+    db,
+    mediaUrlsFromPost(post).filter((u) => !keepFiles.has(u)),
+    String(post.user_id ?? ""),
+    { postIds: [postId] }
+  );
+  await deleteBlobUrls(files);
+  await forgetUploads(db, files);
 
   await Promise.all([
     db.collection("reactions").deleteMany({ post_id: idStr }),

@@ -266,7 +266,7 @@ export default function ProfileView({
           ? "webp"
           : "jpg";
       const clean = await stripImageMetadata(file);
-      const uploaded = await upload(`avatar-${Date.now()}.${ext}`, clean, {
+      const uploaded = await upload(`avatar-${crypto.randomUUID()}.${ext}`, clean, {
         access: "public",
         contentType: clean.type,
         handleUploadUrl: "/api/upload",

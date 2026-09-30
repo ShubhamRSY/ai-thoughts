@@ -3,6 +3,8 @@ import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { getSession } from "@/lib/auth";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { privateBlobToken } from "@/lib/media-access";
+import { connectToDatabase } from "@/lib/mongodb";
+import { claimUpload, parseUploadPathname } from "@/lib/uploads";
 
 const IP_UPLOAD_LIMIT = 20;
 const IP_UPLOAD_WINDOW_MS = 10 * 60_000;
@@ -43,11 +45,11 @@ export async function POST(request: Request): Promise<NextResponse> {
   const body = (await request.json()) as HandleUploadBody;
 
   // Takes go to the private store (lib/media-access.ts); avatars stay public.
-  // The client names every take "take-…" (lib/db.ts publishPost).
+  // Clients name uploads "<take|avatar>-<uuid>.<ext>" (lib/uploads.ts).
   const blobUrl = body.type === "blob.upload-completed" ? body.payload.blob.url : "";
   const isTake =
     body.type === "blob.generate-client-token"
-      ? body.payload.pathname.startsWith("take-")
+      ? parseUploadPathname(body.payload.pathname)?.kind === "take"
       : blobUrl.includes(".private.blob.vercel-storage.com/");
   const token = (isTake && privateBlobToken()) || undefined;
 
@@ -56,13 +58,19 @@ export async function POST(request: Request): Promise<NextResponse> {
       body,
       request,
       token,
-      onBeforeGenerateToken: async () => {
+      onBeforeGenerateToken: async (pathname) => {
         const session = await getSession();
         if (!session) throw new Error("Sign in required");
 
         const ip = clientIp(request);
         const { ok: ipOk } = await rateLimit(`upload:${ip}`, IP_UPLOAD_LIMIT, IP_UPLOAD_WINDOW_MS);
         if (!ipOk) throw new Error("Too many uploads — slow down");
+
+        // Record who is uploading this exact name before the token (which is
+        // signed for this pathname only) exists, so the file can later be
+        // attached — and deleted — only as theirs (H3).
+        const { db } = await connectToDatabase();
+        await claimUpload(db, pathname, session.id, Boolean(token));
 
         return {
           allowedContentTypes: ALLOWED_CONTENT_TYPES,
