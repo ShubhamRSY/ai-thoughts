@@ -19,5 +19,5 @@ test("signed-out visitor is redirected off /admin before any admin markup loads"
 
   // None of the authenticated-admin-only content should ever be reachable.
   await expect(page.getByText("Global control")).not.toBeVisible();
-  await expect(page.getByText("No admin access")).not.toBeVisible();
+  await expect(page.getByText("No access", { exact: true })).not.toBeVisible();
 });

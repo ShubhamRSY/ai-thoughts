@@ -161,13 +161,7 @@ export default function AdminPage() {
     return (
       <main className="mx-auto max-w-lg px-4 py-16 text-center">
         <AlertTriangle className="mx-auto h-8 w-8 text-amber-600" />
-        <h1 className="mt-4 font-display text-2xl font-medium">No admin access</h1>
-        <p className="mt-2 text-sm text-[var(--muted)]">
-          Signed in as <span className="font-semibold text-[var(--foreground)]">{user.handle}</span>{" "}
-          (user id <code className="text-xs select-all">{user.id}</code>). Add that id to{" "}
-          <code className="text-xs">ADMIN_USER_IDS</code> on Vercel, or bootstrap once with your
-          cron/owner secret.
-        </p>
+        <h1 className="mt-4 font-display text-2xl font-medium">No access</h1>
         <Link href="/app" className="mt-6 inline-block text-sm font-semibold text-[var(--accent)]">
           Back to Voices
         </Link>

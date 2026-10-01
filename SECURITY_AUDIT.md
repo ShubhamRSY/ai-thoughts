@@ -43,7 +43,7 @@ Every script is a dry run unless given `--apply`; each has `--revert`.
 
 1. `node scripts/audit-role-owners.mjs` (read-only) — review ORPHANED / OWNER_NEWER rows.
 2. `node scripts/migrate-roles-to-user-id.mjs`, then `--apply` (use `--approve @handle` for reviewed rows). **Must run before deploy**, or keepers/admins lose access until it does.
-3. Set `ADMIN_USER_IDS` in Vercel (your id is shown on `/admin`). `ADMIN_HANDLES` is no longer honored.
+3. Set `ADMIN_USER_IDS` in Vercel (your id is in `user.id` at `/api/auth/me` when signed in). `ADMIN_HANDLES` is no longer honored.
 4. `node scripts/migrate-blocks-mutes-to-user-id.mjs`, then `--apply`.
 5. `npm run -s backfill:uploads`, then `-- --apply`. CONFLICT rows are where the old attach bug may already have been used.
 6. Optionally `node scripts/cleanup-orphaned-moods.mjs`, then `--apply` (backs up what it deletes).

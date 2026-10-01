@@ -69,7 +69,7 @@ export function warnIfProductionEnvIncomplete(): void {
   if (process.env.ADMIN_HANDLES?.trim()) {
     console.error(
       "[ai-thoughts] ADMIN_HANDLES is no longer honored (handles can be re-registered by someone else). " +
-        "Set ADMIN_USER_IDS to the admins' user ids instead — shown on /admin when signed in."
+        "Set ADMIN_USER_IDS to the admins' user ids instead — shown at /api/auth/me when signed in."
     );
   }
   if (!isProductionRuntime()) return;
