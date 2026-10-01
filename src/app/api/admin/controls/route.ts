@@ -19,6 +19,7 @@ import { logSecurityEvent } from "@/lib/audit";
 import { clientIp } from "@/lib/rate-limit";
 import { collectSentimentSnapshot } from "@/lib/sentiment";
 import { lowTrustReporters } from "@/lib/report-trust";
+import { deletePostCascade } from "@/lib/moderation";
 import { reportError } from "@/lib/report-error";
 
 function normHandle(h: string) {
@@ -248,13 +249,15 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: "Invalid post id" }, { status: 400 });
         }
         const { db } = await connectToDatabase();
-        const post = await db.collection("posts").findOne({ _id: oid });
+        const post = await db.collection("posts").findOne({ _id: oid }, { projection: { handle: 1 } });
         if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
-        await db.collection("posts").deleteOne({ _id: oid });
-        await db.collection("messages").deleteMany({ post_id: id });
-        await db.collection("reactions").deleteMany({ post_id: id });
-        await db.collection("reports").deleteMany({ post_id: id });
-        await audit("delete_post", { postId: id, authorHandle: post.handle });
+        // The shared cascade, exactly as DELETE /api/posts/[id] and the keeper
+        // desk's remove_post use it. A bare deleteOne here skipped the parts
+        // that matter: preserveChildSafetyEvidence (18 U.S.C. 2258A(h) — a take
+        // reported for child safety must be copied to `evidence` before it goes),
+        // the author's own blob file, and the post_views/notifications rows.
+        const deleted = await deletePostCascade(db, oid, gate.session.handle);
+        await audit("delete_post", { postId: id, authorHandle: post.handle, deleted });
         return NextResponse.json({ ok: true, deleted: id });
       }
       case "seed": {
