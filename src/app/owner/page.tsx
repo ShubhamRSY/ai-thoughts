@@ -187,8 +187,7 @@ export default function OwnerDashboardPage() {
             </h1>
             <p className="mt-2 max-w-[48ch] text-sm leading-relaxed text-[var(--muted)]">
               Growth, warmth, and ritual health — not shown to members. Unlock with{" "}
-              <code className="text-xs">OWNER_DASHBOARD_SECRET</code> or{" "}
-              <code className="text-xs">CRON_SECRET</code>.
+              <code className="text-xs">OWNER_DASHBOARD_SECRET</code>.
             </p>
           </div>
           {data && (
