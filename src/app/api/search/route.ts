@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { listFollowing, listRequested } from "@/lib/follows";
 import { hiddenHandles, canViewPosts } from "@/lib/visibility";
+import { suspendedHandles } from "@/lib/moderation";
 import { reportError } from "@/lib/report-error";
 
 function norm(h: string) {
@@ -61,17 +62,20 @@ export async function GET(request: NextRequest) {
     const safe = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const rx = new RegExp(safe, "i");
 
-    const [followingList, requestedList, blockedHidden] = await Promise.all([
+    const [followingList, requestedList, blockedHidden, banned] = await Promise.all([
       viewer ? listFollowing(db, viewer) : [],
       viewer ? listRequested(db, viewer) : [],
       // Blocks always hide with any privacy level; locked stays hidden to
       // strangers. "locked" level is in the `people` surface exactly as in
       // /api/people; takes additionally enforce per-post visibility below.
       hiddenHandles(db, viewer, ["locked"]),
+      // A banned account's profile row outlives the ban — the `users` query
+      // below filters `suspended`, but the `profiles` one has no such field.
+      suspendedHandles(db),
     ]);
     const followingSet = new Set(followingList.map((h) => norm(h)));
     const requestedSet = new Set(requestedList.map((h) => norm(h)));
-    const hiddenSet = new Set(blockedHidden.map((h) => norm(h)));
+    const hiddenSet = new Set([...blockedHidden, ...banned].map((h) => norm(h)));
 
     // ---- people ----
     const people: {

@@ -22,6 +22,22 @@ export async function isSuspended(db: Db, handle: string | null): Promise<boolea
 }
 
 /**
+ * Every suspended account's handle, in all stored variants. A banned account
+ * keeps its `users` row (so the same email can't re-register) and, because
+ * banUser only removes takes, its `profiles` row too — so directory surfaces
+ * that read `profiles` have to exclude it themselves, the same way they already
+ * filter `users`. Without this a banned handle keeps showing up in people
+ * search and stays followable.
+ */
+export async function suspendedHandles(db: Db): Promise<string[]> {
+  const rows = await db
+    .collection("users")
+    .find({ suspended: true }, { projection: { handle: 1 } })
+    .toArray();
+  return rows.flatMap((r) => variants(String(r.handle ?? "")));
+}
+
+/**
  * Remove a post and everything that hangs off it: comments, notifications,
  * reactions, view rows and reports pointing at it. Quote-reposts that embed it
  * are softened server-side (the embedded copy becomes "removed") rather than

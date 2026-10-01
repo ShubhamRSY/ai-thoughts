@@ -1,5 +1,6 @@
 import type { Db } from "mongodb";
 import { isBlockedPair } from "./blocks";
+import { isSuspended } from "./moderation";
 import { followStatusFor, getPrivacy, pendingActionFor, type Privacy } from "./visibility";
 
 function normHandle(h: string) {
@@ -30,6 +31,11 @@ export async function followUser(
   // "Sample voice" that lives as a post with no users row. Without this,
   // anyone could follow arbitrary ghost handles and pollute the graph.
   const bVariants = [b, `@${normHandle(b)}`, b.toLowerCase(), normHandle(b)];
+  // A suspended account keeps its users row, so it would otherwise stay
+  // followable and keep showing in followers lists.
+  if (await isSuspended(db, b)) {
+    return { ok: false, error: "This account isn't accepting followers" };
+  }
   const exists =
     (await db.collection("users").countDocuments({ handle: { $in: bVariants } }, { limit: 1 })) >
     0 ||

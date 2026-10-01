@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { listFollowing, listRequested } from "@/lib/follows";
 import { hiddenHandles } from "@/lib/visibility";
+import { suspendedHandles } from "@/lib/moderation";
 import { reportError } from "@/lib/report-error";
 
 function norm(h: string) {
@@ -45,15 +46,18 @@ export async function GET(request: NextRequest) {
     const session = await getSession();
     const me = session ? norm(session.handle) : null;
     const viewer = session?.handle ?? null;
-    const [followingList, requestedList, lockedHidden] = await Promise.all([
+    const [followingList, requestedList, lockedHidden, banned] = await Promise.all([
       viewer ? listFollowing(db, viewer) : [],
       viewer ? listRequested(db, viewer) : [],
       // Locked accounts are invisible to everyone but themselves and followers.
       hiddenHandles(db, viewer, ["locked"]),
+      // A banned account's profile row outlives the ban, so the profiles
+      // query below would otherwise keep surfacing it.
+      suspendedHandles(db),
     ]);
     const followingSet = new Set(followingList.map((h) => norm(h)));
     const requestedSet = new Set(requestedList.map((h) => norm(h)));
-    const lockedSet = new Set(lockedHidden.map((h) => norm(h)));
+    const hiddenSet = new Set([...lockedHidden, ...banned].map(norm));
 
     const people: PersonRow[] = [];
     const seen = new Set<string>();
@@ -68,7 +72,7 @@ export async function GET(request: NextRequest) {
     }) => {
       const handle = withAt(String(p.handle || ""));
       const key = norm(handle);
-      if (!key || (me && key === me) || seen.has(key) || lockedSet.has(key)) return;
+      if (!key || (me && key === me) || seen.has(key) || hiddenSet.has(key)) return;
       seen.add(key);
       people.push({
         handle,
