@@ -26,10 +26,14 @@ export async function setMood(
   source: "tap" | "post"
 ): Promise<void> {
   const handle_norm = handle.trim().toLowerCase().replace(/^@/, "");
-  // ponytail: tap-then-post the same day counts that person twice; dedupe if it shows.
+  // One row per person per day, so a post-then-tap (or tap-then-post) day is
+  // still counted exactly once: `source` tracks the *latest* action, which is
+  // what the community pulse reads. With $setOnInsert it was frozen at the
+  // first write of the day, so anyone who posted a take and then tapped was
+  // recorded as a post and never counted toward the pulse at all.
   await db.collection("moods").updateOne(
     { handle_norm, day },
-    { $set: { feeling: feelings }, $setOnInsert: { source, created_at: new Date() } },
+    { $set: { feeling: feelings, source }, $setOnInsert: { created_at: new Date() } },
     { upsert: true }
   );
 }
