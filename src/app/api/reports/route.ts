@@ -9,12 +9,13 @@ import { canViewPost } from "@/lib/visibility";
 import { reportError } from "@/lib/report-error";
 import { CHILD_SAFETY, isReportReason } from "@/lib/report-reasons";
 import { holdIfWarranted, reporterStandings, withinChildSafetyLimit } from "@/lib/report-trust";
+import { getConversation, otherMember } from "@/lib/dms";
 
 const IP_REPORT_LIMIT = 20;
 const IP_REPORT_WINDOW_MS = 10 * 60_000;
 
 
-type ReportTargetKind = "post" | "comment" | "user";
+type ReportTargetKind = "post" | "comment" | "user" | "chat";
 
 function normHandle(h: string) {
   return h.trim().toLowerCase().replace(/^@/, "");
@@ -66,7 +67,7 @@ export async function GET() {
       reports.map((r) => ({
         id: r._id.toString(),
         post_id: r.post_id,
-        // "post" | "comment" | "user" — later rows carry an explicit type; a
+        // "post" | "comment" | "user" | "chat" — later rows carry an explicit type; a
         // missing one is legacy post-only data.
         target_type: r.target_type ?? "post",
         reason: r.reason,
@@ -109,7 +110,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const targetType = String(body.target_type ?? "post") as ReportTargetKind;
-    if (targetType !== "post" && targetType !== "comment" && targetType !== "user") {
+    if (targetType !== "post" && targetType !== "comment" && targetType !== "user" && targetType !== "chat") {
       return NextResponse.json({ error: "Invalid target_type" }, { status: 400 });
     }
     const targetId = typeof body.target_id === "string" ? body.target_id.trim() : "";
@@ -173,6 +174,26 @@ export async function POST(request: NextRequest) {
             contentSnippet = redactForStorage(typeof msg.body === "string" ? msg.body : "", 120) || null;
           }
         }
+      }
+    } else if (targetType === "chat") {
+      // Only a member can report a chat; the reported account is the other
+      // member, and the snippet is their latest message — never client text.
+      const c = await getConversation(db, targetId, session.id);
+      const otherId = c ? otherMember(c, session.id) : null;
+      const other = otherId
+        ? await db.collection("users").findOne({ _id: new ObjectId(otherId) }, { projection: { handle: 1 } })
+        : null;
+      if (!c || !other) {
+        viewCheckFailed = true;
+      } else {
+        reportedHandle = String(other.handle);
+        const last = await db
+          .collection("dms")
+          .find({ conversation_id: c._id, sender_id: otherId })
+          .sort({ created_at: -1 })
+          .limit(1)
+          .next();
+        contentSnippet = last ? redactForStorage(String(last.body), 120) || null : null;
       }
     } else {
       const h = normHandle(targetId);

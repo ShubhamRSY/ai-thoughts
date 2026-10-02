@@ -128,6 +128,7 @@ export default function PrivacyPage() {
             <li>Language</li>
             <li>Tags</li>
             <li>Replies</li>
+            <li>Private messages you send to other members</li>
             <li>Likes</li>
             <li>A content fingerprint used for integrity and abuse prevention</li>
           </ul>
@@ -210,6 +211,14 @@ export default function PrivacyPage() {
             by anyone. Your email address, push-notification information, digest settings, session
             information, and reports you file are not displayed publicly.
           </p>
+          <p className="mt-2">
+            <span className="font-medium text-[var(--foreground)]">Private messages</span> are
+            visible only to you and the person you&apos;re talking to. A keeper can read a
+            conversation only when one of its two members reports it, and then only the messages
+            sent up to that report — every time a keeper opens one, it&apos;s recorded in our
+            security log. Blocking someone stops them messaging you and removes the conversation
+            from both of your inboxes.
+          </p>
         </section>
 
         <section>
@@ -224,10 +233,12 @@ export default function PrivacyPage() {
             about an hour. Avatars are public, because anyone can see them next to your handle.
           </p>
           <p className="mt-2">
-            To keep the community safe, the text and photos in a take, and the speech in voice and
-            video takes, may be sent to OpenAI for automated screening against our guidelines. The
-            speech is transcribed to do this, and the transcript is shown as captions on the take. A
-            take flagged by screening is hidden until a keeper reviews it.
+            To keep the community safe, the text and photos in a take, the speech in voice and
+            video takes, and the text of replies and private messages may be sent to OpenAI for
+            automated screening against our guidelines. The speech is transcribed to do this, and
+            the transcript is shown as captions on the take. A take flagged by screening is hidden
+            until a keeper reviews it; a reply or private message flagged by screening isn&apos;t
+            sent.
           </p>
           <p className="mt-2">
             When you delete a take or your account, we delete the related media files from our
@@ -324,6 +335,10 @@ export default function PrivacyPage() {
           </h2>
           <ul className="ml-4 list-disc space-y-1.5">
             <li>Your account, takes, replies, and profile: until you delete them or your account</li>
+            <li>
+              Private messages: until you or the other person deletes their account. Deleting a
+              chat hides it for you only; the other person keeps their copy
+            </li>
             <li>Database backups: 14 days, then overwritten</li>
             <li>Sign-in codes: 10 minutes</li>
             <li>Sign-in sessions: up to 90 days, or until you sign out</li>

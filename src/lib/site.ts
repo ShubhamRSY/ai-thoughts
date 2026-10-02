@@ -31,4 +31,4 @@ export const OPERATOR = {
   region: "Connecticut, USA",
   governingLaw: "the State of Connecticut, USA",
 };
-export const PRIVACY_UPDATED = "September 29, 2026";
+export const PRIVACY_UPDATED = "October 2, 2026";

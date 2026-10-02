@@ -115,3 +115,76 @@ test("can't message yourself, blocked accounts, or a locked stranger", async () 
   expect((await C.api.put("/api/account/privacy", { data: { privacy: "locked" } })).ok()).toBeTruthy();
   expect((await send(B, C, "hi")).status()).toBe(403);
 });
+
+test.describe("reported chats", () => {
+  const CRON_SECRET = process.env.CRON_SECRET ?? "e2e-test-cron-secret";
+  let K: U, D: U, E: U;
+
+  test.beforeAll(async () => {
+    K = await newUser("keeper", "10.83.1.1");
+    D = await newUser("d", "10.83.1.2");
+    E = await newUser("e", "10.83.1.3");
+    // Dev break-glass bootstrap: an admin has keeper powers.
+    const bs = await K.api.post("/api/admin/controls", {
+      headers: { Authorization: `Bearer ${CRON_SECRET}` },
+      data: { action: "bootstrap", handle: K.handle },
+    });
+    expect(bs.ok(), await bs.text()).toBeTruthy();
+  });
+
+  test.afterAll(async () => {
+    await Promise.all([K, D, E].map((u) => u?.api.dispose()));
+  });
+
+  const report = (u: U, convId: string, reason = "Hate or harassment") =>
+    u.api.post("/api/reports", { data: { target_type: "chat", target_id: convId, reason } });
+
+  test("a member reports a chat; only a keeper reads it, and only up to the report", async () => {
+    const { conversation_id: id } = await (await send(D, E, "you people are pathetic")).json();
+
+    // Only members can report it.
+    expect((await report(C, id)).status()).toBe(404);
+    expect((await report(E, id)).ok()).toBeTruthy();
+
+    // Sent after the report: not part of what keepers see.
+    expect((await send(D, E, "sent after the report")).ok()).toBeTruthy();
+
+    const row = (await (await K.api.get("/api/reports")).json()).find(
+      (r: { target_type: string; post_id: string }) => r.target_type === "chat" && r.post_id === id
+    );
+    expect(row).toMatchObject({ reported_handle: D.handle, content_snippet: "you people are pathetic" });
+
+    // Members and strangers can't use the keeper view.
+    expect((await E.api.get(`/api/reports/${row.id}/chat`)).status()).toBe(403);
+
+    const chat = await (await K.api.get(`/api/reports/${row.id}/chat`)).json();
+    expect(chat.preserved).toBe(false);
+    expect(chat.messages).toEqual([
+      expect.objectContaining({ from: D.handle, reported: true, body: "you people are pathetic" }),
+    ]);
+
+    // Post-only actions don't apply; banning the account does.
+    expect((await K.api.post(`/api/reports/${row.id}?action=remove_post`)).status()).toBe(400);
+    expect((await K.api.post(`/api/reports/${row.id}?action=ban`)).ok()).toBeTruthy();
+  });
+
+  test("a chat reported for child safety survives the reported account's deletion", async () => {
+    const F = await newUser("f", "10.83.1.4");
+    const G = await newUser("g", "10.83.1.5");
+    try {
+      const { conversation_id: id } = await (await send(F, G, "evidence message")).json();
+      expect((await report(G, id, "Child safety")).ok()).toBeTruthy();
+      expect((await F.api.delete("/api/account", { data: { confirm: "DELETE" } })).ok()).toBeTruthy();
+
+      // Gone for the other member…
+      expect((await G.api.get(`/api/dms/${id}`)).status()).toBe(404);
+      // …but preserved for keepers.
+      const row = (await (await K.api.get("/api/reports")).json()).find((r: { post_id: string }) => r.post_id === id);
+      const chat = await (await K.api.get(`/api/reports/${row.id}/chat`)).json();
+      expect(chat.preserved).toBe(true);
+      expect(chat.messages.map((m: { body: string }) => m.body)).toEqual(["evidence message"]);
+    } finally {
+      await Promise.all([F.api.dispose(), G.api.dispose()]);
+    }
+  });
+});

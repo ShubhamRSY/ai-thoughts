@@ -5,7 +5,10 @@ import { test, expect, request as pwRequest, type APIRequestContext } from "@pla
 const ORIGIN = new URL(
   process.env.E2E_BASE_URL ?? `http://localhost:${process.env.PORT ?? "3000"}`
 ).origin;
-const uniq = () => `${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`;
+// Letters only: a run of digits can look like a phone number, and stored
+// snippets are PII-scrubbed ("[phone]"), which made comparisons flaky.
+const uniq = () =>
+  (Date.now().toString(36) + Math.random().toString(36).slice(2, 8)).replace(/\d/g, (d) => "abcdefghij"[Number(d)]);
 let ipSeq = 0;
 const nextIp = () => `10.88.${Math.floor(ipSeq / 200)}.${(ipSeq++ % 200) + 1}`;
 

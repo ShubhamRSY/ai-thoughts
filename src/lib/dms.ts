@@ -1,6 +1,7 @@
 import { ObjectId, type Db } from "mongodb";
 import { isBlockedPair } from "./blocks.ts";
 import { getPrivacy, handleVariants, type Privacy } from "./visibility.ts";
+import { CHILD_SAFETY } from "./report-reasons.ts";
 
 // Direct messages between two accounts. Conversations are keyed by user ids
 // (like blocks), so they survive either side renaming.
@@ -235,12 +236,95 @@ export async function listInbox(db: Db, me: DmUser): Promise<InboxItem[]> {
   return items;
 }
 
-/** Account deletion: their conversations go, with every message in them. */
-export async function deleteConversationsOf(db: Db, userId: string): Promise<void> {
-  const ids = (await conversations(db).find({ members: userId }, { projection: { _id: 1 } }).toArray()).map((c) => c._id);
-  if (!ids.length) return;
+/** Same retention as post evidence in lib/moderation.ts. */
+const EVIDENCE_KEEP_MS = 365 * 24 * 60 * 60_000;
+
+/**
+ * Account deletion: their conversations go, with every message in them —
+ * except that a chat reported for child safety is first copied to `evidence`
+ * (kept a year, like reported takes), so deleting an account can't destroy it.
+ */
+export async function deleteConversationsOf(db: Db, userId: string, by: string): Promise<void> {
+  const convs = await conversations(db).find({ members: userId }).toArray();
+  if (!convs.length) return;
+  const ids = convs.map((c) => c._id);
+  const csReports = await db
+    .collection("reports")
+    .find({ target_type: "chat", post_id: { $in: ids.map(String) }, reason: CHILD_SAFETY })
+    .toArray();
+  for (const convId of new Set(csReports.map((r) => String(r.post_id)))) {
+    const conversation = convs.find((c) => c._id.toString() === convId);
+    const messages = await dms(db).find({ conversation_id: new ObjectId(convId) }).sort({ created_at: 1 }).toArray();
+    await db.collection("evidence").updateOne(
+      { post_id: convId },
+      {
+        $setOnInsert: {
+          post_id: convId,
+          kind: "chat",
+          conversation,
+          messages,
+          reports: csReports.filter((r) => String(r.post_id) === convId),
+          preserved_by: by,
+          created_at: new Date(),
+          expires_at: new Date(Date.now() + EVIDENCE_KEEP_MS),
+        },
+      },
+      { upsert: true }
+    );
+  }
   await dms(db).deleteMany({ conversation_id: { $in: ids } });
   await conversations(db).deleteMany({ _id: { $in: ids } });
+}
+
+export interface ReviewedMessage {
+  from: string;
+  /** Sent by the reported account. */
+  reported: boolean;
+  body: string;
+  created_at: string;
+}
+
+/**
+ * What a keeper sees for a reported chat: the last 100 messages up to the
+ * moment of the report — nothing sent afterwards. Falls back to the preserved
+ * copy if the conversation is gone (account deleted).
+ */
+export async function reportedChatForReview(
+  db: Db,
+  convId: string,
+  reportedAt: Date,
+  reportedHandle: string | null
+): Promise<{ messages: ReviewedMessage[]; preserved: boolean } | null> {
+  if (!ObjectId.isValid(convId)) return null;
+  let rows: DmRow[];
+  let preserved = false;
+  if (await conversations(db).countDocuments({ _id: new ObjectId(convId) }, { limit: 1 })) {
+    rows = await dms(db)
+      .find({ conversation_id: new ObjectId(convId), created_at: { $lte: reportedAt } })
+      .sort({ created_at: -1 })
+      .limit(100)
+      .toArray();
+    rows.reverse();
+  } else {
+    const ev = await db.collection("evidence").findOne({ post_id: convId, kind: "chat" });
+    if (!ev) return null;
+    rows = (ev.messages as DmRow[]).filter((m) => m.created_at <= reportedAt).slice(-100);
+    preserved = true;
+  }
+  const users = await usersById(db, rows.map((m) => m.sender_id));
+  const reportedNorm = reportedHandle?.trim().toLowerCase().replace(/^@/, "") ?? "";
+  return {
+    preserved,
+    messages: rows.map((m) => {
+      const from = users.get(m.sender_id)?.handle ?? "(deleted account)";
+      return {
+        from,
+        reported: !!reportedNorm && from.trim().toLowerCase().replace(/^@/, "") === reportedNorm,
+        body: m.body,
+        created_at: m.created_at.toISOString(),
+      };
+    }),
+  };
 }
 
 /** Account export: messages this user sent. */

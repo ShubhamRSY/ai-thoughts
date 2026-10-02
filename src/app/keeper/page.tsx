@@ -8,7 +8,9 @@ import {
   resolveReport,
   moderateReport,
   isKeeper,
+  fetchReportedChat,
   type ReportRow,
+  type ReportedChat,
 } from "@/lib/db";
 import { useAuth } from "@/hooks/useAuth";
 import { CHILD_SAFETY } from "@/lib/report-reasons";
@@ -37,6 +39,20 @@ export default function KeeperPage() {
   const [contacts, setContacts] = useState<ContactRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState<string | null>(null);
+  /** Reported chats a keeper opened, by report id (each open is audited server-side). */
+  const [chats, setChats] = useState<Record<string, ReportedChat | { error: string }>>({});
+  const openChat = async (reportId: string) => {
+    if (chats[reportId]) {
+      setChats((prev) => {
+        const next = { ...prev };
+        delete next[reportId];
+        return next;
+      });
+      return;
+    }
+    const chat = await fetchReportedChat(reportId);
+    setChats((prev) => ({ ...prev, [reportId]: chat }));
+  };
 
   const loadContacts = async () => {
     try {
@@ -203,7 +219,9 @@ export default function KeeperPage() {
                     ? "Comment"
                     : r.target_type === "user"
                       ? "Account"
-                      : "Take"}
+                      : r.target_type === "chat"
+                        ? "Chat"
+                        : "Take"}
                 </span>
                 <Flag className="h-3.5 w-3.5 text-rose-500" />
                 <span className="font-semibold text-rose-700">{r.reason}</span>
@@ -222,6 +240,46 @@ export default function KeeperPage() {
                 <p className="mt-1 line-clamp-2 text-xs text-[var(--muted)]">
                   “{r.content_snippet}”
                 </p>
+              )}
+              {r.target_type === "chat" && (
+                <div className="mt-2">
+                  <button
+                    type="button"
+                    onClick={() => void openChat(r.id)}
+                    className="text-xs font-semibold text-[var(--accent)] underline underline-offset-2"
+                  >
+                    {chats[r.id] ? "Hide chat" : "Read the reported chat"}
+                  </button>
+                  {!chats[r.id] && (
+                    <p className="mt-0.5 text-[11px] text-[var(--muted)]">
+                      Private messages — opening them is logged. Shown up to the moment of the report.
+                    </p>
+                  )}
+                  {chats[r.id] && "error" in chats[r.id] && (
+                    <p className="mt-1 text-xs text-rose-700">{(chats[r.id] as { error: string }).error}</p>
+                  )}
+                  {chats[r.id] && "messages" in chats[r.id] && (
+                    <div className="mt-2 max-h-72 space-y-1.5 overflow-y-auto rounded-lg bg-[var(--surface-2)] p-3">
+                      {(chats[r.id] as ReportedChat).preserved && (
+                        <p className="text-[11px] text-amber-700">From the preserved copy — the account was deleted.</p>
+                      )}
+                      {(chats[r.id] as ReportedChat).messages.length === 0 && (
+                        <p className="text-xs text-[var(--muted)]">No messages before the report.</p>
+                      )}
+                      {(chats[r.id] as ReportedChat).messages.map((m, i) => (
+                        <p key={i} className="text-xs leading-snug">
+                          <span className={`font-semibold ${m.reported ? "text-rose-700" : "text-[var(--foreground)]"}`}>
+                            {m.from}
+                            {m.reported ? " (reported)" : ""}
+                          </span>{" "}
+                          <span className="text-[var(--muted)]">{timeAgo(m.created_at)}</span>
+                          <br />
+                          <span className="whitespace-pre-wrap break-words text-[var(--foreground)]">{m.body}</span>
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
               {r.reason === CHILD_SAFETY && r.reporter_standing && (
                 <p className="mt-1 text-[11px] text-[var(--muted)]">
@@ -263,7 +321,7 @@ export default function KeeperPage() {
                   >
                     {working === r.id ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : "Remove comment"}
                   </button>
-                ) : r.target_type === "user" ? (
+                ) : r.target_type === "user" || r.target_type === "chat" ? (
                   <button
                     onClick={() => {
                       if (!window.confirm(`Ban ${r.reported_handle ?? "this account"}? They'll be logged out everywhere and their takes removed.`)) return;

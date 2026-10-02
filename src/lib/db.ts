@@ -399,6 +399,35 @@ export async function reportAccount(handle: string, reason: string): Promise<boo
   }
 }
 
+/** Report a direct-message conversation; keepers can then read it up to this moment. */
+export async function reportChat(conversationId: string, reason: string): Promise<boolean> {
+  try {
+    await jsonFetch(`${API}/reports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target_type: "chat", target_id: conversationId, reason }),
+    });
+    return true;
+  } catch (e) {
+    console.error("reportChat:", e);
+    return false;
+  }
+}
+
+export interface ReportedChat {
+  preserved: boolean;
+  messages: { from: string; reported: boolean; body: string; created_at: string }[];
+}
+
+/** Keepers only: the messages behind a chat report (every read is audited). */
+export async function fetchReportedChat(reportId: string): Promise<ReportedChat | { error: string }> {
+  try {
+    return await jsonFetch<ReportedChat>(`${API}/reports/${reportId}/chat`);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Couldn't load the chat" };
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Chat
 // ---------------------------------------------------------------------------
@@ -590,7 +619,7 @@ export async function isKeeper(): Promise<boolean> {
 export interface ReportRow {
   id: string;
   post_id: string;
-  target_type?: "post" | "comment" | "user";
+  target_type?: "post" | "comment" | "user" | "chat";
   reason: string;
   reported_handle: string | null;
   content_snippet: string | null;

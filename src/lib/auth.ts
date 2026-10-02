@@ -13,6 +13,7 @@ import {
   checkDisplayNameAllowed,
   checkHandleAllowed,
 } from "@/lib/anti-abuse";
+import { CHILD_SAFETY } from "@/lib/report-reasons";
 
 export const SESSION_COOKIE = "aithoughts.session";
 /** Stay signed in across app closes — 90 days, refreshed on each visit. */
@@ -446,7 +447,8 @@ export async function deleteUserAccount(session: SessionUser): Promise<void> {
   if (postIds.length) {
     await db.collection("messages").deleteMany({ post_id: { $in: postIds } });
     await db.collection("reactions").deleteMany({ post_id: { $in: postIds } });
-    await db.collection("reports").deleteMany({ post_id: { $in: postIds } });
+    // Child-safety reports outlive the account (see below).
+    await db.collection("reports").deleteMany({ post_id: { $in: postIds }, reason: { $ne: CHILD_SAFETY } });
     await db.collection("notifications").deleteMany({ post_id: { $in: postIds } });
     await db.collection("posts").deleteMany({
       _id: { $in: posts.map((p) => p._id) },
@@ -455,10 +457,13 @@ export async function deleteUserAccount(session: SessionUser): Promise<void> {
 
   await db.collection("messages").deleteMany({ handle: { $in: handleVariants } });
   await db.collection("reactions").deleteMany({ handle: { $in: handleVariants } });
+  // Reports they filed go. Child-safety reports *about* them stay open: the
+  // evidence is preserved above, and a keeper still has to review it (and file
+  // with NCMEC) — deleting the account must not clear it from the queue.
   await db.collection("reports").deleteMany({
     $or: [
       { reporter_handle: { $in: handleVariants } },
-      { reported_handle: { $in: handleVariants } },
+      { reported_handle: { $in: handleVariants }, reason: { $ne: CHILD_SAFETY } },
     ],
   });
   await db.collection("notifications").deleteMany({
@@ -487,7 +492,7 @@ export async function deleteUserAccount(session: SessionUser): Promise<void> {
     viewer_key: { $in: handleVariants.map((h) => `user:${h}`) },
   });
   const { deleteConversationsOf } = await import("@/lib/dms");
-  await deleteConversationsOf(db, session.id);
+  await deleteConversationsOf(db, session.id, `account-deletion:${session.handle}`);
   await db.collection("sessions").deleteMany({ user_id: session.id });
   await db.collection("user_prefs").deleteMany({ handle: { $in: handleVariants } });
   await db.collection("push_subscriptions").deleteMany({ handle: { $in: handleVariants } });

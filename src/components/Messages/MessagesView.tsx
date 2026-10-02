@@ -9,6 +9,7 @@ import {
   fetchDmThread,
   replyDm,
   reportAccount,
+  reportChat,
   sendDmTo,
   type Dm,
   type DmPerson,
@@ -260,9 +261,10 @@ function Thread({
     <div data-dm-thread className="flex h-[calc(100dvh-var(--header-h)-var(--tabbar-h)-env(safe-area-inset-bottom,0px))] flex-col">
       {reporting && other && (
         <ReportDialog
-          subject="account"
+          subject={id ? "conversation" : "account"}
           signedIn
-          onSubmit={(reason) => reportAccount(other.handle, reason)}
+          // A reported chat lets keepers read it (up to now) to act on it.
+          onSubmit={(reason) => (id ? reportChat(id, reason) : reportAccount(other.handle, reason))}
           onClose={() => setReporting(false)}
         />
       )}

@@ -72,6 +72,10 @@ export async function POST(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
+    if (report.target_type === "chat" && (action === "remove_post" || action === "remove_comment")) {
+      return NextResponse.json({ error: "A chat report can be resolved or the account banned" }, { status: 400 });
+    }
+
     // Credit reporters before acting: removing a take deletes its reports (M3).
     if (report.status !== "resolved") await recordOutcome(db, report, action);
 
@@ -86,7 +90,7 @@ export async function POST(
       if (typeof report.reported_handle === "string") {
         await banUser(db, report.reported_handle);
       }
-    } else if (report.target_type !== "comment") {
+    } else if (report.target_type !== "comment" && report.target_type !== "chat") {
       // Kept the content: an automatic hold (screenMediaPost) comes off.
       const target = parseObjectId(String(report.post_id ?? ""));
       if (target) await releaseModerationHold(db, target);
