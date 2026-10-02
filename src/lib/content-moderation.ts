@@ -13,8 +13,13 @@ function openaiBase(): string {
 }
 
 /** The one response for screened-out text, shared by new takes, edits and replies. */
-export function flaggedBody(what: "take" | "edit" | "reply") {
-  const noun = { take: "This take can't be posted", edit: "This edit can't be saved", reply: "This reply can't be posted" }[what];
+export function flaggedBody(what: "take" | "edit" | "reply" | "message") {
+  const noun = {
+    take: "This take can't be posted",
+    edit: "This edit can't be saved",
+    reply: "This reply can't be posted",
+    message: "This message can't be sent",
+  }[what];
   return { error: `${noun} — it looks like it breaks the community guidelines.`, code: "flagged" as const };
 }
 /**

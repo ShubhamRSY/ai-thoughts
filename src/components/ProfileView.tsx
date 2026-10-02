@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Ban, Bookmark, Camera, Check, Download, Flag, Lock, PencilLine, Settings, UserPlus, UserCheck, BellOff } from "lucide-react";
+import { ArrowLeft, Ban, Bookmark, Camera, Check, Download, Flag, Lock, PencilLine, Settings, UserPlus, UserCheck, BellOff, Send } from "lucide-react";
 import ReportDialog from "@/components/ReportDialog";
 import { upload } from "@vercel/blob/client";
 import { stripImageMetadata } from "@/lib/image";
@@ -46,6 +46,8 @@ interface ProfileViewProps {
   onBack?: () => void;
   /** Opens the Account Center (owned by the page so it can replace the whole view). */
   onOpenAccount?: () => void;
+  /** Start / open a direct message with the profile being viewed. */
+  onMessage?: (person: { handle: string; displayName: string }) => void;
 }
 
 interface ConnectionProfile {
@@ -74,6 +76,7 @@ export default function ProfileView({
   onFollowToggle,
   onBack,
   onOpenAccount,
+  onMessage,
 }: ProfileViewProps) {
   const router = useRouter();
   const { profile, save } = useLocalProfile();
@@ -491,6 +494,15 @@ export default function ProfileView({
                       </>
                     )}
                   </button>
+                  {onMessage && viewHandle && (
+                    <button
+                      type="button"
+                      onClick={() => onMessage({ handle: viewHandle, displayName: name })}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border-base)] px-3 py-1.5 text-xs font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)]"
+                    >
+                      <Send className="h-3.5 w-3.5" /> Message
+                    </button>
+                  )}
                   </>
                 )
               )}

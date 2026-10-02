@@ -149,7 +149,7 @@ function SignInFormInner({}: { total: number }) {
         </p>
         {step === "email" && (
           <p className="mt-2 text-xs text-[var(--muted)]">
-            Pick a feeling. Say it in voice, video, or words. Feel with others.
+            Pick a feeling. Share your take in voice, video, or words. Connect with people who feel it too.
           </p>
         )}
 

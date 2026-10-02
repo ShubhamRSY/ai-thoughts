@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { exportRows } from "@/lib/user-pairs";
 import { BLOCKS } from "@/lib/blocks";
 import { MUTES } from "@/lib/mutes";
+import { exportSentDms } from "@/lib/dms";
 import { ObjectId } from "mongodb";
 import {
   clearSessionCookie,
@@ -116,10 +117,11 @@ export async function GET(request: Request) {
       ]);
 
     const handleNorm = session.handle.trim().toLowerCase().replace(/^@/, "");
-    const [moods, blocked, muted] = await Promise.all([
+    const [moods, blocked, muted, directMessages] = await Promise.all([
       db.collection("moods").find({ handle_norm: handleNorm }).project({ _id: 0, day: 1, feeling: 1, source: 1 }).toArray(),
       exportRows(db, BLOCKS, session.id, variants),
       exportRows(db, MUTES, session.id, variants),
+      exportSentDms(db, session.id),
     ]);
 
     const exportPayload = {
@@ -127,6 +129,7 @@ export async function GET(request: Request) {
       moods,
       blocked,
       muted,
+      direct_messages_sent: directMessages,
       account: {
         id: session.id,
         email: session.email,

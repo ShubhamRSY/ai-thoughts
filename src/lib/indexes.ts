@@ -164,6 +164,12 @@ async function buildCoreIndexes(db: Db): Promise<void> {
       db.collection(c).createIndex({ created_at: 1 }, { name: `${c}_created` }),
       db.collection(c).createIndex({ createdAt: 1 }, { sparse: true, name: `${c}_createdAt` }),
     ]),
+    // Direct messages (lib/dms.ts): one conversation per pair, inbox newest-first,
+    // thread history, and erasure/export by sender.
+    db.collection("conversations").createIndex({ pair_key: 1 }, { unique: true, name: "conversations_pair_unique" }),
+    db.collection("conversations").createIndex({ members: 1, last_message_at: -1 }, { name: "conversations_member_recent" }),
+    db.collection("dms").createIndex({ conversation_id: 1, created_at: -1 }, { name: "dms_conversation_created" }),
+    db.collection("dms").createIndex({ sender_id: 1 }, { name: "dms_sender" }),
     // Handles held after a rename/deletion (lib/handle-reservation.ts).
     db.collection("reserved_handles").createIndex(
       { handle_norm: 1 },

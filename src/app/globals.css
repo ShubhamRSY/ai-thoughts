@@ -703,3 +703,9 @@ html[data-pwa-banner="1"] .pb-nav {
     opacity: 0.95;
   }
 }
+
+/* The install banner floats over the bottom of the screen — exactly where a
+   chat's composer is. Keep it out of the way while a conversation is open. */
+body:has([data-dm-thread]) [data-pwa-install] {
+  display: none;
+}

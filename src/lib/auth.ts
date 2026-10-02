@@ -486,6 +486,8 @@ export async function deleteUserAccount(session: SessionUser): Promise<void> {
   await db.collection("post_views").deleteMany({
     viewer_key: { $in: handleVariants.map((h) => `user:${h}`) },
   });
+  const { deleteConversationsOf } = await import("@/lib/dms");
+  await deleteConversationsOf(db, session.id);
   await db.collection("sessions").deleteMany({ user_id: session.id });
   await db.collection("user_prefs").deleteMany({ handle: { $in: handleVariants } });
   await db.collection("push_subscriptions").deleteMany({ handle: { $in: handleVariants } });

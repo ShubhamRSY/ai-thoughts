@@ -43,7 +43,11 @@ import {
   checkPublishGuard,
   markPublished,
   quoteRepost,
+  fetchInbox,
+  type DmPerson,
+  type Inbox,
 } from "@/lib/db";
+import MessagesView from "@/components/Messages/MessagesView";
 import type { ReportReason } from "@/components/Feed/FeedCard";
 import type { RegionScope } from "@/components/Feed/FilterBar";
 import { todayKey as promptTodayKey } from "@/lib/daily-prompt";
@@ -88,6 +92,39 @@ export default function Home() {
   const { items: activityItems, unread: activityUnread, markAllRead, refresh: refreshActivity } =
     useActivity(!!user);
   const { maintenance, message: maintenanceMessage, featured } = useSiteFlags();
+
+  // Direct messages: the inbox drives the header badge and the Messages view.
+  const [inbox, setInbox] = useState<Inbox | null>(null);
+  const [dmOpenId, setDmOpenId] = useState<string | null>(null);
+  const [dmComposeTo, setDmComposeTo] = useState<DmPerson | null>(null);
+  const refreshInbox = useCallback(async () => {
+    if (!user) return;
+    try {
+      setInbox(await fetchInbox());
+    } catch {
+      /* keep the last good inbox */
+    }
+  }, [user]);
+  useEffect(() => {
+    if (!user) {
+      setInbox(null);
+      return;
+    }
+    void refreshInbox();
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") void refreshInbox();
+    }, 30_000);
+    return () => clearInterval(timer);
+  }, [user, refreshInbox]);
+  const openMessages = useCallback(
+    (opts: { id?: string; to?: DmPerson } = {}) => {
+      setDmOpenId(opts.id ?? null);
+      setDmComposeTo(opts.to ?? null);
+      setTab("messages");
+      void refreshInbox();
+    },
+    [refreshInbox]
+  );
 
   useEffect(() => {
     if (!user) {
@@ -207,7 +244,14 @@ export default function Home() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const id = new URLSearchParams(window.location.search).get("post");
+    const params = new URLSearchParams(window.location.search);
+    // Push notifications for a message open /app?dm=<conversation id>.
+    const dm = params.get("dm");
+    if (dm) {
+      setDmOpenId(dm);
+      setTab("messages");
+    }
+    const id = params.get("post");
     if (id) {
       setFocusPostId(id);
       setTab("home");
@@ -643,6 +687,8 @@ export default function Home() {
           setViewProfileHandle(null);
           setShowAccount(false);
         }}
+        onOpenMessages={() => openMessages()}
+        messagesUnread={inbox?.unread ?? 0}
       />
 
       <main className="flex-1 pb-nav">
@@ -790,6 +836,27 @@ export default function Home() {
           />
         )}
 
+        {tab === "messages" && user && (
+          <MessagesView
+            inbox={inbox}
+            openId={dmOpenId}
+            composeTo={dmComposeTo}
+            onOpen={(id) => {
+              setDmComposeTo(null);
+              setDmOpenId(id);
+            }}
+            onBack={() => {
+              setDmOpenId(null);
+              setDmComposeTo(null);
+            }}
+            onOpenProfile={(handle) => {
+              setViewProfileHandle(handle.replace(/^@/, ""));
+              setTab("you");
+            }}
+            onChanged={() => void refreshInbox()}
+          />
+        )}
+
         {tab === "search" && (
           <PeopleSearchView
             signedIn={!!user}
@@ -836,6 +903,7 @@ export default function Home() {
                 onFollowToggle={(handle, next) => onFeelWith(handle, next)}
                 onBack={() => setViewProfileHandle(null)}
                 onOpenAccount={() => setShowAccount(true)}
+                onMessage={user ? (person) => openMessages({ to: person }) : undefined}
               />
               {!viewingOther && (
                 <>

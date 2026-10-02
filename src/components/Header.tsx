@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, LogOut } from "lucide-react";
+import { Plus, LogOut, Send } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,9 +9,12 @@ import { BRAND } from "@/lib/brand";
 interface HeaderProps {
   onShare: () => void;
   onOpenProfile: () => void;
+  onOpenMessages?: () => void;
+  /** Unread chats (requests not included), for the badge. */
+  messagesUnread?: number;
 }
 
-export default function Header({ onShare, onOpenProfile }: HeaderProps) {
+export default function Header({ onShare, onOpenProfile, onOpenMessages, messagesUnread = 0 }: HeaderProps) {
   const { user, signOut } = useAuth();
   const router = useRouter();
 
@@ -50,6 +53,21 @@ export default function Header({ onShare, onOpenProfile }: HeaderProps) {
           )}
           {user && (
             <>
+              {onOpenMessages && (
+                <button
+                  type="button"
+                  onClick={onOpenMessages}
+                  aria-label={messagesUnread ? `Messages, ${messagesUnread} unread` : "Messages"}
+                  className="relative flex h-9 w-9 items-center justify-center rounded-full text-[var(--foreground)] transition hover:bg-[var(--surface-2)]"
+                >
+                  <Send className="h-[18px] w-[18px]" strokeWidth={2} />
+                  {messagesUnread > 0 && (
+                    <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[9px] font-bold text-[var(--surface)]">
+                      {messagesUnread > 9 ? "9+" : messagesUnread}
+                    </span>
+                  )}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={onOpenProfile}

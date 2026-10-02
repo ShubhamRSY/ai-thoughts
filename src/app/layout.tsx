@@ -23,7 +23,7 @@ const manrope = Manrope({
 const siteUrl = getSiteUrl();
 const title = "AI·Thoughts — Say how AI makes you feel";
 const description =
-  "Express how AI makes you feel — love it, fear it, or both. Voice, video, or words. Not tips. Not debates. Your honest feeling.";
+  "Express how AI makes you feel — love it, fear it, or both. Voice your perspective in voice, video, or words, and connect with people who feel it too.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

@@ -82,7 +82,7 @@ export default function PWAInstall() {
   }
 
   return (
-    <div className="safe-bottom fixed inset-x-0 bottom-20 z-40">
+    <div data-pwa-install className="safe-bottom fixed inset-x-0 bottom-20 z-40">
       <div className="app-rail">
         <div className="rounded-2xl border border-[var(--border-base)] bg-[var(--surface)] p-3 shadow-lg shadow-slate-900/5">
           <div className="flex items-start gap-3">

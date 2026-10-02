@@ -501,9 +501,9 @@ export default function SubmitModal({
                 {feeling === "custom" ? (
                   <input
                     value={customFeeling}
-                    aria-label="Type how AI makes you feel"
+                    aria-label="How AI makes you feel, and your take"
                     onChange={(e) => setCustomFeeling(e.target.value.slice(0, 40))}
-                    placeholder="Type how AI makes you feel…"
+                    placeholder="How does AI make you feel? What’s your take?"
                     className="mt-2 w-full rounded-lg border border-[var(--border-base)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
                   />
                 ) : (

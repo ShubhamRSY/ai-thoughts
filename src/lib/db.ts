@@ -476,6 +476,102 @@ export function subscribeToMessages(
 }
 
 // ---------------------------------------------------------------------------
+// Direct messages
+// ---------------------------------------------------------------------------
+
+export interface DmPerson {
+  handle: string;
+  displayName: string;
+}
+
+export interface InboxItem {
+  id: string;
+  other: DmPerson;
+  last_preview: string;
+  last_message_at: string;
+  last_from_me: boolean;
+  unread: boolean;
+  request: boolean;
+}
+
+export interface Inbox {
+  items: InboxItem[];
+  unread: number;
+  requests: number;
+}
+
+export interface Dm {
+  id: string;
+  from_me: boolean;
+  body: string;
+  created_at: string;
+}
+
+export interface DmThread {
+  id: string;
+  other: DmPerson | null;
+  request: boolean;
+  can_reply: boolean;
+  messages: Dm[];
+}
+
+type DmSendResult = { error: string } | { conversationId: string; message: Dm };
+
+const errorText = (e: unknown) => {
+  const msg = e instanceof Error ? e.message : "";
+  return msg && msg !== "Failed to fetch" ? msg : "Couldn't send that — try again";
+};
+
+export function fetchInbox(): Promise<Inbox> {
+  return jsonFetch<Inbox>(`${API}/dms`);
+}
+
+export function fetchDmThread(id: string, since?: string): Promise<DmThread> {
+  const q = since ? `?since=${encodeURIComponent(since)}` : "";
+  return jsonFetch<DmThread>(`${API}/dms/${id}${q}`);
+}
+
+/** Message someone by handle; starts the conversation (or a request) if there isn't one. */
+export async function sendDmTo(handle: string, body: string): Promise<DmSendResult> {
+  try {
+    const r = await jsonFetch<{ conversation_id: string; message: Dm }>(`${API}/dms`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ to: handle, body }),
+    });
+    return { conversationId: r.conversation_id, message: r.message };
+  } catch (e) {
+    return { error: errorText(e) };
+  }
+}
+
+export async function replyDm(id: string, body: string): Promise<DmSendResult> {
+  try {
+    const r = await jsonFetch<{ message: Dm }>(`${API}/dms/${id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ body }),
+    });
+    return { conversationId: id, message: r.message };
+  } catch (e) {
+    return { error: errorText(e) };
+  }
+}
+
+export async function dmAction(id: string, action: "accept" | "delete"): Promise<boolean> {
+  try {
+    await jsonFetch(`${API}/dms/${id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action }),
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Profile / keeper helpers (thin)
 // ---------------------------------------------------------------------------
 

@@ -3,7 +3,8 @@
 import { Home, Plus, Search, Bell, User } from "lucide-react";
 import { BRAND } from "@/lib/brand";
 
-export type TabId = "home" | "search" | "activity" | "you";
+// "messages" has no tab button — it opens from the header, Instagram-style.
+export type TabId = "home" | "search" | "activity" | "you" | "messages";
 
 interface BottomNavProps {
   active: TabId;
