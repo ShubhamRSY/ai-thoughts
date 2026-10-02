@@ -158,6 +158,18 @@ async function buildCoreIndexes(db: Db): Promise<void> {
     // Feelings spectrum: recent mood taps.
     db.collection("moods").createIndex({ source: 1, created_at: 1 }, { name: "moods_source_created" }),
     db.collection("user_prefs").createIndex({ handle: 1 }, { name: "user_prefs_handle" }),
+    // Digest crons pick opted-in rows; partial, so they only index the opted-in few.
+    db.collection("user_prefs").createIndex(
+      { email_digest: 1 },
+      { partialFilterExpression: { email_digest: true }, name: "user_prefs_email_digest" }
+    ),
+    db.collection("user_prefs").createIndex(
+      { weekly_digest: 1 },
+      { partialFilterExpression: { weekly_digest: true }, name: "user_prefs_weekly_digest" }
+    ),
+    // Failed blob deletes (lib/upload-cleanup.ts): one row per URL, retried oldest-attempt first.
+    db.collection("blob_delete_retry").createIndex({ url: 1 }, { unique: true, name: "blob_delete_retry_url_unique" }),
+    db.collection("blob_delete_retry").createIndex({ last_attempt_at: 1 }, { name: "blob_delete_retry_attempted" }),
     // Owner dashboard date-window counts. Some rows use createdAt, so each
     // $or branch needs its own index or the whole count falls back to a scan.
     ...["users", "reactions", "messages", "follows"].flatMap((c) => [

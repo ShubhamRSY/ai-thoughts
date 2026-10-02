@@ -1,5 +1,6 @@
 import { chromium, type FullConfig } from "@playwright/test";
-import { startFakeModeration } from "./fake-moderation";
+import { MongoClient, ServerApiVersion } from "mongodb";
+import { FAKE_MODERATION_PORT, startFakeModeration } from "./fake-moderation";
 
 /**
  * `next dev` compiles each route on first request, which can take well over
@@ -60,9 +61,81 @@ async function devSessionCookie(baseURL: string): Promise<string | null> {
   }
 }
 
+// Same default as playwright.config.ts's webServer env.
+const DEFAULT_MONGO_URL =
+  "mongodb://127.0.0.1:27017/aithoughts-e2e?tlsAllowInvalidCertificates=true";
+
+/** Strip any embedded credentials before a connection string reaches a log. */
+function redact(url: string): string {
+  return url.replace(/\/\/[^@/]*@/, "//***:***@");
+}
+
+/**
+ * Without this, a missing MongoDB doesn't surface until the first test hits the
+ * app: every test then fails with ECONNREFUSED and the run ends in Playwright's
+ * opaque "The operation was canceled". Fail here instead, with the fix.
+ */
+async function assertMongoReachable(config: FullConfig) {
+  const url =
+    (config.webServer as { env?: Record<string, string> } | undefined)?.env?.MONGODB_URL ??
+    process.env.MONGODB_URL ??
+    DEFAULT_MONGO_URL;
+
+  const client = new MongoClient(url, {
+    // Must mirror src/lib/mongodb.ts's connect options. With Node's default
+    // happy-eyeballs the driver fails against the test container with
+    // "connection <monitor> to 127.0.0.1:27017 closed" even though the app
+    // itself connects fine — the IPv4 pinning is what makes it agree.
+    serverApi: { version: ServerApiVersion.v1, strict: false, deprecationErrors: false },
+    autoSelectFamily: false,
+    family: 4,
+    tls: true,
+    tlsAllowInvalidCertificates: true,
+    serverSelectionTimeoutMS: 5_000,
+    connectTimeoutMS: 5_000,
+  });
+  try {
+    await client.connect();
+    await client.db().command({ ping: 1 });
+  } catch (e) {
+    throw new Error(
+      `E2E needs a running MongoDB, but could not reach it at ${redact(url)}.\n` +
+        `Start one first:  ./e2e/start-test-mongo.sh\n` +
+        `Underlying error: ${(e as Error).message}`
+    );
+  } finally {
+    await client.close().catch(() => {});
+  }
+}
+
+/** startFakeModeration's raw EADDRINUSE doesn't say which port or what to do. */
+async function startModeration() {
+  try {
+    return await startFakeModeration();
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === "EADDRINUSE") {
+      throw new Error(
+        `Port ${FAKE_MODERATION_PORT} is already in use, so the fake moderation ` +
+          `server could not start. A previous e2e run most likely left one behind.\n` +
+          `Stop it first:  lsof -ti tcp:${FAKE_MODERATION_PORT} | xargs kill`
+      );
+    }
+    throw e;
+  }
+}
+
 export default async function globalSetup(config: FullConfig) {
+  await assertMongoReachable(config);
   // Up for the whole run; Playwright calls the returned function at the end.
-  const stopModeration = await startFakeModeration();
+  const stopModeration = await startModeration();
+  // That teardown doesn't run when the run is interrupted (Ctrl-C, or the
+  // globalTimeout in playwright.config.ts), which would orphan the listener on
+  // FAKE_MODERATION_PORT and make the *next* run fail on EADDRINUSE. Just close
+  // the listener — don't process.exit(), which would pre-empt Playwright's own
+  // graceful shutdown and cost us the failure report.
+  for (const signal of ["SIGINT", "SIGTERM"] as const) {
+    process.once(signal, () => void stopModeration().catch(() => {}));
+  }
   await warmUp(config);
   return stopModeration;
 }

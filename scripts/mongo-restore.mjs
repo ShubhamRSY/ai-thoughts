@@ -115,8 +115,13 @@ try {
     // Any failure before the swap drops the staging copies and leaves the
     // database exactly as it was.
     const STAGE = "__restore";
+    const PREV = "__previous";
     const existing = new Set((await db.listCollections({}, { nameOnly: true }).toArray()).map((c) => c.name));
-    for (const [name] of parsed) if (existing.has(name + STAGE)) await db.collection(name + STAGE).drop();
+    // Leftovers from an interrupted run.
+    for (const [name] of parsed) {
+      if (existing.has(name + STAGE)) await db.collection(name + STAGE).drop();
+      if (existing.has(name + PREV)) await db.collection(name + PREV).drop();
+    }
 
     for (const [name, docs] of parsed) {
       await db.createCollection(name + STAGE);
@@ -130,13 +135,47 @@ try {
       total = 0;
       console.log("\nStaging failed — live data was not touched:");
     } else {
-      // Each rename (dropTarget) is atomic for its collection, and this loop
-      // is metadata-only, so the window where some collections are swapped and
-      // others aren't is milliseconds, not the length of the load.
-      for (const [name] of parsed) {
-        await db.collection(name + STAGE).rename(name, { dropTarget: true });
+      // Swap with an undo: the live collection is moved aside to
+      // "<name>__previous" (not dropped) before the staged one takes its
+      // name. If any rename fails, every completed swap is reversed, so the
+      // database ends up exactly as it was. The old copies are dropped only
+      // once every collection has swapped.
+      const swapped = [];
+      try {
+        for (const [name] of parsed) {
+          const hadLive = existing.has(name);
+          if (hadLive) await db.collection(name).rename(name + PREV);
+          try {
+            await db.collection(name + STAGE).rename(name);
+          } catch (e) {
+            if (hadLive) await db.collection(name + PREV).rename(name);
+            throw e;
+          }
+          swapped.push({ name, hadLive });
+        }
+      } catch (e) {
+        const stuck = [];
+        for (const { name, hadLive } of swapped.reverse()) {
+          try {
+            if (hadLive) await db.collection(name + PREV).rename(name, { dropTarget: true });
+            else await db.collection(name).drop();
+          } catch (undo) {
+            stuck.push(`${name} (${undo.message.slice(0, 60)})`);
+          }
+        }
+        for (const [name] of parsed) await db.collection(name + STAGE).drop().catch(() => {});
+        failures.push(
+          stuck.length
+            ? `swap failed (${e.message.slice(0, 90)}) and could NOT be undone for: ${stuck.join(", ")} — ` +
+                `their old data is in "<name>${PREV}"; rename it back by hand`
+            : `swap failed (${e.message.slice(0, 90)}) — every swapped collection was rolled back; live data is unchanged`
+        );
+        total = 0;
       }
-      console.log("\nSwapped all staged collections into place.");
+      if (!failures.length) {
+        for (const { name, hadLive } of swapped) if (hadLive) await db.collection(name + PREV).drop();
+        console.log("\nSwapped all staged collections into place.");
+      }
     }
   } else {
     // Additive mode merges into whatever is there and destroys nothing.

@@ -44,6 +44,8 @@ const EXPECTED_COLLECTIONS = [
   "keepers", "admins", "site_settings", "contact_requests",
   "security_audit_log", "translations",
 ];
+// Created on first use, so a valid database may not have them yet — known, but not required.
+const OPTIONAL_COLLECTIONS = ["conversations", "dms", "blob_delete_retry", "uploads", "evidence", "reserved_handles"];
 
 // Indexes whose absence means a request path degrades to a collection scan.
 // Names mirror ensureCoreIndexes() in src/lib/indexes.ts.
@@ -117,7 +119,7 @@ const existing = new Set(
 const missing = EXPECTED_COLLECTIONS.filter((c) => !existing.has(c));
 // Collections the app never mentions usually mean you verified the wrong database.
 const unknown = [...existing].filter(
-  (c) => !EXPECTED_COLLECTIONS.includes(c) && !c.startsWith("system.")
+  (c) => !EXPECTED_COLLECTIONS.includes(c) && !OPTIONAL_COLLECTIONS.includes(c) && !c.startsWith("system.")
 );
 
 check(

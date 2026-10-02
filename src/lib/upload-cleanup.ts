@@ -2,6 +2,7 @@ import type { Db } from "mongodb";
 import { del, list } from "@vercel/blob";
 import { privateBlobToken } from "./media-access.ts";
 import { deleteBlobUrls } from "./privacy.ts";
+import { reportError } from "./report-error.ts";
 import { forgetUploads, UNATTACHED_GRACE_MS, type UploadRow } from "./uploads.ts";
 
 // Removes uploads that never made it into a post or profile within the grace
@@ -68,6 +69,8 @@ export async function cleanupUnattachedUploads(db: Db, opts: { apply: boolean })
 // row goes either way (the content is gone), so this queue is the only record
 // left that the blob still exists — the daily cron retries it.
 const RETRY = "blob_delete_retry";
+/** About a month of daily runs; past that it's a config problem (e.g. revoked token), not a blip. */
+const MAX_DELETE_ATTEMPTS = 30;
 
 /** Delete removed content's files; anything that fails is queued, never lost. */
 export async function deleteFilesOrQueue(db: Db, urls: string[]): Promise<void> {
@@ -82,12 +85,40 @@ export async function deleteFilesOrQueue(db: Db, urls: string[]): Promise<void> 
   await forgetUploads(db, urls);
 }
 
-/** Retry queued deletes. Not gated on UPLOAD_CLEANUP_APPLY: these were already decided. */
-export async function retryFailedBlobDeletes(db: Db): Promise<{ retried: number; deleted: number }> {
-  const rows = await db.collection<{ url: string }>(RETRY).find({}).limit(BATCH).toArray();
-  if (!rows.length) return { retried: 0, deleted: 0 };
+/**
+ * Retry queued deletes. Not gated on UPLOAD_CLEANUP_APPLY: these were already decided.
+ * Least-recently-tried first, so a backlog larger than one batch rotates
+ * through instead of retrying the same 200 forever. A row that keeps failing
+ * stops being retried after MAX_DELETE_ATTEMPTS and is reported — it stays as
+ * the record that the blob still exists.
+ */
+export async function retryFailedBlobDeletes(
+  db: Db
+): Promise<{ retried: number; deleted: number; gaveUp: number }> {
+  const queue = db.collection<{ url: string; attempts?: number; last_attempt_at?: Date }>(RETRY);
+  const rows = await queue
+    .find({ attempts: { $not: { $gte: MAX_DELETE_ATTEMPTS } } })
+    .sort({ last_attempt_at: 1 })
+    .limit(BATCH)
+    .toArray();
+  if (!rows.length) return { retried: 0, deleted: 0, gaveUp: 0 };
   const { failed } = await deleteBlobUrls(rows.map((r) => r.url));
-  const done = rows.filter((r) => !failed.includes(r.url));
-  if (done.length) await db.collection(RETRY).deleteMany({ _id: { $in: done.map((r) => r._id) } });
-  return { retried: rows.length, deleted: done.length };
+  const failedSet = new Set(failed);
+  const done = rows.filter((r) => !failedSet.has(r.url));
+  const stillFailing = rows.filter((r) => failedSet.has(r.url));
+  if (done.length) await queue.deleteMany({ _id: { $in: done.map((r) => r._id) } });
+  if (stillFailing.length) {
+    await queue.updateMany(
+      { _id: { $in: stillFailing.map((r) => r._id) } },
+      { $inc: { attempts: 1 }, $set: { last_attempt_at: new Date() } }
+    );
+  }
+  const gaveUp = stillFailing.filter((r) => (r.attempts ?? 0) + 1 >= MAX_DELETE_ATTEMPTS).length;
+  if (gaveUp) {
+    reportError(new Error(`${gaveUp} blob delete(s) failed ${MAX_DELETE_ATTEMPTS} times — no longer retried`), {
+      route: "lib/upload-cleanup",
+      service: "blob",
+    });
+  }
+  return { retried: rows.length, deleted: done.length, gaveUp };
 }

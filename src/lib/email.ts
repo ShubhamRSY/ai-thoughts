@@ -55,9 +55,12 @@ const RESEND_BATCH_MAX = 100;
 
 /**
  * Bulk send (digests) through Resend's batch endpoint: up to 100 emails per
- * request, so 500 recipients is 5 calls instead of 500 sequential ones. A
- * batch is all-or-nothing; the result says, per message, whether it was accepted.
- * Never throws — a failed batch is reported and its messages come back false.
+ * request, so 500 recipients is 5 calls instead of 500 sequential ones.
+ * The result is per message: true only when the response carries an id at
+ * that message's index (`{ data: [{ id }] }`, same order as the payload).
+ * In Resend's default (strict) validation one invalid email fails the whole
+ * request, so that chunk comes back all false and is retried next run.
+ * Never throws — failures are reported.
  */
 export async function sendEmailBatch(messages: EmailMessage[], route: string): Promise<boolean[]> {
   let sender: { apiKey: string; from: string } | null;
@@ -78,7 +81,7 @@ export async function sendEmailBatch(messages: EmailMessage[], route: string): P
   // Sequential: a handful of requests, and it stays well inside Resend's per-second limit.
   const results: boolean[] = [];
   for (const chunk of chunks) {
-    let ok = false;
+    let accepted: boolean[] = chunk.map(() => false);
     try {
       const res = await fetch("https://api.resend.com/emails/batch", {
         method: "POST",
@@ -86,9 +89,20 @@ export async function sendEmailBatch(messages: EmailMessage[], route: string): P
         body: JSON.stringify(chunk.map((m) => ({ from, to: [m.to], subject: m.subject, text: m.text, html: m.html }))),
         signal: AbortSignal.timeout(15_000),
       });
-      ok = res.ok;
-      if (!ok) {
-        const body = await res.text().catch(() => "");
+      const body = await res.text().catch(() => "");
+      if (res.ok) {
+        let data: unknown = null;
+        try {
+          data = JSON.parse(body)?.data;
+        } catch {
+          /* unreadable body: treat as nothing accepted */
+        }
+        accepted = chunk.map((_, i) => Array.isArray(data) && typeof data[i]?.id === "string");
+        const dropped = accepted.filter((a) => !a).length;
+        if (dropped) {
+          reportError(new Error(`Resend batch: ${dropped}/${chunk.length} emails not accepted`), { route, service: "resend" });
+        }
+      } else {
         console.error("Resend batch error:", res.status, body);
         reportError(new Error(`Resend batch ${res.status}: ${body.slice(0, 200)}`), { route, service: "resend" });
       }
@@ -96,7 +110,7 @@ export async function sendEmailBatch(messages: EmailMessage[], route: string): P
       console.error("Resend batch failed:", e);
       reportError(e, { route, service: "resend" });
     }
-    results.push(...chunk.map(() => ok));
+    results.push(...accepted);
   }
   return results;
 }

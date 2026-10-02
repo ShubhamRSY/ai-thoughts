@@ -59,7 +59,8 @@ export async function GET(request: NextRequest) {
       "api/cron/activity-digest"
     );
     const delivered = pending.filter((_, i) => accepted[i]);
-    // Only what Resend accepted is marked; the rest is picked up by tomorrow's run.
+    // Only messages Resend returned an id for are marked; the rest stay
+    // unemailed and are picked up by tomorrow's run.
     if (delivered.length) {
       await db.collection("notifications").updateMany(
         { _id: { $in: delivered.flatMap((p) => p.ids) } },

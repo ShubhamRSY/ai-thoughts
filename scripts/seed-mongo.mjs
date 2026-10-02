@@ -1,5 +1,6 @@
 // Seed MongoDB with global, human-sounding AI thoughts (pos + neg, many languages).
-// Usage:  npm run seed
+// Usage:  npm run seed            (seeds <db>_dev)
+//         npm run seed -- --prod  (seeds MONGODB_DB itself)
 // Safe to re-run: only inserts posts whose seed_id is missing.
 import { MongoClient, ObjectId } from "mongodb";
 import fs from "node:fs";
@@ -30,10 +31,11 @@ if (!uri) {
   console.error("Set MONGODB_URL first (e.g. mongodb+srv://user:pass@cluster/...)");
   process.exit(1);
 }
-// Same rule as src/lib/mongodb.ts dbName(): .env.local holds the live cluster
-// (vercel env pull), so seed the "<db>_dev" sibling unless told otherwise.
+// .env.local holds the live cluster (vercel env pull), so this always seeds the
+// "<db>_dev" sibling. Seeding the real database takes an explicit --prod —
+// unlike the app's dbName(), a stray NODE_ENV=production isn't enough.
 const baseDb = process.env.MONGODB_DB || "aithoughts";
-const dbName = baseDb.endsWith("_dev") || process.env.NODE_ENV === "production" ? baseDb : `${baseDb}_dev`;
+const dbName = baseDb.endsWith("_dev") || process.argv.includes("--prod") ? baseDb : `${baseDb}_dev`;
 
 function hash(s) {
   return createHash("sha256").update(s).digest("hex").slice(0, 16);

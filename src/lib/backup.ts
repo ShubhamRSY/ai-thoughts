@@ -68,7 +68,8 @@ function hostOf(uri: string): string {
 export async function buildArchive(db: Db, opts: { host?: string } = {}): Promise<BuildResult> {
   const names = (await db.listCollections({}, { nameOnly: true }).toArray())
     .map((c) => c.name)
-    .filter((n) => !n.startsWith("system."))
+    // Also skip mongo-restore's scratch collections if a run was interrupted.
+    .filter((n) => !n.startsWith("system.") && !n.endsWith("__restore") && !n.endsWith("__previous"))
     .sort();
 
   const collections: Record<string, string[]> = {};
