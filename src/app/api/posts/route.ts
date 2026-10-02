@@ -12,7 +12,7 @@ import { notifyFollowersOfPost, notifyMentions, notifyPostOwner } from "@/lib/ac
 import { dailyPromptForDay, promptDayKeyUTC } from "@/lib/daily-prompt";
 import { setMood } from "@/lib/mood";
 import { LIKE_REACTION, BOOST_REACTION, BOOKMARK_REACTION, buildLikedBy } from "@/lib/likes";
-import { assertCanPost, contentFingerprint } from "@/lib/anti-abuse";
+import { accountAgeMs, assertCanPost, contentFingerprint, postLimitsForAge } from "@/lib/anti-abuse";
 import { extractMentions } from "@/lib/mentions";
 import {
   canBeReposted,
@@ -656,6 +656,8 @@ export async function POST(request: NextRequest) {
     const rawMediaUrl = typeof body.media_url === "string" ? body.media_url.trim() : "";
     let mediaUrl: string | null = null;
     let mediaKey: string | null = null;
+    // What the moderation API can actually fetch (private-store files need a signed URL).
+    let screenUrl: string | null = null;
     if (rawMediaUrl) {
       if (!isAllowedMediaUrl(rawMediaUrl, true)) {
         return NextResponse.json(
@@ -680,13 +682,14 @@ export async function POST(request: NextRequest) {
         );
       }
       mediaUrl = rawMediaUrl;
+      screenUrl = readableUrl || rawMediaUrl;
     } else if (mediaType !== "text") {
       return NextResponse.json({ error: "media_url is required" }, { status: 400 });
     }
 
     // Photo takes are media_type "text" with a media_url; audio/video are
     // screened from their transcript after publishing (screenMediaPost below).
-    if (await isFlaggedContent({ text: content, imageUrl: mediaType === "text" ? mediaUrl : null })) {
+    if (await isFlaggedContent({ text: content, imageUrl: mediaType === "text" ? screenUrl : null })) {
       return NextResponse.json(flaggedBody("take"), { status: 400 });
     }
 
@@ -719,8 +722,9 @@ export async function POST(request: NextRequest) {
       tags,
       mentioned_handles: mentionedHandles,
       quoted_post_id: quotedPostId,
-      language: typeof body.language === "string" ? body.language : null,
-      language_label: typeof body.language_label === "string" ? body.language_label : null,
+      // Echoed to every viewer on every feed load — keep them tag/label sized.
+      language: typeof body.language === "string" ? body.language.slice(0, 16) : null,
+      language_label: typeof body.language_label === "string" ? body.language_label.slice(0, 40) : null,
       integrity_hash: integrityHash,
       integrity_verified: false, // client claims are never "verified" — server-only
       integrity_label: integrityLabel,
@@ -745,7 +749,6 @@ export async function POST(request: NextRequest) {
     if (!firstTap) {
       return NextResponse.json({ error: "That take was already posted", code: "duplicate" }, { status: 409 });
     }
-
     // Bind the file to this post first, atomically: two posts racing for one
     // upload can't both get it.
     const newId = new ObjectId();
@@ -758,6 +761,22 @@ export async function POST(request: NextRequest) {
     } catch (e) {
       if (mediaKey) await releaseAttachment(db, mediaKey, newId);
       throw e;
+    }
+    // assertCanPost counts, then we insert — parallel requests all saw the same
+    // count. Settle the race against what actually landed: if another post of
+    // this author's, created before ours (lower _id), is inside the cooldown,
+    // ours loses and is rolled back. One survivor per window also holds the
+    // daily cap (e.g. 1 take in the first hour). Reads real rows, so undoing
+    // a take still frees the slot exactly as before.
+    const cooldownMs = postLimitsForAge(accountAgeMs(createdAt)).cooldownMs;
+    const raced = await db.collection("posts").findOne(
+      { user_id: session.id, _id: { $lt: newId }, created_at: { $gte: new Date(Date.now() - cooldownMs) } },
+      { projection: { _id: 1 } }
+    );
+    if (raced) {
+      await db.collection("posts").deleteOne({ _id: newId });
+      if (mediaKey) await releaseAttachment(db, mediaKey, newId);
+      return NextResponse.json({ error: "cooldown", retry_in_sec: Math.ceil(cooldownMs / 1000) }, { status: 429 });
     }
     const postId = result.insertedId.toString();
     if (mediaUrl && mediaType !== "text") {
@@ -790,31 +809,37 @@ export async function POST(request: NextRequest) {
           reaction: BOOST_REACTION,
           created_at: new Date(),
         });
-        void notifyPostOwner(db, {
-          postId: quotedPostId,
-          actorHandle: storeHandle,
-          actorAuthor: session.displayName || session.handle,
-          kind: "reaction",
-          preview: BOOST_REACTION,
-        });
+        after(() =>
+          notifyPostOwner(db, {
+            postId: quotedPostId,
+            actorHandle: storeHandle,
+            actorAuthor: session.displayName || session.handle,
+            kind: "reaction",
+            preview: BOOST_REACTION,
+          }).catch((e) => reportError(e, { route: "api/posts" }))
+        );
       }
     }
 
     // Don't block the response on fan-out
-    void notifyFollowersOfPost(db, {
-      postId,
-      authorHandle: session.handle,
-      authorName: session.displayName || session.handle,
-      preview: content,
-    });
-    if (mentionedHandles.length) {
-      void notifyMentions(db, {
+    after(() =>
+      notifyFollowersOfPost(db, {
         postId,
-        actorHandle: session.handle,
-        actorAuthor: session.displayName || session.handle,
+        authorHandle: session.handle,
+        authorName: session.displayName || session.handle,
         preview: content,
-        mentioned: mentionedHandles,
-      });
+      }).catch((e) => reportError(e, { route: "api/posts" }))
+    );
+    if (mentionedHandles.length) {
+      after(() =>
+        notifyMentions(db, {
+          postId,
+          actorHandle: session.handle,
+          actorAuthor: session.displayName || session.handle,
+          preview: content,
+          mentioned: mentionedHandles,
+        }).catch((e) => reportError(e, { route: "api/posts" }))
+      );
     }
 
     let quotedPostPreview: {

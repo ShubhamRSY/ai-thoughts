@@ -19,8 +19,6 @@ const RESERVED_HANDLE_ROOTS = [
   "administrator",
   "aithoughts",
   "aithought",
-  "ai-thoughts",
-  "ai_thoughts",
   "official",
   "keeper",
   "keepers",
@@ -160,7 +158,9 @@ export function checkHandleAllowed(handle: string): AbuseCheckResult {
         reason: "That handle looks like an official or reserved name. Pick another.",
       };
     }
-    if (root.length < 5 && (fp.startsWith(root) && /^[0-9]/.test(fp.slice(root.length) || "1"))) {
+    // Short roots only with a trailing number (mod123, team1). Read from the
+    // raw handle: the fingerprint has no digits left to see.
+    if (root.length < 5 && n.startsWith(root) && /^[0-9]/.test(n.slice(root.length))) {
       return {
         ok: false,
         code: "handle_reserved",

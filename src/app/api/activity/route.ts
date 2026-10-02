@@ -27,36 +27,11 @@ export async function GET() {
       .limit(40)
       .toArray();
 
-    // Also catch mismatched casing stored from older posts
-    const extra =
-      rows.length >= 40
-        ? []
-        : (
-            await db
-              .collection("notifications")
-              .find({})
-              .sort({ created_at: -1 })
-              .limit(100)
-              .toArray()
-          ).filter((n) => normHandle(String(n.recipient_handle || "")) === normHandle(session.handle));
-
-    const seen = new Set(rows.map((r) => r._id.toString()));
-    const all = [...rows];
-    for (const n of extra) {
-      if (!seen.has(n._id.toString())) all.push(n);
-    }
-    all.sort((a, b) => {
-      const at = a.created_at instanceof Date ? a.created_at.getTime() : 0;
-      const bt = b.created_at instanceof Date ? b.created_at.getTime() : 0;
-      return bt - at;
-    });
-
-    const items = all.slice(0, 40);
-    const unread = items.filter((n) => !n.read).length;
+    const unread = rows.filter((n) => !n.read).length;
 
     return NextResponse.json({
       unread,
-      items: items.map((n) => ({
+      items: rows.map((n) => ({
         id: n._id.toString(),
         kind: n.kind,
         actor_handle: n.actor_handle,
@@ -90,20 +65,6 @@ export async function POST(request: NextRequest) {
         { recipient_handle: { $in: variants }, read: false },
         { $set: { read: true } }
       );
-      // Casing fallback
-      const loose = await db
-        .collection("notifications")
-        .find({ read: false })
-        .limit(100)
-        .toArray();
-      const ids = loose
-        .filter((n) => normHandle(String(n.recipient_handle || "")) === me)
-        .map((n) => n._id);
-      if (ids.length) {
-        await db
-          .collection("notifications")
-          .updateMany({ _id: { $in: ids } }, { $set: { read: true } });
-      }
       return NextResponse.json({ ok: true });
     }
 

@@ -1,6 +1,8 @@
 import { ObjectId } from "mongodb";
 import type { Db } from "mongodb";
+import { waitUntil } from "@vercel/functions";
 import { sendPushToHandle } from "@/lib/push";
+import { reportError } from "@/lib/report-error";
 import { canViewPosts, getPrivacy } from "@/lib/visibility";
 import { isBlockedPair } from "@/lib/blocks";
 
@@ -22,17 +24,14 @@ function normHandle(h: string) {
   return h.trim().toLowerCase().replace(/^@/, "");
 }
 
-function recipientForm(h: string) {
-  const n = normHandle(h);
-  return h.trim().startsWith("@") ? h.trim() : `@${n}`;
+// Both handles are indexed (inbox lookup + "arrive exactly once" dedup), so
+// they must be one canonical form (@-prefixed, lowercase) regardless of caller
+// spelling — readers query by exact match, never by a casing scan.
+function canonical(h: string) {
+  return `@${normHandle(h)}`;
 }
-
-// actor_handle is indexed for the "arrive exactly once" dedup, so it must be a
-// stable canonical form (@-prefixed, lowercase) regardless of caller spelling.
-function actorForm(h: string) {
-  const n = normHandle(h);
-  return `@${n}`;
-}
+const recipientForm = canonical;
+const actorForm = canonical;
 
 async function writeActivity(
   db: Db,
@@ -82,12 +81,15 @@ async function writeActivity(
     { upsert: true }
   );
 
-  await sendPushToHandle(db, opts.recipientHandle, {
-    title: opts.pushTitle,
-    body: opts.pushBody,
-    url: opts.pushUrl || `/app?post=${opts.postId}`,
-    tag: opts.pushTag,
-  });
+  // Off the request path: the actor shouldn't wait on the recipient's push services.
+  waitUntil(
+    sendPushToHandle(db, opts.recipientHandle, {
+      title: opts.pushTitle,
+      body: opts.pushBody,
+      url: opts.pushUrl || `/app?post=${opts.postId}`,
+      tag: opts.pushTag,
+    }).catch((e) => reportError(e, { route: "lib/activity", service: "push" }))
+  );
 }
 
 /** Notify a post’s author that someone engaged — never notify yourself. */

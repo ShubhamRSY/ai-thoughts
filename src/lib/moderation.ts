@@ -2,8 +2,9 @@ import { ObjectId, type Db } from "mongodb";
 import { put } from "@vercel/blob";
 import { isFlaggedContent, transcribeMedia } from "./content-moderation.ts";
 import { privateBlobToken, signMediaUrl } from "./media-access.ts";
-import { deleteBlobUrls, mediaUrlsFromPost } from "./privacy.ts";
-import { filterDeletableMedia, forgetUploads } from "./uploads.ts";
+import { mediaUrlsFromPost } from "./privacy.ts";
+import { filterDeletableMedia } from "./uploads.ts";
+import { deleteFilesOrQueue } from "./upload-cleanup.ts";
 import { CHILD_SAFETY } from "./report-reasons.ts";
 import { reportError } from "./report-error.ts";
 
@@ -59,8 +60,7 @@ export async function deletePostCascade(db: Db, postId: ObjectId, by = "system")
     String(post.user_id ?? ""),
     { postIds: [postId] }
   );
-  await deleteBlobUrls(files);
-  await forgetUploads(db, files);
+  await deleteFilesOrQueue(db, files);
 
   await Promise.all([
     db.collection("reactions").deleteMany({ post_id: idStr }),

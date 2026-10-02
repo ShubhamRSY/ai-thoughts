@@ -43,7 +43,7 @@ export async function POST(
       return NextResponse.json({ error: "Invalid id" }, { status: 400 });
     }
 
-    const body = await request.json();
+    const body = await request.json().catch(() => ({}));
     const reaction = typeof body.reaction === "string" ? body.reaction : "";
     if (!isValidReaction(reaction)) {
       return NextResponse.json({ error: "Invalid reaction" }, { status: 400 });
@@ -60,31 +60,18 @@ export async function POST(
     }
 
     const variants = handleVariants(session.handle);
-    const storeHandle = session.handle.startsWith("@")
-      ? `@${normHandle(session.handle)}`
-      : `@${normHandle(session.handle)}`;
+    const storeHandle = `@${normHandle(session.handle)}`;
 
-    const existing = await db.collection("reactions").findOne({
+    // Toggle with no read-then-write gap: the delete itself says whether it was on.
+    // (Also sweeps legacy casing duplicates for this user+reaction.)
+    const removed = await db.collection("reactions").deleteMany({
       post_id: id,
       handle: { $in: variants },
       reaction,
     });
-
-    if (existing) {
-      await db.collection("reactions").deleteMany({
-        post_id: id,
-        handle: { $in: variants },
-        reaction,
-      });
+    if (removed.deletedCount > 0) {
       return NextResponse.json({ ok: true, action: "removed" });
     }
-
-    // Clean any legacy casing duplicates for this user+reaction, then insert one.
-    await db.collection("reactions").deleteMany({
-      post_id: id,
-      handle: { $in: variants },
-      reaction,
-    });
 
     let inserted = false;
     try {
@@ -97,11 +84,10 @@ export async function POST(
       });
       inserted = res.acknowledged;
     } catch (err: unknown) {
-      // Two rapid taps raced the toggle and the second insert hit the unique
-      // (post_id, handle_norm, reaction) index. Treat it as the toggle
-      // flicking back off — never a 500.
+      // A concurrent tap inserted the same row first (unique post/handle_norm/
+      // reaction index): the reaction is on, which is what this tap asked for.
       if ((err as { code?: number })?.code === 11000) {
-        return NextResponse.json({ ok: true, action: "removed" });
+        return NextResponse.json({ ok: true, action: "added" });
       }
       throw err;
     }

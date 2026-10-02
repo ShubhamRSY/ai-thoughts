@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { selectExpiredBackups, DEFAULT_KEEP } from "./backup-retention.ts";
+import { selectExpiredBackups, DEFAULT_KEEP, pathnameTime } from "./backup-retention.ts";
 import { MAX_DOCS, backupPathname } from "./backup.ts";
 
 const entry = (n: number) => ({
@@ -33,11 +33,21 @@ test("ignores blobs outside the backups prefix", () => {
 });
 
 test("sorts by pathname timestamp when uploadedAt is missing", () => {
-  const bare = [entry(3), entry(1), entry(2)].map((e) => ({ pathname: e.pathname }));
+  // Newest in the middle: a stable no-op sort would keep entry(1) and expire entry(3).
+  const bare = [entry(1), entry(3), entry(2)].map((e) => ({ pathname: e.pathname }));
   assert.deepEqual(
     [...selectExpiredBackups(bare, 1)].sort(),
     [entry(1).pathname, entry(2).pathname].sort()
   );
+});
+
+test("parses the timestamp embedded in a backup pathname", () => {
+  assert.equal(
+    pathnameTime("backups/aithoughts-2026-09-30T04-05-06-789Z.json.gz"),
+    Date.UTC(2026, 8, 30, 4, 5, 6, 789)
+  );
+  assert.equal(pathnameTime(backupPathname("aithoughts", "2026-09-30T04:05:06.789Z")), Date.UTC(2026, 8, 30, 4, 5, 6, 789));
+  assert.equal(pathnameTime("backups/junk.json.gz"), 0);
 });
 
 test("default retention is a rolling multi-day window", () => {

@@ -416,8 +416,7 @@ export async function collectOwnerMetrics(db: Db): Promise<OwnerMetrics> {
       },
       { $sort: { _id: 1 } },
     ])
-    .toArray()
-    .catch(() => [] as { _id: string; count: number }[]);
+    .toArray();
 
   const users_by_day: { day: string; count: number }[] = [];
   for (let i = 13; i >= 0; i--) {
@@ -470,6 +469,8 @@ export async function collectOwnerMetrics(db: Db): Promise<OwnerMetrics> {
   const topRows = await posts
     .aggregate<{ _id: string; posts: number; author: string }>([
       { $match: { created_at: { $gte: d7 } } },
+      // $last is only meaningful after a sort: the author's most recent display name.
+      { $sort: { created_at: 1 } },
       {
         $group: {
           _id: "$handle",
@@ -493,8 +494,7 @@ export async function collectOwnerMetrics(db: Db): Promise<OwnerMetrics> {
       { $group: { _id: "$handle" } },
       { $limit: 500 },
     ])
-    .toArray()
-    .catch(() => [] as { _id: string }[]);
+    .toArray();
   const replierHandles = await messages
     .aggregate<{ _id: string }>([
       {
@@ -505,8 +505,7 @@ export async function collectOwnerMetrics(db: Db): Promise<OwnerMetrics> {
       { $group: { _id: "$handle" } },
       { $limit: 500 },
     ])
-    .toArray()
-    .catch(() => [] as { _id: string }[]);
+    .toArray();
   for (const h of uniquePosters7) engagedHandles.add(String(h).toLowerCase());
   for (const r of reactorHandles) if (r._id) engagedHandles.add(String(r._id).toLowerCase());
   for (const r of replierHandles) if (r._id) engagedHandles.add(String(r._id).toLowerCase());

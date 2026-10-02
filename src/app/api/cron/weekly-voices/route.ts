@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { listDigestRecipients } from "@/lib/prefs";
-import { sendWeeklyVoicesEmail } from "@/lib/email";
+import { sendEmailBatch, weeklyVoicesEmail } from "@/lib/email";
 import { feelingOf } from "@/lib/feelings";
 import type { FeelingId } from "@/lib/types";
 import { authorizeCron } from "@/lib/cron-auth";
 import { hiddenAuthorFilter } from "@/lib/visibility";
 import { reportError } from "@/lib/report-error";
+
+export const maxDuration = 60;
 
 export async function GET(request: NextRequest) {
   try {
@@ -46,17 +48,19 @@ export async function GET(request: NextRequest) {
     const episodeTitle = `Week ${week} felt ${topFeeling.toLowerCase()}`;
 
     const recipients = await listDigestRecipients(db, "weekly_digest");
-    let sent = 0;
-    for (const r of recipients) {
-      const ok = await sendWeeklyVoicesEmail(r.email, {
-        handle: r.handle,
-        episodeTitle,
-        topFeeling: topFeeling.toLowerCase(),
-        takeCount: posts.length,
-        highlights,
-      });
-      if (ok) sent += 1;
-    }
+    const accepted = await sendEmailBatch(
+      recipients.map((r) =>
+        weeklyVoicesEmail(r.email, {
+          handle: r.handle,
+          episodeTitle,
+          topFeeling: topFeeling.toLowerCase(),
+          takeCount: posts.length,
+          highlights,
+        })
+      ),
+      "api/cron/weekly-voices"
+    );
+    const sent = accepted.filter(Boolean).length;
 
     return NextResponse.json({
       ok: true,

@@ -7,15 +7,18 @@ import { warnIfProductionEnvIncomplete } from "./env.ts";
 
 type Fake = Parameters<typeof setRedisForTests>[0];
 
-/** A Redis whose pipeline fails, hangs, or counts like the real thing. */
+/** A Redis whose transaction fails, hangs, or counts like the real thing. */
 function fakeRedis(mode: "fail" | "hang" | "ok"): Fake {
   const counts = new Map<string, number>();
   return {
-    pipeline() {
+    multi() {
       const ops: string[] = [];
       const p = {
         incr(k: string) {
           ops.push(k);
+          return p;
+        },
+        expire() {
           return p;
         },
         ttl() {
@@ -26,12 +29,11 @@ function fakeRedis(mode: "fail" | "hang" | "ok"): Fake {
           if (mode === "hang") return new Promise(() => {});
           const k = ops[0];
           counts.set(k, (counts.get(k) ?? 0) + 1);
-          return Promise.resolve([counts.get(k), 60]);
+          return Promise.resolve([counts.get(k), 1, 60]);
         },
       };
       return p;
     },
-    expire: () => Promise.resolve(1),
   } as unknown as Fake;
 }
 

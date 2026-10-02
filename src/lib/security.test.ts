@@ -11,6 +11,9 @@ import {
 } from "./secure.ts";
 import { isSafePushEndpoint } from "./push.ts";
 
+// NODE_ENV is typed read-only; tests flip it on purpose.
+const env = process.env as Record<string, string | undefined>;
+
 describe("timingSafeEqualStr", () => {
   it("matches equal strings", () => {
     assert.equal(timingSafeEqualStr("abc", "abc"), true);
@@ -49,7 +52,7 @@ describe("email crypto", () => {
 
 describe("authorizeBearer", () => {
   const prevCron = process.env.CRON_SECRET;
-  const prevNode = process.env.NODE_ENV;
+  const prevNode = env.NODE_ENV;
   const prevVercel = process.env.VERCEL_ENV;
   const prevHops = process.env.TRUSTED_PROXY_HOPS;
   const prevOptIn = process.env.ALLOW_INSECURE_DEV_AUTH;
@@ -61,8 +64,8 @@ describe("authorizeBearer", () => {
   afterEach(() => {
     if (prevCron === undefined) delete process.env.CRON_SECRET;
     else process.env.CRON_SECRET = prevCron;
-    if (prevNode === undefined) delete process.env.NODE_ENV;
-    else process.env.NODE_ENV = prevNode;
+    if (prevNode === undefined) delete env.NODE_ENV;
+    else env.NODE_ENV = prevNode;
     if (prevVercel === undefined) delete process.env.VERCEL_ENV;
     else process.env.VERCEL_ENV = prevVercel;
     if (prevHops === undefined) delete process.env.TRUSTED_PROXY_HOPS;
@@ -72,7 +75,7 @@ describe("authorizeBearer", () => {
   });
 
   it("stays closed without a secret outside production unless explicitly opted in", async () => {
-    process.env.NODE_ENV = "development";
+    env.NODE_ENV = "development";
     delete process.env.VERCEL_ENV;
     delete process.env.ALLOW_INSECURE_DEV_AUTH;
     const noSecret = { secrets: [undefined], allowInsecureDev: true };
@@ -86,7 +89,7 @@ describe("authorizeBearer", () => {
   });
 
   it("accepts valid bearer in production", async () => {
-    process.env.NODE_ENV = "production";
+    env.NODE_ENV = "production";
     process.env.CRON_SECRET = "super-secret-cron";
     const req = new Request("https://example.com", {
       headers: {
@@ -98,7 +101,7 @@ describe("authorizeBearer", () => {
   });
 
   it("rejects wrong bearer", async () => {
-    process.env.NODE_ENV = "production";
+    env.NODE_ENV = "production";
     process.env.CRON_SECRET = "super-secret-cron";
     const req = new Request("https://example.com", {
       headers: { authorization: "Bearer nope", "x-forwarded-for": "203.0.113.2" },
@@ -107,7 +110,7 @@ describe("authorizeBearer", () => {
   });
 
   it("rejects missing secret in production", async () => {
-    process.env.NODE_ENV = "production";
+    env.NODE_ENV = "production";
     delete process.env.CRON_SECRET;
     delete process.env.VERCEL_ENV;
     const req = new Request("https://example.com", {
@@ -120,7 +123,7 @@ describe("authorizeBearer", () => {
   });
 
   it("caps brute-force attempts per IP regardless of the secret guessed", async () => {
-    process.env.NODE_ENV = "production";
+    env.NODE_ENV = "production";
     process.env.CRON_SECRET = "super-secret-cron";
     const ip = `203.0.113.${100 + Math.floor(Math.random() * 50)}`;
     const attempt = () =>

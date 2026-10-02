@@ -35,7 +35,6 @@ import { FEED_PAGE_SIZE } from "@/lib/types";
 import {
   fetchPulsePosts,
   fetchPostsByHandle,
-  isLive,
   publishPost,
   addReaction,
   reportPost,
@@ -326,7 +325,6 @@ export default function Home() {
 
   const onReport = useCallback(
     async (thoughtId: string, reason: ReportReason) => {
-      if (!isLive()) return false;
       const t = thoughts.find((x) => x.id === thoughtId);
       return reportPost(thoughtId, reason, {
         handle: t?.handle,
@@ -346,7 +344,6 @@ export default function Home() {
     async (thoughtId: string) => {
       const snapshot = thoughts.find((t) => t.id === thoughtId);
       removeLocal(thoughtId);
-      if (!isLive()) return;
       const ok = await deletePost(thoughtId);
       if (!ok && snapshot) {
         setThoughts((prev) => [snapshot, ...prev]);
@@ -363,7 +360,6 @@ export default function Home() {
       const snapshot =
         thoughts.find((t) => t.id === thoughtId) ?? mine.find((t) => t.id === thoughtId);
       removeLocal(thoughtId);
-      if (!isLive()) return;
       const ok = await archivePost(thoughtId, true);
       if (!ok && snapshot) {
         setThoughts((prev) => [snapshot, ...prev]);
@@ -399,52 +395,32 @@ export default function Home() {
 
       const refined: SharePayload = { ...data, integrity };
 
-      if (isLive()) {
-        const posted = await publishPost(refined, clip?.blob ?? null);
-        if ("error" in posted) {
-          if (posted.retryInSec) {
-            return { ok: false, reason: "cooldown", retryInSec: posted.retryInSec };
-          }
-          if (posted.error.toLowerCase().includes("sign in")) {
-            return { ok: false, reason: "auth" };
-          }
-          return { ok: false, reason: "blocked", message: posted.error };
+      const posted = await publishPost(refined, clip?.blob ?? null);
+      if ("error" in posted) {
+        if (posted.retryInSec) {
+          return { ok: false, reason: "cooldown", retryInSec: posted.retryInSec };
         }
-        markPublished();
-        setRegionScope("world");
-        setMedia("all");
-        setFeeling("all");
-        setRoom(null);
-        setThoughts((prev) => [posted.thought, ...prev.filter((t) => t.id !== posted.thought.id)]);
-        setMine((prev) => [posted.thought, ...prev.filter((t) => t.id !== posted.thought.id)]);
-        setUndoId(posted.thought.id);
-        setFocusPostId(posted.thought.id);
-        bump(data.feeling);
-        return { ok: true, thought: posted.thought };
+        if (posted.error.toLowerCase().includes("sign in")) {
+          return { ok: false, reason: "auth" };
+        }
+        return { ok: false, reason: "blocked", message: posted.error };
       }
-
       markPublished();
-      const newThought: Thought = {
-        ...refined,
-        id: `t${Date.now()}`,
-        reactions: [
-          { type: "🔥", count: 1 },
-          { type: "🤔", count: 0 },
-        ],
-        timeLabel: "now",
-      };
-
-      setThoughts((prev) => [newThought, ...prev]);
-      setMine((prev) => [newThought, ...prev]);
-      setUndoId(newThought.id);
+      setRegionScope("world");
+      setMedia("all");
+      setFeeling("all");
+      setRoom(null);
+      setThoughts((prev) => [posted.thought, ...prev.filter((t) => t.id !== posted.thought.id)]);
+      setMine((prev) => [posted.thought, ...prev.filter((t) => t.id !== posted.thought.id)]);
+      setUndoId(posted.thought.id);
+      setFocusPostId(posted.thought.id);
       bump(data.feeling);
-      return { ok: true, thought: newThought };
+      return { ok: true, thought: posted.thought };
     },
     [profile, save, bump, user]
   );
 
   const onReact = useCallback(async (thoughtId: string, reaction: Reaction) => {
-    if (!isLive()) return true;
     return addReaction(thoughtId, reaction);
   }, []);
 
@@ -492,10 +468,6 @@ export default function Home() {
 
   const reloadFeed = useCallback(
     async (opts?: { silent?: boolean }) => {
-      if (!isLive()) {
-        setFeedStatus("ready");
-        return;
-      }
       const silent = Boolean(opts?.silent);
       if (!silent) setFeedStatus("loading");
       // Own takes come from their own query: filtering the newest feed page
@@ -558,8 +530,6 @@ export default function Home() {
 
   // When user returns to the app (background → foreground), refresh feed quietly
   useEffect(() => {
-    if (!isLive()) return;
-
     let lastRefresh = 0;
     const MIN_GAP_MS = 12_000;
 
@@ -592,7 +562,7 @@ export default function Home() {
 
   // Merge today's prompt lane posts so the filter has enough answers.
   useEffect(() => {
-    if (!isLive() || regionScope !== "today") return;
+    if (regionScope !== "today") return;
     let cancelled = false;
     fetchPulsePosts({ promptDay: promptTodayKey() }).then((posts) => {
       if (cancelled || !posts) return;

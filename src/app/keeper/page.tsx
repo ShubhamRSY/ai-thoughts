@@ -9,7 +9,6 @@ import {
   moderateReport,
   isKeeper,
   type ReportRow,
-  isLive,
 } from "@/lib/db";
 import { useAuth } from "@/hooks/useAuth";
 import { CHILD_SAFETY } from "@/lib/report-reasons";
@@ -54,7 +53,7 @@ export default function KeeperPage() {
     if (authLoading) return;
     let cancelled = false;
     (async () => {
-      if (!isLive() || !user) {
+      if (!user) {
         if (!cancelled) {
           setAuthorized(false);
           setLoading(false);
@@ -77,7 +76,7 @@ export default function KeeperPage() {
   }, [authLoading, user]);
 
   const refresh = async () => {
-    if (!isLive() || !user) return;
+    if (!user) return;
     const keeper = await isKeeper();
     setAuthorized(keeper);
     if (keeper) {
@@ -147,11 +146,6 @@ export default function KeeperPage() {
             This is the moderation desk for community keepers. It&apos;s invite-only — if you
             think you should have access, ask a current keeper.
           </p>
-          {!isLive() && (
-            <p className="text-xs text-amber-700">
-              The database isn&apos;t connected in this environment, so the desk is offline.
-            </p>
-          )}
         </div>
       </div>
     );

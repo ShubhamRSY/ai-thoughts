@@ -20,6 +20,14 @@ export function ensureCoreIndexes(db: Db): Promise<void> {
   return ensuring;
 }
 
+const hasIndex = async (db: Db, coll: string, name: string) =>
+  (await db.collection(coll).indexes()).some((i) => i.name === name);
+
+// The legacy-duplicate sweeps below are full-collection $group scans. They run
+// only until their unique index exists, and get no 8s client timeout or memory
+// cap — timing out would mean the index is simply never built.
+const ONE_TIME_SCAN = { timeoutMS: 0, allowDiskUse: true } as const;
+
 async function buildCoreIndexes(db: Db): Promise<void> {
 
   const jobs: Array<Promise<unknown>> = [
@@ -142,6 +150,20 @@ async function buildCoreIndexes(db: Db): Promise<void> {
     ),
     // One uploader per file name — the first claim wins (lib/uploads.ts, H3).
     db.collection("uploads").createIndex({ key: 1 }, { unique: true, name: "uploads_key_unique" }),
+    // Upload cleanup scans unattached rows by age; quota checks count an owner's recent uploads.
+    db.collection("uploads").createIndex({ attached_to: 1, created_at: 1 }, { name: "uploads_attached_created" }),
+    db.collection("uploads").createIndex({ owner_id: 1, kind: 1, created_at: 1 }, { name: "uploads_owner_kind_created" }),
+    // "Tagged" profile tab.
+    db.collection("posts").createIndex({ mentioned_handles: 1, created_at: -1 }, { name: "posts_mentioned_created" }),
+    // Feelings spectrum: recent mood taps.
+    db.collection("moods").createIndex({ source: 1, created_at: 1 }, { name: "moods_source_created" }),
+    db.collection("user_prefs").createIndex({ handle: 1 }, { name: "user_prefs_handle" }),
+    // Owner dashboard date-window counts. Some rows use createdAt, so each
+    // $or branch needs its own index or the whole count falls back to a scan.
+    ...["users", "reactions", "messages", "follows"].flatMap((c) => [
+      db.collection(c).createIndex({ created_at: 1 }, { name: `${c}_created` }),
+      db.collection(c).createIndex({ createdAt: 1 }, { sparse: true, name: `${c}_createdAt` }),
+    ]),
     // Handles held after a rename/deletion (lib/handle-reservation.ts).
     db.collection("reserved_handles").createIndex(
       { handle_norm: 1 },
@@ -194,27 +216,29 @@ async function buildCoreIndexes(db: Db): Promise<void> {
   // guards against duplicates on its own).
   try {
     const reports = db.collection("reports");
-    const groups = await reports
-      .aggregate<{ ids: ObjectId[] }>([
-        {
-          $group: {
-            _id: { post_id: "$post_id", reporter_handle: "$reporter_handle" },
-            ids: { $push: "$_id" },
+    if (!(await hasIndex(db, "reports", "reports_post_reporter_unique"))) {
+      const groups = await reports
+        .aggregate<{ ids: ObjectId[] }>([
+          {
+            $group: {
+              _id: { post_id: "$post_id", reporter_handle: "$reporter_handle" },
+              ids: { $push: "$_id" },
+            },
           },
-        },
-        { $match: { $expr: { $gt: [{ $size: "$ids" }, 1] } } },
-      ])
-      .toArray();
-    // Keep one row per duplicate group and drop only that group's extras —
-    // never touch other groups' rows.
-    const surplus = groups.flatMap((g) => g.ids.slice(1));
-    if (surplus.length > 0) {
-      await reports.deleteMany({ _id: { $in: surplus } });
+          { $match: { $expr: { $gt: [{ $size: "$ids" }, 1] } } },
+        ], ONE_TIME_SCAN)
+        .toArray();
+      // Keep one row per duplicate group and drop only that group's extras —
+      // never touch other groups' rows.
+      const surplus = groups.flatMap((g) => g.ids.slice(1));
+      if (surplus.length > 0) {
+        await reports.deleteMany({ _id: { $in: surplus } });
+      }
+      await reports.createIndex(
+        { post_id: 1, reporter_handle: 1 },
+        { unique: true, name: "reports_post_reporter_unique" }
+      );
     }
-    await reports.createIndex(
-      { post_id: 1, reporter_handle: 1 },
-      { unique: true, name: "reports_post_reporter_unique" }
-    );
   } catch (e) {
     console.warn("ensureCoreIndexes reports:", (e as Error)?.message || e);
     reportError(e, { route: "lib/indexes", service: "mongodb" });
@@ -225,31 +249,33 @@ async function buildCoreIndexes(db: Db): Promise<void> {
   // unique index can be built; best-effort, never blocks boot.
   try {
     const notifications = db.collection("notifications");
-    const groups = await notifications
-      .aggregate<{ ids: ObjectId[]; latest: ObjectId }>([
-        {
-          $group: {
-            _id: {
-              recipient_handle: "$recipient_handle",
-              actor_handle: "$actor_handle",
-              post_id: "$post_id",
-              kind: "$kind",
+    if (!(await hasIndex(db, "notifications", "notifications_activity_unique"))) {
+      const groups = await notifications
+        .aggregate<{ ids: ObjectId[]; latest: ObjectId }>([
+          {
+            $group: {
+              _id: {
+                recipient_handle: "$recipient_handle",
+                actor_handle: "$actor_handle",
+                post_id: "$post_id",
+                kind: "$kind",
+              },
+              ids: { $push: "$_id" },
+              latest: { $max: "$_id" },
             },
-            ids: { $push: "$_id" },
-            latest: { $max: "$_id" },
           },
-        },
-        { $match: { $expr: { $gt: [{ $size: "$ids" }, 1] } } },
-      ])
-      .toArray();
-    const surplus = groups.flatMap((g) => g.ids.filter((id) => !id.equals(g.latest as ObjectId)));
-    if (surplus.length > 0) {
-      await notifications.deleteMany({ _id: { $in: surplus } });
+          { $match: { $expr: { $gt: [{ $size: "$ids" }, 1] } } },
+        ], ONE_TIME_SCAN)
+        .toArray();
+      const surplus = groups.flatMap((g) => g.ids.filter((id) => !id.equals(g.latest as ObjectId)));
+      if (surplus.length > 0) {
+        await notifications.deleteMany({ _id: { $in: surplus } });
+      }
+      await notifications.createIndex(
+        { recipient_handle: 1, actor_handle: 1, post_id: 1, kind: 1 },
+        { unique: true, name: "notifications_activity_unique" }
+      );
     }
-    await notifications.createIndex(
-      { recipient_handle: 1, actor_handle: 1, post_id: 1, kind: 1 },
-      { unique: true, name: "notifications_activity_unique" }
-    );
   } catch (e) {
     console.warn("ensureCoreIndexes notifications:", (e as Error)?.message || e);
     reportError(e, { route: "lib/indexes", service: "mongodb" });
@@ -261,15 +287,14 @@ async function buildCoreIndexes(db: Db): Promise<void> {
   // index exists, copy each post's full row count onto it exactly once.
   try {
     const views = db.collection("post_views");
-    const hasTtl = (await views.indexes()).some((i) => i.name === "post_views_ttl");
-    if (!hasTtl) {
+    if (!(await hasIndex(db, "post_views", "post_views_ttl"))) {
       await views
         .aggregate([
+          { $match: { post_id: { $regex: /^[0-9a-f]{24}$/ } } },
           { $group: { _id: "$post_id", view_count: { $sum: 1 } } },
-          { $match: { _id: { $regex: /^[0-9a-f]{24}$/ } } },
           { $project: { _id: { $toObjectId: "$_id" }, view_count: 1 } },
           { $merge: { into: "posts", on: "_id", whenMatched: "merge", whenNotMatched: "discard" } },
-        ], { timeoutMS: 0 })
+        ], ONE_TIME_SCAN)
         .toArray();
       await views.createIndex(
         { created_at: 1 },

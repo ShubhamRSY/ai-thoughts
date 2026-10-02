@@ -29,30 +29,34 @@ export function mediaUrlsFromPost(post: {
 
 /**
  * Best-effort delete of our blob objects. Never throws — wipe must continue
- * even if a file is already gone or the token is missing in local dev.
+ * even if the token is missing in local dev. Returns what failed so callers
+ * can queue it (upload-cleanup.ts deleteFilesOrQueue).
  */
 export async function deleteBlobUrls(
   urls: (string | null | undefined)[]
-): Promise<{ attempted: number; deleted: number }> {
+): Promise<{ attempted: number; deleted: number; failed: string[] }> {
   const unique = [
     ...new Set(
       urls.filter((u): u is string => typeof u === "string" && isOurBlobUrl(u))
     ),
   ];
-  if (unique.length === 0) return { attempted: 0, deleted: 0 };
+  if (unique.length === 0) return { attempted: 0, deleted: 0, failed: [] };
 
   let deleted = 0;
+  const failed: string[] = [];
   await Promise.all(
     unique.map(async (url) => {
       try {
         await del(url, { token: blobTokenFor(url) });
         deleted += 1;
       } catch {
-        /* already deleted or no token — ignore */
+        // del() is idempotent for missing blobs, so this is a real failure
+        // (network, token) — callers queue it for retry.
+        failed.push(url);
       }
     })
   );
-  return { attempted: unique.length, deleted };
+  return { attempted: unique.length, deleted, failed };
 }
 
 /**

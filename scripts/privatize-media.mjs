@@ -12,8 +12,8 @@ import { MongoClient } from "mongodb";
 import { put, del } from "@vercel/blob";
 
 const apply = process.argv.includes("--apply");
-const { MONGODB_URL, MONGODB_DB = "aithoughts", BLOB_READ_WRITE_TOKEN, BLOB_PRIVATE_READ_WRITE_TOKEN } = process.env;
-if (!MONGODB_URL || !BLOB_READ_WRITE_TOKEN || !BLOB_PRIVATE_READ_WRITE_TOKEN) {
+const { MONGODB_URL, MONGODB_DB, BLOB_READ_WRITE_TOKEN, BLOB_PRIVATE_READ_WRITE_TOKEN } = process.env;
+if (!MONGODB_URL || !MONGODB_DB || !BLOB_READ_WRITE_TOKEN || !BLOB_PRIVATE_READ_WRITE_TOKEN) {
   console.error("Set MONGODB_URL, MONGODB_DB, BLOB_READ_WRITE_TOKEN and BLOB_PRIVATE_READ_WRITE_TOKEN.");
   process.exit(2);
 }

@@ -135,7 +135,6 @@ export default function FeedCard({
   currentAuthor,
   forceChatOpen,
 }: FeedCardProps) {
-  const [muted, setMuted] = useState(false);
   const [liked, setLiked] = useState(Boolean(thought.likedByMe));
   const [likes, setLikes] = useState(
     typeof thought.likeCount === "number"
@@ -393,12 +392,12 @@ export default function FeedCard({
                         type="button"
                         onClick={() => {
                           setMenuOpen(false);
-                          void onMute(thought.handle, !muted);
+                          void onMute(thought.handle, true); // muted authors drop out of the feed on reload
                         }}
                         className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-[var(--surface-2)]"
                       >
                         <BellOff className="h-3.5 w-3.5" />
-                        {muted ? "Unmute" : "Mute"}
+                        Mute
                       </button>
                     )}
                     {!isAuthor && (

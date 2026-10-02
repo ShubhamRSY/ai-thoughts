@@ -23,7 +23,7 @@ export async function POST(
       return NextResponse.json({ error: "Invalid id" }, { status: 400 });
     }
 
-    const body = await request.json();
+    const body = await request.json().catch(() => ({}));
     if (typeof body.archived !== "boolean") {
       return NextResponse.json({ error: "archived must be true or false" }, { status: 400 });
     }
@@ -45,14 +45,22 @@ export async function POST(
       );
     }
 
-    await db
+    // Re-check the hold in the write itself: a hold set after the read above
+    // must still win over an unhide.
+    const res = await db
       .collection("posts")
       .updateOne(
-        { _id },
+        { _id, ...(body.archived ? {} : { moderation_hold: { $ne: true } }) },
         body.archived
           ? { $set: { archived: true, archived_at: new Date() } }
           : { $unset: { archived: "", archived_at: "" } }
       );
+    if (res.matchedCount === 0) {
+      return NextResponse.json(
+        { error: "This take is hidden while a keeper reviews it", code: "moderation_hold" },
+        { status: 403 }
+      );
+    }
     return NextResponse.json({ ok: true, archived: body.archived });
   } catch (error) {
     console.error(error);

@@ -20,7 +20,8 @@ const IP_UPLOAD_WINDOW_MS = 10 * 60_000;
 // route only ever exchanges a short-lived, scoped upload token. See
 // https://vercel.com/docs/vercel-blob/client-upload
 export async function POST(request: Request): Promise<NextResponse> {
-  const body = (await request.json()) as HandleUploadBody;
+  const body = (await request.json().catch(() => null)) as HandleUploadBody | null;
+  if (!body || typeof body !== "object") return NextResponse.json({ error: "Invalid request" }, { status: 400 });
 
   // Token requests are checked here, before any Blob call: who, how often,
   // what name and size — and the uploader is recorded (H3, M4).

@@ -15,9 +15,9 @@ import { MongoClient } from "mongodb";
 import { buildArchive, verifyArchive } from "../src/lib/backup.ts";
 
 const URL_ = process.env.MONGODB_URL ?? process.env.MONGODB_URI;
-const DB = process.env.MONGODB_DB ?? "aithoughts";
+const DB = process.env.MONGODB_DB;
 
-if (!URL_) {
+if (!URL_ || !DB) {
   console.error("Set MONGODB_URL (and MONGODB_DB).");
   process.exit(2);
 }
@@ -45,7 +45,7 @@ try {
   console.log(`Dumped db="${archive.db}" host=${archive.host}`);
   console.log(`  ${verified.doc_count} documents across ${archive.collection_count} collections, ${archive.index_count} indexes`);
   console.log(`Wrote ${out} (${buffer.byteLength} bytes)`);
-  console.log(`\nRestore with:\n  MONGODB_URL=... MONGODB_DB=${DB} node --experimental-strip-types scripts/mongo-restore.mjs ${out} --drop`);
+  console.log(`\nRestore with:\n  MONGODB_URL=... MONGODB_DB=${DB} node --experimental-strip-types scripts/mongo-restore.mjs ${out} --drop --confirm=${DB}`);
 } finally {
   await client.close();
 }

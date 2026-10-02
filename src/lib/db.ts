@@ -23,10 +23,6 @@ async function jsonFetch<T>(url: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
-export function isLive(): boolean {
-  return true;
-}
-
 export interface ChatMessage {
   id: string;
   post_id: string;
@@ -443,21 +439,32 @@ export function subscribeToMessages(
   postId: string,
   onMessage: (msg: ChatMessage) => void
 ): () => void {
-  let lastCount = 0;
+  // `primed` = first successful load done (its rows are history, not new).
+  // A failed poll is skipped entirely — it must not reset anything.
+  let primed = false;
+  let inFlight = false;
   const seen = new Set<string>();
   let cancelled = false;
 
   const poll = async () => {
-    if (cancelled) return;
-    const msgs = await fetchMessages(postId);
+    if (cancelled || inFlight) return;
+    inFlight = true;
+    let msgs: ChatMessage[];
+    try {
+      msgs = await jsonFetch<ChatMessage[]>(`${API}/posts/${postId}/messages`);
+    } catch {
+      return;
+    } finally {
+      inFlight = false;
+    }
     if (cancelled) return;
     for (const m of msgs) {
       if (!seen.has(m.id)) {
         seen.add(m.id);
-        if (lastCount > 0) onMessage(m);
+        if (primed) onMessage(m);
       }
     }
-    lastCount = msgs.length;
+    primed = true;
   };
 
   void poll();

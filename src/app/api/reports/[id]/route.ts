@@ -4,7 +4,7 @@ import { ObjectId } from "mongodb";
 import { getSession } from "@/lib/auth";
 import { isKeeperUser } from "@/lib/admin";
 import { logSecurityEvent } from "@/lib/audit";
-import { clientIp } from "@/lib/rate-limit";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { deletePostCascade, banUser, releaseModerationHold } from "@/lib/moderation";
 import { reportError } from "@/lib/report-error";
 import { recordOutcome } from "@/lib/report-trust";
@@ -43,6 +43,12 @@ export async function POST(
     if (!session) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
     if (!(await isKeeperUser(session.id))) {
       return NextResponse.json({ error: "Keepers only" }, { status: 403 });
+    }
+    // The most destructive write in the app (bans, cascades): bound what one
+    // keeper session can do in a burst, even a stolen one.
+    const { ok: withinLimit, retryInSec } = await rateLimit(`report-action:${session.id}`, 120, 10 * 60_000);
+    if (!withinLimit) {
+      return NextResponse.json({ error: "Too many actions — try again shortly", retry_in_sec: retryInSec }, { status: 429 });
     }
 
     const { id } = await params;

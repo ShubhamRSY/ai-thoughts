@@ -17,6 +17,9 @@ const eslintConfig = defineConfig([
     "ios/**",
     // Electron desktop shell (CommonJS) — separate package.
     "desktop/**",
+    // Playwright output (generated bundles).
+    "playwright-report/**",
+    "test-results/**",
   ]),
   {
     rules: {

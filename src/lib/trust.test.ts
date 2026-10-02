@@ -183,13 +183,6 @@ describe("P1 prompt day / midnight", () => {
     assert.equal(shiftDayKey("2026-03-01", -1), "2026-02-28");
   });
 
-  it("Today badge rule: only exact day key match", () => {
-    const today = "2026-09-15";
-    const postDay = "2026-09-14";
-    assert.equal(postDay === today, false);
-    assert.equal(today === today, true);
-  });
-
   it("dailyPrompt and dailyPromptUTC are defined strings", () => {
     assert.equal(typeof dailyPrompt(), "string");
     assert.equal(typeof dailyPromptUTC(), "string");

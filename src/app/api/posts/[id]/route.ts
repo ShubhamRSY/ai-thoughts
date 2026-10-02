@@ -238,6 +238,11 @@ export async function DELETE(
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+    // Each delete is a cascade over six collections plus blob deletes.
+    const { ok: withinLimit, retryInSec } = await rateLimit(`post-delete:${session.id}`, 60, 10 * 60_000);
+    if (!withinLimit) {
+      return NextResponse.json({ error: "Too many deletes — try again shortly", retry_in_sec: retryInSec }, { status: 429 });
+    }
 
     const { id } = await params;
     const objectId = parseObjectId(id);

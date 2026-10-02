@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { authorizeCron } from "@/lib/cron-auth";
-import { cleanupUnattachedUploads } from "@/lib/upload-cleanup";
+import { cleanupUnattachedUploads, retryFailedBlobDeletes } from "@/lib/upload-cleanup";
 import { reportError } from "@/lib/report-error";
 
 export const dynamic = "force-dynamic";
@@ -17,12 +17,13 @@ export async function GET(request: NextRequest) {
     if (!(await authorizeCron(request))) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const apply =
-      process.env.UPLOAD_CLEANUP_APPLY === "1" && request.nextUrl.searchParams.get("dry_run") !== "1";
+    const dryRun = request.nextUrl.searchParams.get("dry_run") === "1";
+    const apply = process.env.UPLOAD_CLEANUP_APPLY === "1" && !dryRun;
     const { db } = await connectToDatabase();
+    const retry = dryRun ? null : await retryFailedBlobDeletes(db);
     const result = await cleanupUnattachedUploads(db, { apply });
-    console.log("upload cleanup:", JSON.stringify({ ...result, sample: undefined }));
-    return NextResponse.json({ ok: true, ...result });
+    console.log("upload cleanup:", JSON.stringify({ ...result, sample: undefined, retry }));
+    return NextResponse.json({ ok: true, ...result, retry });
   } catch (e) {
     console.error("upload cleanup failed:", e);
     reportError(e, { route: "api/cron/cleanup-uploads", service: "blob" });

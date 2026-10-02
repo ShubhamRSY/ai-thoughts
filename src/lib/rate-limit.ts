@@ -7,7 +7,7 @@ import { reportError } from "./report-error.ts";
 // KV_REST_API_* are the names Vercel's Upstash integration injects.
 const redisUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
 const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
-type RedisLike = Pick<Redis, "pipeline" | "expire">;
+type RedisLike = Pick<Redis, "multi">;
 let redis: RedisLike | null = redisUrl && redisToken ? new Redis({ url: redisUrl, token: redisToken }) : null;
 
 /** Tests only: swap in a fake Redis (or null for in-memory). */
@@ -47,15 +47,14 @@ async function rateLimitRedis(key: string, limit: number, windowMs: number): Pro
   const windowSec = Math.max(1, Math.ceil(windowMs / 1000));
   const redisKey = `rl:${key}`;
   try {
-    const pipeline = redis!.pipeline();
-    pipeline.incr(redisKey);
-    pipeline.ttl(redisKey);
-    const [count, ttl] = (await withTimeout(pipeline.exec())) as [number, number];
-
-    // First hit in this window (or the key expired mid-race) — arm the TTL.
-    if (count === 1 || ttl < 0) {
-      await withTimeout(redis!.expire(redisKey, windowSec));
-    }
+    // One MULTI/EXEC: a pipeline isn't atomic in Upstash, and a separate
+    // EXPIRE that never lands leaves a counter with no TTL (a permanent ban).
+    // NX arms the TTL only on the window's first hit.
+    const tx = redis!.multi();
+    tx.incr(redisKey);
+    tx.expire(redisKey, windowSec, "NX");
+    tx.ttl(redisKey);
+    const [count, , ttl] = (await withTimeout(tx.exec())) as [number, number, number];
 
     if (count > limit) {
       return { ok: false, retryInSec: ttl > 0 ? ttl : windowSec };

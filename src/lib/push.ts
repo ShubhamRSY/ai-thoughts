@@ -123,6 +123,8 @@ export async function isSafePushEndpoint(endpoint: string): Promise<boolean> {
   return ips.every((ip) => !isPrivateIp(ip));
 }
 
+const MAX_SUBS_PER_HANDLE = 10;
+
 export async function savePushSubscription(
   db: Db,
   handle: string,
@@ -144,6 +146,17 @@ export async function savePushSubscription(
     },
     { upsert: true }
   );
+  // One person has a handful of browsers/devices; drop the oldest beyond that
+  // so a single account can't turn every notification into thousands of POSTs.
+  const stale = await db
+    .collection("push_subscriptions")
+    .find({ handle: { $in: handleVariants(handle) } }, { projection: { _id: 1 } })
+    .sort({ updated_at: -1 })
+    .skip(MAX_SUBS_PER_HANDLE)
+    .toArray();
+  if (stale.length) {
+    await db.collection("push_subscriptions").deleteMany({ _id: { $in: stale.map((r) => r._id) } });
+  }
 }
 
 export async function removePushSubscription(
@@ -165,18 +178,14 @@ export async function sendPushToHandle(
   if (!configureWebPush()) return;
 
   const variants = handleVariants(handle);
+  // Bounded: savePushSubscription keeps at most MAX_SUBS_PER_HANDLE, and this
+  // cap holds even for rows written before that existed.
   const subs = await db
     .collection("push_subscriptions")
     .find({ handle: { $in: variants } })
+    .sort({ updated_at: -1 })
+    .limit(MAX_SUBS_PER_HANDLE)
     .toArray();
-
-  // Casing fallback
-  if (subs.length === 0) {
-    const all = await db.collection("push_subscriptions").find({}).limit(200).toArray();
-    for (const s of all) {
-      if (normHandle(String(s.handle || "")) === normHandle(handle)) subs.push(s);
-    }
-  }
 
   const data = JSON.stringify({
     title: payload.title,
@@ -187,11 +196,11 @@ export async function sendPushToHandle(
 
   await Promise.all(
     subs.map(async (s) => {
-      if (!(await isSafePushEndpoint(String(s.endpoint || "")))) {
-        await db.collection("push_subscriptions").deleteOne({ endpoint: s.endpoint });
-        return;
-      }
       try {
+        if (!(await isSafePushEndpoint(String(s.endpoint || "")))) {
+          await db.collection("push_subscriptions").deleteOne({ endpoint: s.endpoint });
+          return;
+        }
         await webpush.sendNotification(
           {
             endpoint: s.endpoint,
@@ -204,7 +213,7 @@ export async function sendPushToHandle(
       } catch (err: unknown) {
         const status = (err as { statusCode?: number })?.statusCode;
         if (status === 404 || status === 410) {
-          await db.collection("push_subscriptions").deleteOne({ endpoint: s.endpoint });
+          await db.collection("push_subscriptions").deleteOne({ endpoint: s.endpoint }).catch(() => {});
         } else {
           console.error("push send failed:", err);
           reportError(err, { route: "lib/push", service: "push" });

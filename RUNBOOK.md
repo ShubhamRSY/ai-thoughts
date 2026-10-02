@@ -145,7 +145,7 @@ fine" as the result.
 
    ```bash
    MONGODB_URL="mongodb://127.0.0.1:27017/restoretest?tlsAllowInvalidCertificates=true" \
-     MONGODB_DB=aithoughts npm run db:restore -- backups/<file>.json.gz --drop
+     MONGODB_DB=aithoughts npm run db:restore -- backups/<file>.json.gz --drop --confirm=aithoughts
    ```
 
    (Start a disposable Mongo with `e2e/start-test-mongo.sh`.)

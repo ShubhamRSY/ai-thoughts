@@ -18,6 +18,8 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm test
+      # Ops scripts aren't part of the Next build — at least make sure they parse.
+      - run: for f in scripts/*.mjs; do node --check "$f" || exit 1; done
       # Fails the build on new high/critical dependency vulnerabilities so a
       # hackable package can't ship silently. `high` (not the default `low`)
       # so an existing moderate advisory doesn't block unrelated PRs.

@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { ObjectId } from "mongodb";
 import { connectToDatabase } from "@/lib/mongodb";
 import { listDigestRecipients } from "@/lib/prefs";
-import { sendActivityDigestEmail } from "@/lib/email";
+import { activityDigestEmail, sendEmailBatch } from "@/lib/email";
 import { authorizeCron } from "@/lib/cron-auth";
 import { reportError } from "@/lib/report-error";
+import { handleVariants } from "@/lib/visibility";
 
-function normHandle(h: string) {
-  return h.trim().toLowerCase().replace(/^@/, "");
-}
+export const maxDuration = 60;
+
+const QUERY_CONCURRENCY = 25;
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,43 +19,54 @@ export async function GET(request: NextRequest) {
 
     const { db } = await connectToDatabase();
     const recipients = await listDigestRecipients(db, "email_digest");
-    let sent = 0;
 
-    for (const r of recipients) {
-      const unread = await db
-        .collection("notifications")
-        .find({
-          read: false,
-          emailed: { $ne: true },
-        })
-        .sort({ created_at: -1 })
-        .limit(80)
-        .toArray();
-
-      const mine = unread.filter(
-        (n) => normHandle(String(n.recipient_handle || "")) === normHandle(r.handle)
+    // Look up everyone's unread rows in parallel groups (each query is served
+    // by notifications_recipient_created; the limit is per recipient).
+    const pending: { email: string; handle: string; ids: ObjectId[]; previews: string[] }[] = [];
+    for (let i = 0; i < recipients.length; i += QUERY_CONCURRENCY) {
+      const group = recipients.slice(i, i + QUERY_CONCURRENCY);
+      const rows = await Promise.all(
+        group.map((r) =>
+          db
+            .collection("notifications")
+            .find(
+              { recipient_handle: { $in: handleVariants(r.handle) }, read: false, emailed: { $ne: true } },
+              { projection: { kind: 1, actor_author: 1, preview: 1 } }
+            )
+            .sort({ created_at: -1 })
+            .limit(80)
+            .toArray()
+        )
       );
-      if (mine.length === 0) continue;
-
-      const previews = mine.slice(0, 5).map((n) => {
-        if (n.kind === "reply") return `${n.actor_author} replied: ${n.preview}`;
-        if (n.kind === "follow_post") return `${n.actor_author} shared: ${n.preview}`;
-        return `${n.actor_author} reacted ${n.preview}`;
+      group.forEach((r, j) => {
+        const mine = rows[j];
+        if (mine.length === 0) return;
+        pending.push({
+          email: r.email,
+          handle: r.handle,
+          ids: mine.map((n) => n._id),
+          previews: mine.slice(0, 5).map((n) => {
+            if (n.kind === "reply") return `${n.actor_author} replied: ${n.preview}`;
+            if (n.kind === "follow_post") return `${n.actor_author} shared: ${n.preview}`;
+            return `${n.actor_author} reacted ${n.preview}`;
+          }),
+        });
       });
+    }
 
-      const ok = await sendActivityDigestEmail(r.email, {
-        handle: r.handle,
-        count: mine.length,
-        previews,
-      });
-      if (!ok) continue;
-
+    const accepted = await sendEmailBatch(
+      pending.map((p) => activityDigestEmail(p.email, { handle: p.handle, count: p.ids.length, previews: p.previews })),
+      "api/cron/activity-digest"
+    );
+    const delivered = pending.filter((_, i) => accepted[i]);
+    // Only what Resend accepted is marked; the rest is picked up by tomorrow's run.
+    if (delivered.length) {
       await db.collection("notifications").updateMany(
-        { _id: { $in: mine.map((n) => n._id) } },
+        { _id: { $in: delivered.flatMap((p) => p.ids) } },
         { $set: { emailed: true } }
       );
-      sent += 1;
     }
+    const sent = delivered.length;
 
     return NextResponse.json({ ok: true, sent, recipients: recipients.length });
   } catch (error) {

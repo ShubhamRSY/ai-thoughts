@@ -399,7 +399,7 @@ export async function findOrCreateUser(
 /** Wipe account + related data for the signed-in user. */
 export async function deleteUserAccount(session: SessionUser): Promise<void> {
   const { db } = await connectToDatabase();
-  const { deleteBlobUrls, mediaUrlsFromPost } = await import("@/lib/privacy");
+  const { mediaUrlsFromPost } = await import("@/lib/privacy");
   const handleVariants = Array.from(
     new Set([
       session.handle,
@@ -431,7 +431,8 @@ export async function deleteUserAccount(session: SessionUser): Promise<void> {
   const keepFiles = await preserveChildSafetyEvidence(db, postIds, `account-deletion:${session.handle}`);
   // Only this account's own files — never one someone else uploaded that
   // ended up on these posts/profiles (H3).
-  const { filterDeletableMedia, forgetUploads } = await import("@/lib/uploads");
+  const { filterDeletableMedia } = await import("@/lib/uploads");
+  const { deleteFilesOrQueue } = await import("@/lib/upload-cleanup");
   const blobUrls = await filterDeletableMedia(
     db,
     [...posts.flatMap((p) => mediaUrlsFromPost(p)), ...profiles.flatMap((p) => mediaUrlsFromPost(p))].filter(
@@ -440,8 +441,7 @@ export async function deleteUserAccount(session: SessionUser): Promise<void> {
     session.id,
     { postIds: posts.map((p) => p._id), profileIds: profiles.map((p) => p._id) }
   );
-  await deleteBlobUrls(blobUrls);
-  await forgetUploads(db, blobUrls);
+  await deleteFilesOrQueue(db, blobUrls);
 
   if (postIds.length) {
     await db.collection("messages").deleteMany({ post_id: { $in: postIds } });

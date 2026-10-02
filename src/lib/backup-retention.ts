@@ -10,6 +10,12 @@ export const DEFAULT_KEEP = 14;
 
 export type BackupEntry = { pathname: string; uploadedAt?: Date | string };
 
+/** "backups/<db>-2026-09-30T04-05-06-789Z.json.gz" → epoch ms (0 if absent). */
+export function pathnameTime(pathname: string): number {
+  const m = /(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z/.exec(pathname);
+  return (m && Date.parse(`${m[1]}T${m[2]}:${m[3]}:${m[4]}.${m[5]}Z`)) || 0;
+}
+
 /**
  * Decide which archived backups to delete. Pure and side-effect free so the
  * policy can be reasoned about (and tested) without touching Blob.
@@ -26,8 +32,7 @@ export function selectExpiredBackups(
     .sort((a, b) => {
       const at = (e: BackupEntry) =>
         (e.uploadedAt ? new Date(e.uploadedAt).getTime() : 0) ||
-        Date.parse(e.pathname.slice(prefix.length).replace(/\.json\.gz$/, "").replace(/-(\d{2})-(\d{2})-(\d{3})Z$/, ".$1:$2:$3Z")) ||
-        0;
+        pathnameTime(e.pathname);
       return at(b) - at(a);
     });
 

@@ -23,12 +23,10 @@ function usingResendTestDomain(from: string): boolean {
   return /@resend\.dev>/i.test(from) || /@resend\.dev$/i.test(from);
 }
 
-async function sendEmail(opts: {
-  to: string;
-  subject: string;
-  text: string;
-  html: string;
-}): Promise<void> {
+export type EmailMessage = { to: string; subject: string; text: string; html: string };
+
+/** Resend credentials, or null in dev without a key (emails are logged instead). */
+function resendSender(): { apiKey: string; from: string } | null {
   const apiKey = process.env.RESEND_API_KEY?.trim();
   const from = fromAddress();
 
@@ -39,8 +37,7 @@ async function sendEmail(opts: {
         "not_configured"
       );
     }
-    console.info(`[dev] email to ${opts.to}: ${opts.subject}\n${opts.text}`);
-    return;
+    return null;
   }
 
   // Permanent requirement: production must send from a verified custom domain.
@@ -51,6 +48,66 @@ async function sendEmail(opts: {
       "test_domain"
     );
   }
+  return { apiKey, from };
+}
+
+const RESEND_BATCH_MAX = 100;
+
+/**
+ * Bulk send (digests) through Resend's batch endpoint: up to 100 emails per
+ * request, so 500 recipients is 5 calls instead of 500 sequential ones. A
+ * batch is all-or-nothing; the result says, per message, whether it was accepted.
+ * Never throws — a failed batch is reported and its messages come back false.
+ */
+export async function sendEmailBatch(messages: EmailMessage[], route: string): Promise<boolean[]> {
+  let sender: { apiKey: string; from: string } | null;
+  try {
+    sender = resendSender();
+  } catch (e) {
+    reportError(e, { route, service: "resend" });
+    return messages.map(() => false);
+  }
+  if (!sender) {
+    for (const m of messages) console.info(`[dev] email to ${m.to}: ${m.subject}\n${m.text}`);
+    return messages.map(() => true);
+  }
+  const { apiKey, from } = sender;
+
+  const chunks: EmailMessage[][] = [];
+  for (let i = 0; i < messages.length; i += RESEND_BATCH_MAX) chunks.push(messages.slice(i, i + RESEND_BATCH_MAX));
+  // Sequential: a handful of requests, and it stays well inside Resend's per-second limit.
+  const results: boolean[] = [];
+  for (const chunk of chunks) {
+    let ok = false;
+    try {
+      const res = await fetch("https://api.resend.com/emails/batch", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify(chunk.map((m) => ({ from, to: [m.to], subject: m.subject, text: m.text, html: m.html }))),
+        signal: AbortSignal.timeout(15_000),
+      });
+      ok = res.ok;
+      if (!ok) {
+        const body = await res.text().catch(() => "");
+        console.error("Resend batch error:", res.status, body);
+        reportError(new Error(`Resend batch ${res.status}: ${body.slice(0, 200)}`), { route, service: "resend" });
+      }
+    } catch (e) {
+      console.error("Resend batch failed:", e);
+      reportError(e, { route, service: "resend" });
+    }
+    results.push(...chunk.map(() => ok));
+  }
+  return results;
+}
+
+async function sendEmail(opts: EmailMessage): Promise<void> {
+  const sender = resendSender();
+  if (!sender) {
+    console.info(`[dev] email to ${opts.to}: ${opts.subject}\n${opts.text}`);
+    return;
+  }
+  const { apiKey, from } = sender;
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -158,10 +215,10 @@ export async function sendSignInAlertEmail(to: string, device: string): Promise<
   await sendEmail({ to, subject: "New sign-in to AI·Thoughts", text, html });
 }
 
-export async function sendActivityDigestEmail(
+export function activityDigestEmail(
   to: string,
   opts: { handle: string; count: number; previews: string[] }
-): Promise<boolean> {
+): EmailMessage {
   const site = getSiteUrl();
   const subject =
     opts.count === 1
@@ -198,17 +255,10 @@ export async function sendActivityDigestEmail(
     </div>
   `;
 
-  try {
-    await sendEmail({ to, subject, text, html });
-    return true;
-  } catch (e) {
-    console.error("activity digest email failed:", e);
-    reportError(e, { route: "lib/email:activity-digest", service: "resend" });
-    return false;
-  }
+  return { to, subject, text, html };
 }
 
-export async function sendWeeklyVoicesEmail(
+export function weeklyVoicesEmail(
   to: string,
   opts: {
     handle: string;
@@ -217,7 +267,7 @@ export async function sendWeeklyVoicesEmail(
     takeCount: number;
     highlights: { author: string; content: string }[];
   }
-): Promise<boolean> {
+): EmailMessage {
   const site = getSiteUrl();
   const subject = `Weekly Voices: ${opts.episodeTitle}`;
   const text = [
@@ -251,14 +301,7 @@ export async function sendWeeklyVoicesEmail(
     </div>
   `;
 
-  try {
-    await sendEmail({ to, subject, text, html });
-    return true;
-  } catch (e) {
-    console.error("weekly voices email failed:", e);
-    reportError(e, { route: "lib/email:weekly-voices", service: "resend" });
-    return false;
-  }
+  return { to, subject, text, html };
 }
 
 function escapeHtml(s: string) {

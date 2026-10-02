@@ -1,4 +1,4 @@
-import type { Db } from "mongodb";
+import type { AnyBulkWriteOperation, Db } from "mongodb";
 import { decryptEmail, encryptEmail, isEncryptedEmail } from "@/lib/secure";
 
 export interface UserPrefs {
@@ -106,6 +106,7 @@ export async function listDigestRecipients(
     .toArray();
 
   const out: { handle: string; email: string }[] = [];
+  const migrate: AnyBulkWriteOperation[] = [];
   for (const r of rows) {
     const email = resolveStoredEmail(r as { email?: unknown; emailEnc?: unknown });
     if (!email || !email.includes("@")) continue;
@@ -116,11 +117,13 @@ export async function listDigestRecipients(
       r.email.includes("@") &&
       !isEncryptedEmail(r.emailEnc as string | undefined)
     ) {
-      void db.collection("user_prefs").updateOne(
-        { _id: r._id },
-        { $set: { emailEnc: encryptEmail(email) }, $unset: { email: "" } }
-      );
+      migrate.push({
+        updateOne: { filter: { _id: r._id }, update: { $set: { emailEnc: encryptEmail(email) }, $unset: { email: "" } } },
+      });
     }
+  }
+  if (migrate.length) {
+    await db.collection("user_prefs").bulkWrite(migrate, { ordered: false }).catch((e) => console.warn("prefs email migration:", e));
   }
   return out;
 }

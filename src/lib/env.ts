@@ -84,6 +84,16 @@ export function warnIfProductionEnvIncomplete(): void {
         "so sign-in and abuse limits hold across instances."
     );
   }
+  // lib/rate-limit.ts clientIp(): off Vercel, without trusted proxy hops every
+  // caller is "unknown", so each IP limit (sign-in, contact, bearer/cron auth)
+  // becomes one bucket shared by the whole site.
+  if (!process.env.VERCEL && !(Number.parseInt(process.env.TRUSTED_PROXY_HOPS ?? "", 10) > 0)) {
+    console.error(
+      "[ai-thoughts] TRUSTED_PROXY_HOPS is not set and this isn't Vercel: client IPs are unknown, " +
+        "so per-IP rate limits are shared sitewide (one abuser can lock out sign-in and cron). " +
+        "Set TRUSTED_PROXY_HOPS to the number of proxies in front of the app."
+    );
+  }
   const status = envStatus();
   if (!status.ok) {
     console.error(

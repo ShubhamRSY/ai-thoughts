@@ -13,7 +13,6 @@ const IP_REPORT_LIMIT = 20;
 const IP_REPORT_WINDOW_MS = 10 * 60_000;
 
 
-const MAX_REPORTED_HANDLE = 64;
 
 export async function POST(
   request: NextRequest,
@@ -83,12 +82,7 @@ export async function POST(
         reporter_id: session.id,
         // The reported author comes from the post itself — never trust the
         // client with who "owned" the content.
-        reported_handle:
-          typeof post.handle === "string"
-            ? post.handle
-            : typeof body.reported_handle === "string"
-              ? body.reported_handle.slice(0, MAX_REPORTED_HANDLE)
-              : null,
+        reported_handle: typeof post.handle === "string" ? post.handle : null,
         // Short, PII-scrubbed hint for keepers, from the stored take — never
         // from the reporter (L5).
         content_snippet: redactForStorage(typeof post.content === "string" ? post.content : "", 120) || null,

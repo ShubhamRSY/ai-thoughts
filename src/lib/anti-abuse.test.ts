@@ -15,10 +15,14 @@ describe("anti-abuse handles", () => {
     assert.equal(checkHandleAllowed("@admin").ok, false);
     assert.equal(checkHandleAllowed("@aithoughts").ok, false);
     assert.equal(checkHandleAllowed("@AIThoughts99").ok, false);
+    assert.equal(checkHandleAllowed("@ai_thoughts").ok, false);
+    assert.equal(checkHandleAllowed("@mod123").ok, false);
+    assert.equal(checkHandleAllowed("@team1").ok, false);
   });
   it("allows normal handles", () => {
     assert.equal(checkHandleAllowed("@yedekarshubh3080").ok, true);
     assert.equal(checkHandleAllowed("@maya_feels").ok, true);
+    assert.equal(checkHandleAllowed("@modern").ok, true);
   });
   it("blocks official-looking display names", () => {
     assert.equal(checkDisplayNameAllowed("AI Thoughts Official").ok, false);

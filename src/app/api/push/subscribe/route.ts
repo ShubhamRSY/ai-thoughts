@@ -4,13 +4,18 @@ import { getSession } from "@/lib/auth";
 import { removePushSubscription, savePushSubscription } from "@/lib/push";
 import { upsertPrefs } from "@/lib/prefs";
 import { reportError } from "@/lib/report-error";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+    const { ok: withinLimit, retryInSec } = await rateLimit(`push-sub:${session.id}`, 20, 60 * 60_000);
+    if (!withinLimit) {
+      return NextResponse.json({ error: "Too many requests", retry_in_sec: retryInSec }, { status: 429 });
+    }
 
-    const body = await request.json();
+    const body = await request.json().catch(() => ({}));
     const endpoint = typeof body.endpoint === "string" ? body.endpoint : "";
     const p256dh = body.keys?.p256dh;
     const auth = body.keys?.auth;
