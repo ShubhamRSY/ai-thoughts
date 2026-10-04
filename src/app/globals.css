@@ -664,12 +664,9 @@ html[data-pwa-banner="1"] .pb-nav {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .landing-copy {
-    animation: landingRise 0.7s ease both;
-  }
-
-  .landing-visual {
-    animation: landingRise 0.85s ease 0.08s both;
+  /* Revealed by LandingMotion (GSAP); <noscript> in page.tsx undoes this. */
+  .landing-hero {
+    visibility: hidden;
   }
 
   .landing-pulse-ring {
@@ -678,17 +675,6 @@ html[data-pwa-banner="1"] .pb-nav {
 
   .landing-pulse-ring-2 {
     animation: landingPulse 4.5s ease-in-out 0.6s infinite;
-  }
-}
-
-@keyframes landingRise {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
   }
 }
 

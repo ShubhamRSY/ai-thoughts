@@ -1,6 +1,7 @@
 import Footer from "@/components/Footer";
 import BrandMark from "@/components/BrandMark";
 import LandingCTAs from "@/components/LandingCTAs";
+import LandingMotion from "@/components/LandingMotion";
 import { getPulseStats, crowdCountLabel } from "@/lib/pulse-stats";
 import { getSession } from "@/lib/auth";
 import { BRAND } from "@/lib/brand";
@@ -24,7 +25,11 @@ export default async function LandingPage() {
     <div className="landing">
       <div className="landing-glow" aria-hidden />
 
-      <main className="landing-inner">
+      <noscript>
+        <style>{`.landing-hero{visibility:visible!important}`}</style>
+      </noscript>
+
+      <LandingMotion>
         <section className="landing-hero">
           <div className="landing-copy">
             <div className="landing-brand">
@@ -74,7 +79,7 @@ export default async function LandingPage() {
             ))}
           </ol>
         </section>
-      </main>
+      </LandingMotion>
 
       <div className="landing-footer-wrap">
         <Footer />
