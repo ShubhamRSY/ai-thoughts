@@ -23,7 +23,9 @@ jobs:
       # Fails the build on new high/critical dependency vulnerabilities so a
       # hackable package can't ship silently. `high` (not the default `low`)
       # so an existing moderate advisory doesn't block unrelated PRs.
-      - run: npm audit --audit-level=high
+      # `--omit=dev`: only what ships is gated. Dev tooling (eslint-config-next
+      # → braces, no patched release yet) can't reach users.
+      - run: npm audit --audit-level=high --omit=dev
       # `next build` runs its own TypeScript check internally (and, unlike
       # a standalone `tsc --noEmit`, generates .next/types — e.g. LayoutProps
       # — before checking, so it doesn't need a prior build to pass).
