@@ -833,6 +833,7 @@ export default function Home() {
             onUnfollow={(handle) => void onFeelWith(handle, false)}
             onInvite={() => void invitePeople()}
             onOpenSearch={() => setTab("search")}
+            onOpenDevices={() => setShowAccount(true)}
           />
         )}
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Bell, CheckCheck, UserPlus } from "lucide-react";
+import { Bell, CheckCheck, ShieldAlert, UserPlus } from "lucide-react";
 import type { ActivityItem } from "@/components/ActivityPanel";
 
 function timeAgo(iso: string) {
@@ -24,6 +24,7 @@ interface ActivityViewProps {
   onUnfollow?: (handle: string) => void;
   onInvite?: () => void;
   onOpenSearch?: () => void;
+  onOpenDevices?: () => void;
 }
 
 export default function ActivityView({
@@ -36,6 +37,7 @@ export default function ActivityView({
   onUnfollow,
   onInvite,
   onOpenSearch,
+  onOpenDevices,
 }: ActivityViewProps) {
   useEffect(() => {
     if (signedIn && unread > 0) onMarkAllRead();
@@ -107,7 +109,31 @@ export default function ActivityView({
           </p>
         ) : (
           <div className="divide-y divide-[var(--border-base)] rounded-xl border border-[var(--border-base)] bg-[var(--surface)]">
-            {items.map((item) => (
+            {items.map((item) =>
+              // A new sign-in is about the reader's own account, not another
+              // member, so it gets its own row: no actor name, no avatar, and it
+              // opens the device list rather than a post.
+              item.kind === "new_signin" ? (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => onOpenDevices?.()}
+                  className="flex w-full items-start gap-2.5 px-3 py-2.5 text-left transition hover:bg-[var(--surface-2)]"
+                >
+                  <ShieldAlert
+                    aria-hidden
+                    className="mt-0.5 h-4 w-4 shrink-0 text-amber-600"
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-[15px] font-semibold text-[var(--foreground)]">
+                      New sign-in · {item.preview}
+                    </span>
+                    <span className="block text-[13px] text-[var(--foreground)]/70">
+                      {timeAgo(item.created_at)} · review or end it in Account → Devices
+                    </span>
+                  </span>
+                </button>
+              ) : (
               <button
                 key={item.id}
                 type="button"
@@ -143,7 +169,8 @@ export default function ActivityView({
                   {item.post_id ? " · Open" : ""}
                 </p>
               </button>
-            ))}
+              )
+            )}
           </div>
         )}
       </section>

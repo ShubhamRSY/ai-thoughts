@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 export interface ActivityItem {
   id: string;
-  kind: "reply" | "reaction" | "follow_post" | "mention";
+  kind: "reply" | "reaction" | "follow_post" | "mention" | "new_signin";
   actor_handle: string;
   actor_author: string;
   post_id: string;

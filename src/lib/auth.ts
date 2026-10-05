@@ -14,6 +14,7 @@ import {
   checkHandleAllowed,
 } from "@/lib/anti-abuse";
 import { CHILD_SAFETY } from "@/lib/report-reasons";
+import { describeDevice } from "@/lib/device";
 
 export const SESSION_COOKIE = "aithoughts.session";
 /** Stay signed in across app closes — 90 days, refreshed on each visit. */
@@ -143,6 +144,9 @@ export async function createSession(
       user_id: id,
       handle: user.handle,
       user_agent: (opts.userAgent ?? "").slice(0, 300),
+      // Stable across browser version bumps (which change the raw UA string),
+      // so "is this a new device?" doesn't cry wolf on every Chrome update.
+      device_label: describeDevice(opts.userAgent),
       created_at: new Date(now),
       last_seen_at: new Date(now),
       // TTL index (see ensureCoreIndexes) drops the row when the cookie would expire anyway.
@@ -197,6 +201,47 @@ export async function verifySessionToken(token: string) {
 /** Legacy tokens have no `iat`, but they always lived exactly SESSION_MAX_AGE. */
 function issuedAt(payload: { iat?: number; exp: number }): number {
   return payload.iat ?? payload.exp - SESSION_MAX_AGE * 1000;
+}
+
+/**
+ * Links in the "new sign-in" email act on the account without a session, so
+ * they carry their own short-lived signed token. Short window on purpose: it is
+ * a "revoke this now" button, not a login. The worst a leaked link can do is
+ * end a session — anyone able to read the email could request the code anyway.
+ */
+const ACTION_TOKEN_TTL_MS = 30 * 60 * 1000;
+
+export async function createSessionActionToken(input: {
+  userId: string;
+  sid: string;
+}): Promise<string> {
+  const encoded = encodeSessionPayload({
+    u: input.userId,
+    s: input.sid,
+    exp: Date.now() + ACTION_TOKEN_TTL_MS,
+  });
+  return `${encoded}.${await hmacSign(encoded, getSecret())}`;
+}
+
+/** null unless the signature matches and the token is inside its window. */
+export async function verifySessionActionToken(
+  token: string
+): Promise<{ userId: string; sid: string } | null> {
+  try {
+    const [encoded, signature] = token.split(".");
+    if (!encoded || !signature) return null;
+    if (!timingSafeEqualStr(signature, await hmacSign(encoded, getSecret()))) return null;
+    const payload = decodeSessionPayload(encoded) as {
+      u?: string;
+      s?: string;
+      exp?: number;
+    };
+    if (!payload?.u || !payload.s || !payload.exp) return null;
+    if (payload.exp < Date.now()) return null;
+    return { userId: payload.u, sid: payload.s };
+  } catch {
+    return null;
+  }
 }
 
 /**

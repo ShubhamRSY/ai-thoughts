@@ -30,7 +30,16 @@ export async function GET(request: NextRequest) {
           db
             .collection("notifications")
             .find(
-              { recipient_handle: { $in: handleVariants(r.handle) }, read: false, emailed: { $ne: true } },
+              {
+                recipient_handle: { $in: handleVariants(r.handle) },
+                read: false,
+                emailed: { $ne: true },
+                // new_signin gets its own immediate alert email the moment it
+                // happens. Listing it here too would mail the same event twice,
+                // and a stale "new sign-in" line in a daily digest is alarming
+                // days after the fact and tells the owner nothing.
+                kind: { $ne: "new_signin" },
+              },
               { projection: { kind: 1, actor_author: 1, preview: 1 } }
             )
             .sort({ created_at: -1 })
@@ -48,6 +57,7 @@ export async function GET(request: NextRequest) {
           previews: mine.slice(0, 5).map((n) => {
             if (n.kind === "reply") return `${n.actor_author} replied: ${n.preview}`;
             if (n.kind === "follow_post") return `${n.actor_author} shared: ${n.preview}`;
+            if (n.kind === "mention") return `${n.actor_author} mentioned you: ${n.preview}`;
             return `${n.actor_author} reacted ${n.preview}`;
           }),
         });

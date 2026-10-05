@@ -79,6 +79,17 @@ function legacyToken(u: Device["user"]) {
   return `${encoded}.${createHmac("sha256", SECRET).update(encoded).digest("hex")}`;
 }
 
+/**
+ * The token in the "Wasn't me" email: signed, one user, one session, 30 minutes.
+ * Minted here so the link's real behaviour is covered, not just its rejection.
+ */
+function actionToken(userId: string, sid: string, expMs = Date.now() + 30 * 60 * 1000) {
+  const encoded = Buffer.from(JSON.stringify({ u: userId, s: sid, exp: expMs })).toString(
+    "base64url"
+  );
+  return `${encoded}.${createHmac("sha256", SECRET).update(encoded).digest("hex")}`;
+}
+
 test.afterAll(async () => {
   await Promise.all(opened.map((a) => a.dispose()));
 });
@@ -112,6 +123,40 @@ test("sessions: a user sees their devices, and can end one without touching anyo
   expect(await alive(linux)).toBe(401);
   expect(await alive(mac)).toBe(200);
   expect((await list(mac)).sessions).toHaveLength(1);
+});
+
+test("sessions: the emailed revoke link ends one session, leaves the reader signed in, then expires", async () => {
+  const email = uniqueEmail("link");
+  const mac = await signIn(email, CHROME_MAC, "10.81.0.21");
+  const linux = await signIn(email, FIREFOX_LINUX, "10.81.0.22");
+  const stranger = await signIn(uniqueEmail("link-stranger"), SAFARI_IOS, "10.81.0.23");
+
+  const { sessions } = await list(mac);
+  const linuxSid = sessions.find((s: { label: string }) => s.label === "Firefox on Linux").sid;
+  const token = actionToken(mac.user.id, linuxSid);
+
+  // The stranger's device: an emailed link must not reach past the one session.
+  const strangerToken = actionToken(stranger.user.id, (await list(stranger)).current);
+  expect((await mac.api.get(`/api/account/sessions/revoke?token=${strangerToken}`)).status()).toBe(200);
+  expect(await alive(stranger)).toBe(401);
+
+  // Open the link as the owner, on their *own* still-valid laptop.
+  const res = await mac.api.get(`/api/account/sessions/revoke?token=${token}`);
+  expect(res.status()).toBe(200);
+  expect((await res.text()).toLowerCase()).toContain("signed out");
+  expect(await alive(linux), "the session the link named is gone").toBe(401);
+  // This is the bug worth guarding: the link is usually read on the wrong device.
+  expect(await alive(mac), "reading the link must not sign out the reader").toBe(200);
+
+  // Idempotent: a second click, or a link re-opened later, says so and changes nothing.
+  const again = await mac.api.get(`/api/account/sessions/revoke?token=${token}`);
+  expect(again.status()).toBe(410);
+  expect(await alive(mac)).toBe(200);
+
+  const stale = await mac.api.get(
+    `/api/account/sessions/revoke?token=${actionToken(mac.user.id, linuxSid, Date.now() - 1000)}`
+  );
+  expect(stale.status()).toBe(400);
 });
 
 test("sessions: sign out other devices keeps this one; sign out ends the session server-side", async () => {

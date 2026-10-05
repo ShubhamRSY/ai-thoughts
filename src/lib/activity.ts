@@ -6,7 +6,7 @@ import { reportError } from "@/lib/report-error";
 import { canViewPosts, getPrivacy } from "@/lib/visibility";
 import { isBlockedPair } from "@/lib/blocks";
 
-export type ActivityKind = "reply" | "reaction" | "follow_post" | "mention";
+export type ActivityKind = "reply" | "reaction" | "follow_post" | "mention" | "new_signin";
 
 export interface ActivityDoc {
   recipient_handle: string;
@@ -88,6 +88,54 @@ async function writeActivity(
       body: opts.pushBody,
       url: opts.pushUrl || `/app?post=${opts.postId}`,
       tag: opts.pushTag,
+    }).catch((e) => reportError(e, { route: "lib/activity", service: "push" }))
+  );
+}
+
+/**
+ * A security notice the account reads about itself. writeActivity is for
+ * member-to-member news and drops recipient === actor on line 51, so this uses
+ * its own writer — but the same collection and push path, so it shows up in the
+ * same Updates list and needs no new UI plumbing.
+ *
+ * One row per account (recipient/actor/post/kind are fixed), refreshed on each
+ * new-device sign-in. That matches how likes already behave (like→unlike→like
+ * bubbles one row instead of stacking three): the email is the per-event record,
+ * and Account → Devices stays the authoritative list of everything signed in.
+ */
+export async function notifyNewSignIn(
+  db: Db,
+  opts: { handle: string; displayName: string; deviceLabel: string }
+): Promise<void> {
+  const me = canonical(opts.handle);
+  await db.collection("notifications").updateOne(
+    { recipient_handle: me, actor_handle: me, post_id: "", kind: "new_signin" },
+    {
+      $set: {
+        actor_author: opts.displayName,
+        preview: opts.deviceLabel.slice(0, 160),
+        read: false,
+        emailed: false,
+        created_at: new Date(),
+      },
+      $setOnInsert: {
+        recipient_handle: me,
+        actor_handle: me,
+        post_id: "",
+        kind: "new_signin",
+      },
+    },
+    { upsert: true }
+  );
+
+  // A device appearing is worth interrupting for even if the owner never opens
+  // email — the email alert alone would leave push-only users in the dark.
+  waitUntil(
+    sendPushToHandle(db, opts.handle, {
+      title: "New sign-in",
+      body: `Your account was just opened on ${opts.deviceLabel}. If that wasn't you, end it from Account → Devices.`,
+      url: "/app?view=account",
+      tag: "new-signin",
     }).catch((e) => reportError(e, { route: "lib/activity", service: "push" }))
   );
 }

@@ -3,7 +3,9 @@ import { sendSignInAlertEmail } from "@/lib/email";
 import {
   findOrCreateUser,
   createSession,
+  createSessionActionToken,
   getSession,
+  verifySessionToken,
   SESSION_COOKIE,
   sessionCookieOptions,
   MIN_AGE,
@@ -15,6 +17,10 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { hashEmail } from "@/lib/secure";
 import { upsertPrefs } from "@/lib/prefs";
 import { reportError } from "@/lib/report-error";
+import { describeDevice } from "@/lib/device";
+import { getSiteUrl } from "@/lib/site";
+import { isNewDevice } from "@/lib/sessions";
+import { notifyNewSignIn } from "@/lib/activity";
 
 const VERIFY_LIMIT = 20;
 const VERIFY_WINDOW_MS = 10 * 60_000;
@@ -128,16 +134,50 @@ export async function POST(request: Request) {
       }
     }
 
-    const token = await createSession(user, { userAgent: request.headers.get("user-agent") });
+    const userAgent = request.headers.get("user-agent");
+    const deviceLabel = describeDevice(userAgent);
 
+    // Judged before createSession writes this sign-in's row, so a returning
+    // member on a device they have used before stays quiet. Alerting on every
+    // sign-in trains people to ignore the one email that matters.
+    let newDevice = false;
     if (!createdNew) {
-      const device = request.headers.get("user-agent") ?? "";
-      after(() =>
-        sendSignInAlertEmail(normalized, device).catch((e) => {
-          console.error("sign-in alert failed:", e);
+      try {
+        const { db } = await connectToDatabase();
+        newDevice = await isNewDevice(db, String(user._id), userAgent);
+      } catch (e) {
+        // Failing open (no alert) beats failing the sign-in.
+        reportError(e, { route: "api/auth/verify", service: "mongodb" });
+      }
+    }
+
+    const token = await createSession(user, { userAgent });
+
+    if (newDevice) {
+      const userId = String(user._id);
+      // The freshly-minted sid is inside the cookie we just built; read it back so
+      // the email can offer to end exactly this device.
+      const sid = (await verifySessionToken(token))?.sid;
+      after(async () => {
+        const { db } = await connectToDatabase();
+        try {
+          await notifyNewSignIn(db, {
+            handle: user.handle,
+            displayName: user.displayName,
+            deviceLabel,
+          });
+          const revokeUrl = sid
+            ? `${getSiteUrl()}/api/account/sessions/revoke?token=${await createSessionActionToken({
+                userId,
+                sid,
+              })}`
+            : undefined;
+          await sendSignInAlertEmail(normalized, deviceLabel, revokeUrl);
+        } catch (e) {
+          console.error("new-device notice failed:", e);
           reportError(e, { route: "api/auth/verify", service: "resend" });
-        })
-      );
+        }
+      });
     }
 
     const res = NextResponse.json({

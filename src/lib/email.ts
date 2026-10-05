@@ -200,30 +200,49 @@ export async function sendOtpEmail(to: string, code: string): Promise<void> {
 }
 
 /**
- * Sent on every sign-in to an existing account. With email-only login a stolen
- * inbox is a stolen account, so the owner hears about each new device and can
- * end it from Account → Devices.
+ * Sent when an account is opened on a device it hasn't been used from before.
+ * With email-only login a stolen inbox is a stolen account, so the owner hears
+ * about each new device — and gets both answers from the same email: keep it, or
+ * end that one device without signing in.
  */
-export async function sendSignInAlertEmail(to: string, device: string): Promise<void> {
+export async function sendSignInAlertEmail(
+  to: string,
+  deviceLabel: string,
+  revokeUrl?: string
+): Promise<void> {
   const when = new Date().toUTCString();
-  const shownDevice = device.slice(0, 160) || "Unknown device";
+  const shownDevice = deviceLabel.slice(0, 160) || "Unknown device";
   const devicesUrl = `${getSiteUrl()}/app?view=account`;
-  const text = [
-    "New sign-in to your AI·Thoughts account",
-    "",
-    `Device: ${shownDevice}`,
-    `Time: ${when}`,
-    "",
-    `If this wasn't you, sign out everywhere: ${devicesUrl}`,
-  ].join("\n");
+  // Without a token the email can only point at the device list, which needs a
+  // sign-in. That still beats silence, so it degrades rather than skips.
+  const action = revokeUrl
+    ? [
+        `If that was you: nothing to do.`,
+        `If it wasn't: end that device here — ${revokeUrl}`,
+        `Or review every device: ${devicesUrl}`,
+      ]
+    : [`If that was you: nothing to do.`, `Review every device: ${devicesUrl}`];
+  const text = ["New sign-in to your AI·Thoughts account", "", `Device: ${shownDevice}`, `Time: ${when}`, "", ...action].join("\n");
   const html = `
     <div style="font-family:system-ui,-apple-system,sans-serif;max-width:420px;margin:0 auto;padding:24px;color:#18181b">
       <p style="font-size:14px;color:#71717a;margin:0 0 16px">AI·Thoughts</p>
       <h1 style="font-size:20px;margin:0 0 12px">New sign-in to your account</h1>
       <p style="font-size:14px;line-height:1.5;margin:0">Device: ${escapeHtml(shownDevice)}<br>Time: ${when}</p>
       <p style="font-size:14px;color:#52525b;line-height:1.5">
-        If this wasn't you, <a href="${devicesUrl}">sign out everywhere</a>.
+        If that was you, you can ignore this email.
       </p>
+      ${
+        revokeUrl
+          ? `<p style="margin:0 0 4px">
+        <a href="${escapeHtml(revokeUrl)}" style="display:inline-block;background:#18181b;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:9999px;font-size:14px;font-weight:600">Wasn't me — end this device</a>
+      </p>
+      <p style="font-size:13px;color:#71717a;line-height:1.5;margin:8px 0 0">
+        The link expires in 30 minutes. Prefer to look first? <a href="${devicesUrl}">Review every device</a>.
+      </p>`
+          : `<p style="font-size:13px;color:#71717a;line-height:1.5;margin:8px 0 0">
+        <a href="${devicesUrl}">Review every device</a>
+      </p>`
+      }
     </div>
   `;
   await sendEmail({ to, subject: "New sign-in to AI·Thoughts", text, html });
