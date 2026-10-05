@@ -23,7 +23,6 @@ const MONITOR = {
   schedule: { type: "crontab", value: "30 4 * * *" },
   timezone: "UTC",
   checkinMargin: 30,
-  maxRuntime: 5,
 } as const;
 
 export async function GET(request: NextRequest) {
