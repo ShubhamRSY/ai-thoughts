@@ -41,6 +41,17 @@ const isDevCodeMode =
 async function passesTurnstile(token: unknown, ip: string): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET_KEY;
   if (!secret) return true;
+  // NEXT_PUBLIC_* is inlined at build time, so this is the key the shipped
+  // widget has. Without it no client can produce a token, and enforcing would
+  // reject every sign-in. Alert and skip the captcha; the per-IP, per-email
+  // and global caps still apply.
+  if (!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY) {
+    reportError(new Error("TURNSTILE_SECRET_KEY set but site key not inlined; captcha skipped"), {
+      route: "api/auth/sign-in",
+      service: "turnstile",
+    });
+    return true;
+  }
   if (typeof token !== "string" || !token) return false;
   try {
     const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {

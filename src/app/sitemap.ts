@@ -7,7 +7,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   return [
     "",
-    "/sign-in",
+    // Content lives behind sign-in (decision.md: members-only reads), so only
+    // public pages are listed. /sign-in is disallowed in robots.ts.
     "/install",
     "/terms",
     "/privacy",
