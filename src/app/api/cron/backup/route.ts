@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
+import { waitUntil } from "@vercel/functions";
 import { del, list, put } from "@vercel/blob";
 import { connectToDatabase } from "@/lib/mongodb";
 import { buildArchive, verifyArchive, backupPathname } from "@/lib/backup";
@@ -14,6 +16,26 @@ export const dynamic = "force-dynamic";
 // truncated archive.
 export const maxDuration = 60;
 
+// Sentry Crons alerts when a run reports an error or misses its slot (killed
+// by the timeout, cron stopped, deploy broke the route). Without it a failing
+// backup is silent until the day it is needed. Keep in sync with vercel.json.
+const MONITOR = {
+  schedule: { type: "crontab", value: "30 4 * * *" },
+  timezone: "UTC",
+  checkinMargin: 30,
+  maxRuntime: 5,
+} as const;
+
+export async function GET(request: NextRequest) {
+  const res = await runBackup(request);
+  // Unauthorized callers are scanners, not runs.
+  if (res.status !== 401) {
+    Sentry.captureCheckIn({ monitorSlug: "db-backup", status: res.ok ? "ok" : "error" }, MONITOR);
+    waitUntil(Sentry.flush(2000));
+  }
+  return res;
+}
+
 /**
  * GET /api/cron/backup — take a database backup and store it in Vercel Blob.
  *
@@ -21,7 +43,7 @@ export const maxDuration = 60;
  * setting, so this is the only recovery path that exists. Scheduled daily in
  * vercel.json.
  */
-export async function GET(request: NextRequest) {
+async function runBackup(request: NextRequest) {
   try {
     if (!(await authorizeCron(request))) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
