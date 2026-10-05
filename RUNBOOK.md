@@ -84,7 +84,7 @@ curl -sS -X POST https://YOUR_APP/api/admin/seed \
 
 | What | Where | Why |
 | --- | --- | --- |
-| Resend DNS for the sending domain | Resend → Domains → add `aito.social`, then copy its records (MX + SPF TXT on `send.aito.social`, DKIM TXT on `resend._domainkey.aito.social`) into the registrar. Add `_dmarc.aito.social` TXT `v=DMARC1; p=none; rua=mailto:keepers@aito.social`. Set `EMAIL_FROM="AI·Thoughts <hello@aito.social>"`. | As of 2026-09-28 none of these records exist — codes from `@aito.social` get refused or land in spam, and `onboarding@resend.dev` only reaches the Resend account owner. |
+| Resend DNS for the sending domain | Resend → Domains → add `aito.social`, then copy its records (MX + SPF TXT on `send.aito.social`, DKIM TXT on `resend._domainkey.aito.social`) into the registrar. Add `_dmarc.aito.social` TXT `v=DMARC1; p=none; rua=mailto:keepers@aito.social`. Set `EMAIL_FROM="AI·Thoughts <hello@aito.social>"`. | Live — verified 2026-10-05: MX + SPF on `send.aito.social`, DKIM on `resend._domainkey.aito.social`, and DMARC on `_dmarc.aito.social` all resolve. Without them, codes from `@aito.social` get refused or land in spam. |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` + `TURNSTILE_SECRET_KEY` | Cloudflare → Turnstile (free), hostname `www.aito.social` | CAPTCHA on "Send sign-in code". Without it a few IPs can drain the email cap and block every new sign-in. |
 | `OTP_EMAILS_PER_HOUR` | Vercel env | Site-wide sign-in email cap (default 40). Size to the Resend plan. |
 | `OPENAI_API_KEY` | platform.openai.com (moderation is free) | Screens take text, photos and avatars. Audio/video are not screened — keepers + reports cover them. |

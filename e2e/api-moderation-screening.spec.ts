@@ -76,3 +76,23 @@ test("edits are rate limited per account", async () => {
   expect(statuses.slice(0, 30).every((s) => s === 200)).toBe(true);
   expect(statuses[30]).toBe(429);
 });
+
+test("a flagged custom feeling is refused, even with clean take text", async () => {
+  const creator = await newUser("feeling"); // its own account: takes have a daily cap
+  const res = await creator.post("/api/posts", {
+    data: { content: `clean words ${uniq()}`, media_type: "text", feeling: "custom", custom_feeling: FLAG_MARKER },
+  });
+  expect(res.status()).toBe(400);
+  expect((await res.json()).code).toBe("flagged");
+});
+
+test("a flagged display name or bio is refused; a clean one saves", async () => {
+  const user = await newUser("profile");
+  const badName = await user.put("/api/profile", { data: { author: `Name ${FLAG_MARKER}` } });
+  expect(badName.status()).toBe(400);
+  expect((await badName.json()).error).toMatch(/name or bio breaks/); // the AI screen, not the word filter
+  const badBio = await user.put("/api/profile", { data: { author: "Kind Person", bio: `bio ${FLAG_MARKER}` } });
+  expect(badBio.status()).toBe(400);
+  const ok = await user.put("/api/profile", { data: { author: "Kind Person", bio: "I like quiet mornings." } });
+  expect(ok.status(), await ok.text()).toBe(200);
+});

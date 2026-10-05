@@ -689,7 +689,9 @@ export async function POST(request: NextRequest) {
 
     // Photo takes are media_type "text" with a media_url; audio/video are
     // screened from their transcript after publishing (screenMediaPost below).
-    if (await isFlaggedContent({ text: content, imageUrl: mediaType === "text" ? screenUrl : null })) {
+    // The custom feeling is shown as the take's headline, so it's screened with it.
+    const screenText = customFeeling ? `${customFeeling}\n${content}` : content;
+    if (await isFlaggedContent({ text: screenText, imageUrl: mediaType === "text" ? screenUrl : null })) {
       return NextResponse.json(flaggedBody("take"), { status: 400 });
     }
 

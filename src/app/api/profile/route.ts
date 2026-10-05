@@ -115,6 +115,12 @@ export async function PUT(request: NextRequest) {
     const avatarUrl =
       typeof body.avatarUrl === "string" ? (body.avatarUrl ? body.avatarUrl.slice(0, 500) : null) : undefined;
 
+    // Same AI screening as takes for the free text shown on your profile.
+    const nameChanged = author !== session.displayName;
+    if ((nameChanged || bio) && (await isFlaggedContent({ text: [nameChanged && author, bio].filter(Boolean).join("\n") }))) {
+      return NextResponse.json({ error: "That name or bio breaks the community guidelines — try something else." }, { status: 400 });
+    }
+
     const { db } = await connectToDatabase();
 
     // A new photo must be one you uploaded as an avatar (H3) — otherwise

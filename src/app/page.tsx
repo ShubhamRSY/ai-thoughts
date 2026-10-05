@@ -5,6 +5,7 @@ import LandingMotion from "@/components/LandingMotion";
 import { getPulseStats, crowdCountLabel } from "@/lib/pulse-stats";
 import { getSession } from "@/lib/auth";
 import { BRAND } from "@/lib/brand";
+import { getSiteUrl } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -21,8 +22,31 @@ export default async function LandingPage() {
     ? `Welcome back${session.displayName ? `, ${session.displayName}` : ""}.`
     : crowdCountLabel(total);
 
+  const siteUrl = getSiteUrl();
+  // Structured data so search engines can name the site and its app.
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      { "@type": "WebSite", name: BRAND.name, alternateName: BRAND.shortName, url: siteUrl, description: BRAND.promise },
+      {
+        "@type": "WebApplication",
+        name: BRAND.name,
+        url: siteUrl,
+        applicationCategory: "SocialNetworkingApplication",
+        operatingSystem: "Web, iOS, Android, Windows",
+        description: BRAND.tagline,
+        audience: { "@type": "PeopleAudience", suggestedMinAge: 18 },
+        offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+      },
+    ],
+  };
+
   return (
     <div className="landing">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
+      />
       <div className="landing-glow" aria-hidden />
 
       <noscript>

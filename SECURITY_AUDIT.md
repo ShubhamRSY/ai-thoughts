@@ -52,7 +52,7 @@ Every script is a dry run unless given `--apply`; each has `--revert`.
 
 ### Residual risks and notes
 
-- **Not AI-screened:** custom feeling text (40 chars), profile bio (160) and display names still get only the local word filter.
+- **AI screening now covers** custom feeling text, profile bio and display names (2026-10-05), in addition to the local word filter. Usernames (handles) still get only the local filter; their character set is restricted.
 - **Pre-H3 files nothing references** stay in Blob until a one-off store-vs-database comparison is run (not written).
 - **Rename history isn't recorded before H1**, so the V1 script can't see an older account that renamed into a freed handle; its OK rows deserve a look.
 - **Local development uses the production Atlas cluster** (the `aithoughts_dev` database) and the production `AUTH_SECRET` from `.env.local`. Separate dev credentials would be safer.

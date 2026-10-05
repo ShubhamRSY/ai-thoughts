@@ -2,7 +2,7 @@
 
 **How people really feel about AI — told in their own voice.**
 
-A mobile-first PWA where people of all ages share voice, video, and text takes about how AI makes them feel, right now. Built around feelings (not just opinions): every take opens with *"Right now, AI makes me feel…"*, and the feed surfaces the live mood of the pulse — the dominant feeling, per-feeling "rooms", and a safety-first, all-ages space to speak honestly.
+A mobile-first PWA where adults (18+) share voice, video, and text takes about how AI makes them feel, right now. Built around feelings (not just opinions): every take opens with *"Right now, AI makes me feel…"*, and the feed surfaces the live mood of the pulse — the dominant feeling, per-feeling "rooms", and a safety-first space to speak honestly.
 
 Live: [https://aito.social](https://aito.social) (also on Vercel until DNS is live)
 
@@ -10,12 +10,12 @@ Live: [https://aito.social](https://aito.social) (also on Vercel until DNS is li
 
 ## The idea
 
-Most discussions about AI are loud, technical, and adult. This is the opposite:
+Most discussions about AI are loud and technical. This is the opposite:
 
 - **Feelings-first** — you pick how you feel *before* you say anything.
-- **All ages, all languages** — it's not a tech forum, it's a human pulse.
+- **Any language, no expertise needed** — it's not a tech forum, it's a human pulse. Adults 18+ only (confirmed at sign-up).
 - **Honesty is safe here** — *"It's okay to feel bad about AI too."*
-- **Verified sign-in** — email one-time codes (no passwords); browsing the pulse is open.
+- **Verified sign-in** — email one-time codes (no passwords). Reading takes requires signing in.
 
 ---
 
@@ -116,4 +116,4 @@ scripts/          seed-mongo.mjs
 
 ---
 
-Made to be kind. *All ages. All feelings. It's okay to feel bad about AI too.*
+Made to be kind. *All feelings. It's okay to feel bad about AI too.*

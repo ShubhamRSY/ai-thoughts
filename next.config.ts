@@ -24,6 +24,16 @@ const securityHeaders = [
   // (headers() below).
 ];
 
+// The sign-in route demands a Turnstile token whenever the secret is set, but
+// the widget only renders when the site key was inlined at build time. One
+// without the other locks every new user out, so refuse to build it.
+if (process.env.TURNSTILE_SECRET_KEY && !process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY) {
+  throw new Error(
+    "TURNSTILE_SECRET_KEY is set but NEXT_PUBLIC_TURNSTILE_SITE_KEY is not: sign-in would reject every " +
+      "request with captcha_failed. Set both (then rebuild) or neither."
+  );
+}
+
 const nextConfig: NextConfig = {
   devIndicators: false,
   // Tells the uploader (lib/db.ts) to store takes privately. Derived from the
