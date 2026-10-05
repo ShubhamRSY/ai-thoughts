@@ -326,6 +326,7 @@ Format: **Decision → Why → Alternatives considered → Libraries / stack**.
 - **Why:** “Open Voices” led signed-out visitors straight into the feed (the earlier open-browsing pass), and the owner wants guests to meet the sign-in page instead of the voices they haven’t joined. Posting was already gated; this brings reading in line with writing.
 - **Alternatives:** Keeping open browsing (the original call) — rejected by the owner after seeing the guest experience. Changing the landing CTA href instead of gating the route — less robust, since direct visits / deep links / push–`/app?post=…` clicks would still open the feed. A server `app/layout.tsx` gate — functionally equivalent but does a full DB-backed `getSession()` per load, while the proxy’s `verifySessionToken` is signature+expiry only.
 - **Stack:** `PROTECTED_PATHS` in `src/proxy.ts`, reusing the same mechanism as `/keeper` and `/admin`.
+- **Reconfirmed 2026-10-05:** an audit suggested un-gating reads to widen the funnel; the owner kept members-only. Settled — revisit only with sign-up data showing the wall is the bottleneck. Consequence: the sitemap and JSON-LD stay limited to the landing and public pages.
 
 ### Kill “Coming soon on Microsoft Store” until it ships
 - **Decision:** `WindowsStoreCta` renders nothing when `NEXT_PUBLIC_MS_STORE_URL` is empty; install page, profile copy and landing PC notice drop all Windows mentions with it. Setting the env var brings everything back.
@@ -356,4 +357,4 @@ Format: **Decision → Why → Alternatives considered → Libraries / stack**.
 
 ---
 
-*Last updated: 2026-09-23 (Open Voices requires sign-in).*
+*Last updated: 2026-10-05 (members-only reads reconfirmed).*
