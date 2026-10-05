@@ -150,6 +150,14 @@ async function warmUp(config: FullConfig) {
   if (!cookie) return;
   const headers = { Cookie: cookie, "X-Forwarded-For": "10.250.0.1" };
   for (const route of MEMBER_ROUTES) await warm(new URL(route, baseURL), { headers });
+  // A new account gets the onboarding wizard over /app, which keeps the feed
+  // (and the ~15 API routes it calls) from loading in the browser warm-up below
+  // — the first test then compiled them all at once and timed out.
+  await warm(new URL("/api/prefs", baseURL), {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json", Origin: new URL(baseURL).origin },
+    body: JSON.stringify({ onboarded: true }),
+  });
 
   // Fetching /app only compiles its server side; the browser bundle compiles
   // when a real browser loads it (~10s here, far longer on a 2-core runner),
@@ -166,6 +174,11 @@ async function warmUp(config: FullConfig) {
     );
     const page = await context.newPage();
     await page.goto(new URL("/app", baseURL).toString(), { timeout: 180_000 });
+    await page.waitForLoadState("networkidle", { timeout: 180_000 });
+    // The profile tab and Account Center fetch their own routes on open.
+    await page.getByRole("button", { name: "You", exact: true }).first().click();
+    await page.waitForLoadState("networkidle", { timeout: 180_000 });
+    await page.getByRole("button", { name: /Account Center/ }).click();
     await page.waitForLoadState("networkidle", { timeout: 180_000 });
   } catch {
     // Not fatal, like the fetches above.

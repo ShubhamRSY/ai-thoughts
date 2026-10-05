@@ -199,6 +199,10 @@ async function buildCoreIndexes(db: Db): Promise<void> {
       const msg = String((r.reason as Error)?.message || r.reason);
       // Index already exists with different options, or duplicate key on unique — log, don't crash health.
       console.warn("ensureCoreIndexes:", msg);
+      // A timeout isn't permanent (a fresh database builds ~50 indexes at once
+      // and some exceed the 8s cap) — let the next caller try again instead of
+      // running without that index until the instance restarts.
+      if ((r.reason as Error)?.name === "MongoOperationTimeoutError") ensuring = null;
     }
   }
 
