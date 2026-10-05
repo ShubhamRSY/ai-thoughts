@@ -23,6 +23,44 @@ export function ensureCoreIndexes(db: Db): Promise<void> {
 const hasIndex = async (db: Db, coll: string, name: string) =>
   (await db.collection(coll).indexes()).some((i) => i.name === name);
 
+// Index key specs are order-sensitive, so compare entry-by-entry rather than as
+// a set: {a:1,b:1} and {b:1,a:1} are different indexes to MongoDB.
+const sameKeySpec = (a: Record<string, unknown>, b: Record<string, unknown>) => {
+  const ka = Object.entries(a);
+  const kb = Object.entries(b);
+  return ka.length === kb.length && ka.every(([k, v], i) => kb[i][0] === k && kb[i][1] === v);
+};
+
+/**
+ * Create an index under an explicit name, repairing the drift an older build
+ * leaves behind. MongoDB rejects a createIndex whose key spec already exists
+ * under a *different* name (IndexKeySpecsConflict 86 / IndexOptionsConflict 85)
+ * — for instance when the keys were first created before the index was named.
+ * buildCoreIndexes logs those rejections instead of failing, so the collection
+ * would otherwise stay silently unindexed until someone fixed it by hand in
+ * Atlas. Drop the stale name and build the intended one instead, which repairs
+ * itself on the next deploy. (scripts/rebuild-messages-index.mjs does the same
+ * for a live database without waiting for one.)
+ */
+async function ensureNamedIndex(
+  db: Db,
+  coll: string,
+  keys: Record<string, 1 | -1>,
+  opts: { name: string } & Record<string, unknown>
+) {
+  const target = db.collection(coll);
+  try {
+    await target.createIndex(keys, opts);
+  } catch (e) {
+    const code = (e as { code?: number }).code;
+    if (code !== 85 && code !== 86) throw e; // IndexOptionsConflict / IndexKeySpecsConflict
+    for (const stale of (await target.indexes()).filter((i) => i.name && sameKeySpec(i.key, keys))) {
+      await target.dropIndex(stale.name as string);
+    }
+    await target.createIndex(keys, opts);
+  }
+}
+
 // The legacy-duplicate sweeps below are full-collection $group scans. They run
 // only until their unique index exists, and get no 8s client timeout or memory
 // cap — timing out would mean the index is simply never built.
@@ -59,11 +97,11 @@ async function buildCoreIndexes(db: Db): Promise<void> {
       { name: "posts_created_id" }
     ),
     // Reply threads + per-post reply counts on every feed page. Without it each
-    // feed load was a full scan of every reply ever written.
-    db.collection("messages").createIndex(
-      { post_id: 1, created_at: 1 },
-      { name: "messages_post_created" }
-    ),
+    // feed load was a full scan of every reply ever written. ensureNamedIndex,
+    // not a bare createIndex: an older build left these keys under Mongo's
+    // auto-generated name, which makes every createIndex here fail 85/86 and
+    // leaves the collection silently unindexed.
+    ensureNamedIndex(db, "messages", { post_id: 1, created_at: 1 }, { name: "messages_post_created" }),
     db.collection("push_subscriptions").createIndex(
       { endpoint: 1 },
       { unique: true, name: "push_endpoint_unique" }
@@ -210,21 +248,12 @@ async function buildCoreIndexes(db: Db): Promise<void> {
   // sign-ups racing for the same username must not both get it. Replaces the
   // old non-unique "users_handle" index on the same key.
   try {
-    const users = db.collection("users");
-    const spec = { handle: 1 } as const;
     const opts = {
       unique: true,
       partialFilterExpression: { handle: { $type: "string" } },
       name: "users_handle_unique",
     };
-    try {
-      await users.createIndex(spec, opts);
-    } catch (e) {
-      const code = (e as { code?: number }).code;
-      if (code !== 85 && code !== 86) throw e; // IndexOptionsConflict / IndexKeySpecsConflict
-      await users.dropIndex("users_handle");
-      await users.createIndex(spec, opts);
-    }
+    await ensureNamedIndex(db, "users", { handle: 1 }, opts);
   } catch (e) {
     // E11000 here means existing duplicate handles — rename one of each pair,
     // then the next health check builds the index.

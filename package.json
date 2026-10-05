@@ -24,7 +24,8 @@
     "drill:check": "node scripts/restore-drill-check.mjs",
     "db:dump": "node --experimental-strip-types scripts/mongo-dump.mjs",
     "db:restore": "node --experimental-strip-types scripts/mongo-restore.mjs",
-    "backfill:uploads": "node --experimental-strip-types scripts/backfill-upload-owners.mjs"
+    "backfill:uploads": "node --experimental-strip-types scripts/backfill-upload-owners.mjs",
+    "rebuild:messages-index": "node scripts/rebuild-messages-index.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.1",
