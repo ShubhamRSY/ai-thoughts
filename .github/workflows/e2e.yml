@@ -24,6 +24,18 @@ jobs:
       - name: Start a TLS-enabled MongoDB for the test run
         run: ./e2e/start-test-mongo.sh
 
+      # `next dev` compiles in bursts that briefly push next-server to ~6.5 GB
+      # on this 8 GB runner, then Turbopack frees it within ~20s. When a burst
+      # outran RAM + the stock 3 GB swap, the runner was killed mid-test. Extra
+      # swap absorbs the burst; it's slow for seconds, not fatal.
+      - name: Add swap for next dev's compile bursts
+        run: |
+          sudo fallocate -l 8G /swapfile-e2e
+          sudo chmod 600 /swapfile-e2e
+          sudo mkswap /swapfile-e2e
+          sudo swapon /swapfile-e2e
+          free -m
+
       - run: |
           # ponytail: temporary. Runs keep dying on "runner received a shutdown
           # signal" with no test error; log memory live (it survives the kill)
