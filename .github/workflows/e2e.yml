@@ -36,12 +36,7 @@ jobs:
           sudo swapon /swapfile-e2e
           free -m
 
-      - run: |
-          # ponytail: temporary. Runs keep dying on "runner received a shutdown
-          # signal" with no test error; log memory live (it survives the kill)
-          # to confirm or rule out OOM under `next dev`. Remove once known.
-          (while sleep 20; do echo "[mem $(date +%T)] $(free -m | awk '/Mem/{print "used " $3 "/" $2 "MB"} /Swap/{print "swap " $3 "MB"}' | paste -sd' ') top: $(ps -eo rss=,comm= --sort=-rss | head -3 | awk '{printf "%s=%dMB ", $2, $1/1024}')"; done) &
-          npm run test:e2e
+      - run: npm run test:e2e
         env:
           # No E2E_BASE_URL: playwright.config.ts starts `next dev` itself
           # and points it at these Mongo/secret values (its default baseURL
