@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-type RecorderStatus = "idle" | "requesting" | "previewing" | "recording" | "stopped" | "error";
+type RecorderStatus =
+  | "idle"
+  | "requesting"
+  | "previewing"
+  | "recording"
+  | "stopped"
+  | "error";
 
 interface UseMediaRecorderReturn {
   status: RecorderStatus;
@@ -21,10 +27,16 @@ function pickMime(kind: "audio" | "video"): string | undefined {
   if (typeof MediaRecorder === "undefined") return undefined;
   const candidates =
     kind === "audio"
-      // MP4 (H.264/AAC) first: it plays on every phone and browser, while
-      // WebM from Chrome doesn't play on older iPhones. Browsers that can't
-      // record MP4 (Firefox) fall through to WebM.
-      ? ["audio/mp4;codecs=mp4a.40.2", "audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/aac"]
+      ? // MP4 (H.264/AAC) first: it plays on every phone and browser, while
+        // WebM from Chrome doesn't play on older iPhones. Browsers that can't
+        // record MP4 (Firefox) fall through to WebM.
+        [
+          "audio/mp4;codecs=mp4a.40.2",
+          "audio/mp4",
+          "audio/webm;codecs=opus",
+          "audio/webm",
+          "audio/aac",
+        ]
       : [
           "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
           "video/mp4;codecs=avc1,mp4a.40.2",
@@ -47,7 +59,9 @@ function pickMime(kind: "audio" | "video"): string | undefined {
  * Real client-side recording via MediaRecorder.
  * Tries several MIME types so Safari/iOS don't hard-fail on webm-only.
  */
-export function useMediaRecorder(kind: "audio" | "video"): UseMediaRecorderReturn {
+export function useMediaRecorder(
+  kind: "audio" | "video",
+): UseMediaRecorderReturn {
   const [status, setStatus] = useState<RecorderStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [duration, setDuration] = useState(0);
@@ -84,7 +98,10 @@ export function useMediaRecorder(kind: "audio" | "video"): UseMediaRecorderRetur
 
   const reset = useCallback(() => {
     clearTimer();
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state !== "inactive"
+    ) {
       try {
         mediaRecorderRef.current.stop();
       } catch {
@@ -149,7 +166,8 @@ export function useMediaRecorder(kind: "audio" | "video"): UseMediaRecorderRetur
               },
             };
 
-      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+      const mediaStream =
+        await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = mediaStream;
       setStream(mediaStream);
 
@@ -163,7 +181,10 @@ export function useMediaRecorder(kind: "audio" | "video"): UseMediaRecorderRetur
         recorder = new MediaRecorder(mediaStream);
       }
 
-      const blobType = recorder.mimeType || mime || (kind === "audio" ? "audio/webm" : "video/webm");
+      const blobType =
+        recorder.mimeType ||
+        mime ||
+        (kind === "audio" ? "audio/webm" : "video/webm");
       chunksRef.current = [];
       recorder.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
@@ -205,7 +226,7 @@ export function useMediaRecorder(kind: "audio" | "video"): UseMediaRecorderRetur
             ? "No recording device was found."
             : e instanceof Error && e.name === "NotSupportedError"
               ? "Recording isn’t supported in this browser."
-              : "Could not access the recording device."
+              : "Could not access the recording device.",
       );
       setStatus("error");
     }
@@ -229,7 +250,10 @@ export function useMediaRecorder(kind: "audio" | "video"): UseMediaRecorderRetur
 
   useEffect(() => {
     return () => {
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      if (
+        mediaRecorderRef.current &&
+        mediaRecorderRef.current.state !== "inactive"
+      ) {
         try {
           mediaRecorderRef.current.stop();
         } catch {
@@ -241,5 +265,16 @@ export function useMediaRecorder(kind: "audio" | "video"): UseMediaRecorderRetur
     };
   }, [releasePreview]);
 
-  return { status, error, duration, blob, previewUrl, stream, start, record, stop, reset };
+  return {
+    status,
+    error,
+    duration,
+    blob,
+    previewUrl,
+    stream,
+    start,
+    record,
+    stop,
+    reset,
+  };
 }
