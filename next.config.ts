@@ -61,7 +61,10 @@ const nextConfig: NextConfig = {
 };
 
 // Source-map upload only runs when the Vercel Sentry integration's vars are present.
-export default withSentryConfig(nextConfig, {
+// E2E runs `next dev` with Sentry's DSN blanked, so the wrapper only adds
+// per-module build work there. Since it landed (Sep 28) the dev server has
+// grown to ~7 GB on CI and the runner gets killed about half the time.
+export default process.env.E2E_SKIP_SENTRY_WRAP === "1" ? nextConfig : withSentryConfig(nextConfig, {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
   authToken: process.env.SENTRY_AUTH_TOKEN,

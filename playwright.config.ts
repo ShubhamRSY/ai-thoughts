@@ -83,6 +83,8 @@ export default defineConfig({
           VAPID_PRIVATE_KEY: "",
           SENTRY_AUTH_TOKEN: "",
           NEXT_PUBLIC_SENTRY_DSN: "",
+          // See next.config.ts: skip the Sentry build wrapper under test.
+          E2E_SKIP_SENTRY_WRAP: "1",
         },
       },
 });
