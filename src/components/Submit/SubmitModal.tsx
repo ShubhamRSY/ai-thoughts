@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { X, AudioLines, Video, Type, Send, ChevronDown } from "lucide-react";
 import { LANGS } from "@/lib/mock-data";
 import { BRAND, SUGGESTED_TAGS } from "@/lib/brand";
-import { checkDignity, normalizeTag } from "@/lib/dignity";
+import { normalizeTag } from "@/lib/dignity";
 import { checkContentQuality } from "@/lib/anti-abuse";
 import { fakeHash } from "@/lib/integrity";
 import { FEELINGS, CHIP_SOFT } from "@/lib/feelings";
@@ -195,11 +195,6 @@ export default function SubmitModal({
             ? "An audio take shared in Voices."
             : "A video take shared in Voices.");
 
-    const dignity = checkDignity(contentValue);
-    if (!dignity.ok) {
-      setPublishError(dignity.reason);
-      return;
-    }
     const quality = checkContentQuality(contentValue, { newAccount: false });
     if (!quality.ok) {
       setPublishError(quality.reason);
@@ -207,13 +202,6 @@ export default function SubmitModal({
     }
 
     const customFeelingValue = feeling === "custom" ? customFeeling.trim() : "";
-    if (customFeelingValue) {
-      const feelingDignity = checkDignity(customFeelingValue);
-      if (!feelingDignity.ok) {
-        setPublishError(feelingDignity.reason);
-        return;
-      }
-    }
     // A "Custom" pick with nothing typed isn't a real feeling — same as not picking one.
     const feelingValue = feeling === "custom" && !customFeelingValue ? undefined : feeling;
 

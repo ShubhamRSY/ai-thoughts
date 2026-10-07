@@ -72,7 +72,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     if (!other || (await isBlockedPair(db, me.handle, other.handle))) {
       return NextResponse.json({ error: "You can't message this account." }, { status: 403 });
     }
-    const body = await screenDm(me.id, input.body);
+    const body = await screenDm(db, me, input.body);
     if (typeof body !== "string") return body;
 
     const sent = await sendDm(db, c, me.id, body);

@@ -33,6 +33,7 @@ import { isAllowedMediaUrl, isBlobUrl, isPlayableMediaUrl } from "@/lib/media-sn
 import { flaggedBody, isFlaggedContent } from "@/lib/content-moderation";
 import { checkAttach, claimAttachment, releaseAttachment } from "@/lib/uploads";
 import { screenMediaPost } from "@/lib/moderation";
+import { postingPausedError, recordStrike, swearingLimitError } from "@/lib/strikes";
 import { signMediaUrl } from "@/lib/media-access";
 import { reportError } from "@/lib/report-error";
 
@@ -546,9 +547,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const { db } = await connectToDatabase();
+    const paused = await postingPausedError(db, session.id);
+    if (paused) return NextResponse.json({ error: paused, code: "paused" }, { status: 403 });
+    const strike = (text: string) => recordStrike(db, session, "take", text);
+
     const dignity = checkDignity(content);
     if (!dignity.ok) {
-      return NextResponse.json({ error: dignity.reason }, { status: 400 });
+      const pause = dignity.abuse ? await strike(content) : "";
+      return NextResponse.json({ error: dignity.reason + pause }, { status: 400 });
     }
 
     const mediaType = typeof body.media_type === "string" ? body.media_type : "text";
@@ -570,7 +577,8 @@ export async function POST(request: NextRequest) {
     if (customFeeling) {
       const feelingDignity = checkDignity(customFeeling);
       if (!feelingDignity.ok) {
-        return NextResponse.json({ error: feelingDignity.reason }, { status: 400 });
+        const pause = feelingDignity.abuse ? await strike(customFeeling) : "";
+        return NextResponse.json({ error: feelingDignity.reason + pause }, { status: 400 });
       }
     }
 
@@ -581,8 +589,17 @@ export async function POST(request: NextRequest) {
           .filter((t: string | null): t is string => Boolean(t))
           .slice(0, 8)
       : [];
-
-    const { db } = await connectToDatabase();
+    // Tags show on the take and in search, so they get the same bar as the text.
+    const badTag = tags.find((t: string) => {
+      const r = checkDignity(t.slice(1));
+      return !r.ok && r.abuse;
+    });
+    if (badTag) {
+      return NextResponse.json(
+        { error: `That tag isn't allowed here.${await strike(badTag)}` },
+        { status: 400 }
+      );
+    }
 
     let createdAt: string | null = null;
     let verifiedAuthor = Boolean(session.verified);
@@ -716,10 +733,16 @@ export async function POST(request: NextRequest) {
     // Photo takes are media_type "text" with a media_url; audio/video are
     // screened from their transcript after publishing (screenMediaPost below).
     // The custom feeling is shown as the take's headline, so it's screened with it.
-    const screenText = customFeeling ? `${customFeeling}\n${content}` : content;
+    const screenText = [customFeeling, content, tags.join(" ")].filter(Boolean).join("\n");
     if (await isFlaggedContent({ text: screenText, imageUrl: mediaType === "text" ? screenUrl : null })) {
-      return NextResponse.json(flaggedBody("take"), { status: 400 });
+      const flagged = flaggedBody("take");
+      return NextResponse.json(
+        { ...flagged, error: flagged.error + (await strike(screenText)) },
+        { status: 400 }
+      );
     }
+    const swearing = await swearingLimitError(db, session.id, screenText);
+    if (swearing) return NextResponse.json({ error: swearing, code: "swearing" }, { status: 400 });
 
     // Duration is cosmetic metadata, but cap it so a crafted post can't claim
     // a 999-hour clip and distort UI/playback affordances.

@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     const policy = await policyFor(db, me, other);
     if (!policy.allowed) return NextResponse.json({ error: policy.reason }, { status: 403 });
 
-    const body = await screenDm(me.id, input.body);
+    const body = await screenDm(db, me, input.body);
     if (typeof body !== "string") return body;
     // Cold outreach is the spam vector: cap how many people one account can start talking to.
     const { ok } = await rateLimit(`dm-new:${me.id}`, 20, 60 * 60_000);

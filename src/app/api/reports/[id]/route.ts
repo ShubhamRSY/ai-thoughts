@@ -5,7 +5,7 @@ import { getSession } from "@/lib/auth";
 import { isKeeperUser } from "@/lib/admin";
 import { logSecurityEvent } from "@/lib/audit";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
-import { deletePostCascade, banUser, releaseModerationHold } from "@/lib/moderation";
+import { deletePostCascade, banUser, releaseModerationHold, AUTO_REPORTER } from "@/lib/moderation";
 import { reportError } from "@/lib/report-error";
 import { recordOutcome } from "@/lib/report-trust";
 
@@ -66,7 +66,7 @@ export async function POST(
     const { db } = await connectToDatabase();
     const report = await db.collection("reports").findOne(
       { _id: objectId },
-      { projection: { post_id: 1, reported_handle: 1, target_type: 1, status: 1, reason: 1, reporter_id: 1 } }
+      { projection: { post_id: 1, reported_handle: 1, target_type: 1, status: 1, reason: 1, reporter_id: 1, reporter_handle: 1 } }
     );
     if (!report) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -89,6 +89,14 @@ export async function POST(
     } else if (action === "ban") {
       if (typeof report.reported_handle === "string") {
         await banUser(db, report.reported_handle);
+      }
+    } else if (report.target_type === "user" && report.reporter_handle === AUTO_REPORTER) {
+      // Cleared an automatic strike report: the filters misfired, so lift the pause.
+      if (typeof report.reported_handle === "string") {
+        const h = report.reported_handle.trim().toLowerCase().replace(/^@/, "");
+        await db
+          .collection("users")
+          .updateOne({ handle: { $in: [h, `@${h}`] } }, { $unset: { posting_paused_until: "" } });
       }
     } else if (report.target_type !== "comment" && report.target_type !== "chat") {
       // Kept the content: an automatic hold (screenMediaPost) comes off.

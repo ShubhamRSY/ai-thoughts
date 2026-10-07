@@ -10,7 +10,6 @@ import {
 } from "@/lib/db";
 import { useLocalProfile } from "@/hooks/useLocalProfile";
 import { useAuth } from "@/hooks/useAuth";
-import { checkDignity } from "@/lib/dignity";
 import {
   mentionQueryAt,
   normHandle,
@@ -228,11 +227,6 @@ export default function ChatPanel({
     }
     const body = draft.trim();
     if (!body || sending) return;
-    const dignity = checkDignity(body);
-    if (!dignity.ok) {
-      setError(dignity.reason);
-      return;
-    }
     setSending(true);
     setError(null);
     const handle = user?.handle || profile.handle || "you";

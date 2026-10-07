@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import { Check, HeartHandshake, Send, UserRound } from "lucide-react";
 import { FEELINGS, feelingOf } from "@/lib/feelings";
 import { LANGS } from "@/lib/mock-data";
-import { checkDignity } from "@/lib/dignity";
 import { checkContentQuality } from "@/lib/anti-abuse";
 import { fakeHash } from "@/lib/integrity";
 import { dailyPrompt, todayKey } from "@/lib/daily-prompt";
@@ -142,11 +141,6 @@ export default function OnboardingWizard({
       return;
     }
 
-    const dignity = checkDignity(content);
-    if (!dignity.ok) {
-      setPublishError(dignity.reason);
-      return;
-    }
     const quality = checkContentQuality(content, { newAccount: true });
     if (!quality.ok) {
       setPublishError(quality.reason);

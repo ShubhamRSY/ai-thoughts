@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Flame, Heart, Mic } from "lucide-react";
 import { dailyPrompt, weeklyTheme } from "@/lib/daily-prompt";
 import { FEELINGS, feelingOf } from "@/lib/feelings";
-import { checkDignity } from "@/lib/dignity";
 import { checkContentQuality } from "@/lib/anti-abuse";
 import type { FeelingId, PublishResult } from "@/lib/types";
 
@@ -59,8 +58,6 @@ export default function DailyCheckIn({
   const submit = async () => {
     const content = text.trim();
     if (!content || busy) return;
-    const check = checkDignity(content);
-    if (!check.ok) return setError(check.reason);
     const quality = checkContentQuality(content, { newAccount: false });
     if (!quality.ok) return setError(quality.reason);
     setBusy(true);

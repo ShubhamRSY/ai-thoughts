@@ -3,6 +3,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
 import { checkDignity } from "@/lib/dignity";
 import { flaggedBody, isFlaggedContent } from "@/lib/content-moderation";
+import { postingPausedError, recordStrike, swearingLimitError } from "@/lib/strikes";
 import { notifyPostOwner, notifyMentions } from "@/lib/activity";
 import { extractMentions, normHandle } from "@/lib/mentions";
 import { ObjectId } from "mongodb";
@@ -87,17 +88,25 @@ export async function POST(
     const trimmed = typeof body.body === "string" ? body.body.trim() : "";
     if (!trimmed) return NextResponse.json({ error: "Empty message" }, { status: 400 });
 
+    const { db } = await connectToDatabase();
+    const paused = await postingPausedError(db, session.id);
+    if (paused) return NextResponse.json({ error: paused, code: "paused" }, { status: 403 });
+
     const dignity = checkDignity(trimmed);
     if (!dignity.ok) {
-      return NextResponse.json({ error: dignity.reason }, { status: 400 });
+      const pause = dignity.abuse ? await recordStrike(db, session, "reply", trimmed) : "";
+      return NextResponse.json({ error: dignity.reason + pause }, { status: 400 });
     }
     // Replies get the same AI screening as takes (M2). What's stored is the
     // first 600 characters, so that's what is screened.
     if (await isFlaggedContent({ text: trimmed.slice(0, 600) })) {
-      return NextResponse.json(flaggedBody("reply"), { status: 400 });
+      const flagged = flaggedBody("reply");
+      const pause = await recordStrike(db, session, "reply", trimmed);
+      return NextResponse.json({ ...flagged, error: flagged.error + pause }, { status: 400 });
     }
+    const swearing = await swearingLimitError(db, session.id, trimmed);
+    if (swearing) return NextResponse.json({ error: swearing, code: "swearing" }, { status: 400 });
 
-    const { db } = await connectToDatabase();
     let objectId: ObjectId;
     try {
       objectId = new ObjectId(id);

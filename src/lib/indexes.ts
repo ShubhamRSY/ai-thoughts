@@ -181,6 +181,15 @@ async function buildCoreIndexes(db: Db): Promise<void> {
       { user_id: 1 },
       { unique: true, partialFilterExpression: { user_id: { $type: "string" } }, name: "admins_user_unique" }
     ),
+    // Strikes (lib/strikes.ts): counted per account by age, forgotten after 30 days.
+    db.collection("strikes").createIndex({ user_id: 1, created_at: -1 }, { name: "strikes_user_created" }),
+    db.collection("strikes").createIndex(
+      { created_at: 1 },
+      { expireAfterSeconds: 60 * 60 * 24 * 30, name: "strikes_ttl" }
+    ),
+    // Swearing allowance (lib/strikes.ts): only the last day matters.
+    db.collection("swears").createIndex({ user_id: 1, created_at: -1 }, { name: "swears_user_created" }),
+    db.collection("swears").createIndex({ created_at: 1 }, { expireAfterSeconds: 60 * 60 * 24, name: "swears_ttl" }),
     // Translation cache entries expire after 30 days (L1).
     db.collection("translations").createIndex(
       { cached_at: 1 },

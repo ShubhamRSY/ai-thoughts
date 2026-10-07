@@ -12,11 +12,20 @@ const BLOCKED_PATTERNS: RegExp[] = [
   /\b(rape|raping|molest|behead|lynch)\b/i,
   // Extreme harassment patterns
   /\b(kill\s+yourself|kys\b|go\s+die)\b/i,
+  // Vulgar insults aimed at people (a strike). Plain swearing is PROFANITY below.
+  /\b(fuck\s*(you|u|off|ur|your)|f\s*u\b|stfu|motherfuck\w*|cunt|bitch(es)?|whore|slut|son\s+of\s+a\s+bitch|dickhead|asshole)\b/i,
   // Compact variants (matched against spaces/punctuation-stripped input):
   // "killyourself", "kill me"/"killme", "sextape", "nakedpics"
   /killyourself|kill\s*me\b/i,
   /\bsextape\b|\bnakedpics?\b/i,
 ];
+
+/**
+ * Plain swearing ("AI is fucking scary"). Not blocked by checkDignity: people
+ * get to say it their way. The server only asks habitual swearers to rephrase
+ * (swearingLimitError in lib/strikes.ts).
+ */
+const PROFANITY = /\b(fuck\w*|f\*+k\w*|shit(s|ty|ting|head)?|bullshit|wtf|bastards?|piss(ed)?\s+off)\b/i;
 
 /** Soften common false positives for AI critique contexts */
 const ALLOW_IF_CONTEXT: RegExp[] = [
@@ -76,7 +85,8 @@ function isVariantBlocked(v: string): boolean {
 
 export type DignityResult =
   | { ok: true }
-  | { ok: false; reason: string };
+  /** abuse: blocked content (counts as a strike); false = only a tone nudge. */
+  | { ok: false; reason: string; abuse: boolean };
 
 export function checkDignity(text: string): DignityResult {
   const raw = text.trim();
@@ -100,6 +110,7 @@ export function checkDignity(text: string): DignityResult {
         ok: false,
         reason:
           "Please keep this respectful. Strong opinions about AI are welcome — sexual content, slurs, and harm are not.",
+        abuse: true,
       };
     }
   }
@@ -112,11 +123,18 @@ export function checkDignity(text: string): DignityResult {
       return {
         ok: false,
         reason: "Try writing in a calmer voice so others can read and respond with care.",
+        abuse: false,
       };
     }
   }
 
   return { ok: true };
+}
+
+export function hasProfanity(text: string): boolean {
+  const raw = text.trim();
+  if (!raw) return false;
+  return [raw, deobfuscate(raw), deobfuscate(raw, { oneAs: "l" })].some((v) => PROFANITY.test(v));
 }
 
 export function normalizeTag(raw: string): string | null {

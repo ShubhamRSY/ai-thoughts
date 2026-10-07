@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { checkDignity, deobfuscate } from "./dignity.ts";
+import { checkDignity, deobfuscate, hasProfanity } from "./dignity.ts";
 
 describe("dignity filter: direct terms", () => {
   it("blocks explicit sexual content", () => {
@@ -12,6 +12,26 @@ describe("dignity filter: direct terms", () => {
     assert.equal(checkDignity("you are a retard").ok, false);
     assert.equal(checkDignity("go die, bot").ok, false);
     assert.equal(checkDignity("kill yourself").ok, false);
+  });
+  it("blocks vulgar insults aimed at people", () => {
+    assert.equal(checkDignity("fuck you").ok, false);
+    assert.equal(checkDignity("shut up you bitch").ok, false);
+    assert.equal(checkDignity("what an asshole").ok, false);
+    assert.equal(checkDignity("stfu nobody asked").ok, false);
+  });
+  it("lets plain swearing through, but can tell it's there", () => {
+    for (const text of ["honestly AI is fucking scary", "this shit keeps getting better", "sh1t is wild"]) {
+      assert.equal(checkDignity(text).ok, true, text);
+      assert.equal(hasProfanity(text), true, text);
+    }
+    assert.equal(hasProfanity("I hate what AI is doing to my job"), false);
+    assert.equal(hasProfanity("Shitake mushrooms and AI recipes"), false);
+  });
+  it("marks abuse apart from a tone nudge", () => {
+    const abuse = checkDignity("fuck off");
+    assert.equal(!abuse.ok && abuse.abuse, true);
+    const shout = checkDignity("I AM SO ANGRY ABOUT WHAT AI IS DOING TO EVERY JOB IN MY TOWN");
+    assert.equal(!shout.ok && shout.abuse, false);
   });
   it("allows sharp AI critique", () => {
     assert.equal(

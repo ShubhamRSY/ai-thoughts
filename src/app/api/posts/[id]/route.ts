@@ -11,6 +11,7 @@ import { reportError } from "@/lib/report-error";
 import { signMediaUrl } from "@/lib/media-access";
 import { deletePostCascade } from "@/lib/moderation";
 import { flaggedBody, isFlaggedContent } from "@/lib/content-moderation";
+import { postingPausedError, recordStrike, swearingLimitError } from "@/lib/strikes";
 import { rateLimit } from "@/lib/rate-limit";
 
 function parseObjectId(id: string): ObjectId | null {
@@ -185,15 +186,22 @@ export async function PATCH(
         { status: 400 }
       );
     }
+    const paused = await postingPausedError(db, session.id);
+    if (paused) return NextResponse.json({ error: paused, code: "paused" }, { status: 403 });
     const dignity = checkDignity(content);
     if (!dignity.ok) {
-      return NextResponse.json({ error: dignity.reason }, { status: 400 });
+      const pause = dignity.abuse ? await recordStrike(db, session, "edit", content) : "";
+      return NextResponse.json({ error: dignity.reason + pause }, { status: 400 });
     }
     // The same AI screening a new take gets — otherwise a take could pass it
     // and then be edited into what it would have blocked (M2).
     if (await isFlaggedContent({ text: content })) {
-      return NextResponse.json(flaggedBody("edit"), { status: 400 });
+      const flagged = flaggedBody("edit");
+      const pause = await recordStrike(db, session, "edit", content);
+      return NextResponse.json({ ...flagged, error: flagged.error + pause }, { status: 400 });
     }
+    const swearing = await swearingLimitError(db, session.id, content);
+    if (swearing) return NextResponse.json({ error: swearing, code: "swearing" }, { status: 400 });
 
     // Re-resolve @mentions against real users (a handle could have been taken
     // or renamed since the original post).

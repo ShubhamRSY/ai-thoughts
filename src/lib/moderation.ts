@@ -7,6 +7,7 @@ import { filterDeletableMedia } from "./uploads.ts";
 import { deleteFilesOrQueue } from "./upload-cleanup.ts";
 import { CHILD_SAFETY } from "./report-reasons.ts";
 import { reportError } from "./report-error.ts";
+import { AUTO_REPORTER, recordStrike } from "./strikes.ts";
 
 // Suspended (banned) accounts keep their row so the same email can't
 // immediately re-register, but they can't sign in and their content is removed.
@@ -132,9 +133,13 @@ export async function screenMediaPost(db: Db, postId: ObjectId, mediaUrl: string
   const post = await posts.findOneAndUpdate(
     { _id: postId },
     { $set: { transcript, archived: true, archived_at: new Date(), moderation_hold: true } },
-    { projection: { handle: 1, content: 1 } }
+    { projection: { handle: 1, content: 1, user_id: 1 } }
   );
   if (!post) return; // deleted meanwhile
+  if (typeof post.user_id === "string" && post.handle) {
+    const spoken = transcript.map((seg) => seg.text).join(" ");
+    await recordStrike(db, { id: post.user_id, handle: String(post.handle) }, "take", spoken);
+  }
   await db.collection("reports").updateOne(
     { post_id: postId.toString(), reporter_handle: AUTO_REPORTER },
     {
@@ -150,8 +155,7 @@ export async function screenMediaPost(db: Db, postId: ObjectId, mediaUrl: string
   );
 }
 
-/** Reporter on automatic reports; "system" is a reserved handle, so no user can own it. */
-export const AUTO_REPORTER = "@system";
+export { AUTO_REPORTER };
 
 /** A keeper cleared a report: lift an automatic hold, if the take has one. */
 export async function releaseModerationHold(db: Db, postId: ObjectId): Promise<void> {

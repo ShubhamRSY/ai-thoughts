@@ -96,3 +96,29 @@ test("a flagged display name or bio is refused; a clean one saves", async () => 
   const ok = await user.put("/api/profile", { data: { author: "Kind Person", bio: "I like quiet mornings." } });
   expect(ok.status(), await ok.text()).toBe(200);
 });
+
+test("repeat flagged posts pause the account, even for clean text", async () => {
+  const repeat = await newUser("strikes");
+  const tries = [];
+  for (let i = 0; i < 3; i++) {
+    tries.push(await repeat.post("/api/posts", { data: { content: `try ${i} ${FLAG_MARKER}`, media_type: "text" } }));
+  }
+  expect(tries.map((r) => r.status())).toEqual([400, 400, 400]);
+  expect((await tries[2].json()).error).toMatch(/Posting is paused/);
+  const clean = await repeat.post("/api/posts", { data: { content: `clean after strikes ${uniq()}`, media_type: "text" } });
+  expect(clean.status()).toBe(403);
+  expect((await clean.json()).code).toBe("paused");
+  const reply = await repeat.post(`/api/posts/${postId}/messages`, { data: { body: "a kind reply" } });
+  expect(reply.status()).toBe(403);
+});
+
+test("swearing posts at first; a habit of it is asked to rephrase, without a pause", async () => {
+  const swearer = await newUser("swears");
+  const statuses = [];
+  for (let i = 0; i < 4; i++) {
+    statuses.push((await swearer.post(`/api/posts/${postId}/messages`, { data: { body: `AI is fucking wild ${i}` } })).status());
+  }
+  expect(statuses).toEqual([200, 200, 200, 400]);
+  const clean = await swearer.post(`/api/posts/${postId}/messages`, { data: { body: "AI is wild, honestly" } });
+  expect(clean.ok(), await clean.text()).toBeTruthy();
+});
