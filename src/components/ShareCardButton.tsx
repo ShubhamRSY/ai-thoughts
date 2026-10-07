@@ -38,8 +38,8 @@ export default function ShareCardButton({ thought }: { thought: Thought }) {
       type="button"
       onClick={() => void share()}
       disabled={busy}
-      aria-label="Share as card"
-      title="Share as card"
+      aria-label="Save as image card"
+      title="Save as image card"
       className="flex items-center gap-1.5 text-sm font-medium transition hover:text-[var(--foreground)] disabled:opacity-50"
     >
       <ImageDown className="h-5 w-5" strokeWidth={2} />

@@ -50,7 +50,9 @@ import {
 import MessagesView from "@/components/Messages/MessagesView";
 import type { ReportReason } from "@/components/Feed/FeedCard";
 import type { RegionScope } from "@/components/Feed/FilterBar";
-import { todayKey as promptTodayKey } from "@/lib/daily-prompt";
+import { todayKey as promptTodayKey, dailyPrompt } from "@/lib/daily-prompt";
+import { LANGS } from "@/lib/mock-data";
+import { fakeHash } from "@/lib/integrity";
 import { BOOKMARK_REACTION } from "@/lib/likes";
 
 type MediaFilter = "all" | MediaType;
@@ -204,6 +206,13 @@ export default function Home() {
   const todayAnswerCount = useMemo(() => {
     const day = promptTodayKey();
     return thoughts.filter((t) => t.promptDay === day).length;
+  }, [thoughts]);
+
+  const todayFeelings = useMemo(() => {
+    const day = promptTodayKey();
+    const m: Record<string, number> = {};
+    for (const t of thoughts) if (t.promptDay === day && t.feeling) m[t.feeling] = (m[t.feeling] ?? 0) + 1;
+    return m;
   }, [thoughts]);
 
   useEffect(() => {
@@ -419,7 +428,11 @@ export default function Home() {
   }, [undoId, onDelete]);
 
   const publish = useCallback(
-    async (data: SharePayload, clip?: CapturedClip): Promise<PublishResult> => {
+    async (
+      data: SharePayload,
+      clip?: CapturedClip,
+      opts: { scrollTo?: boolean } = {}
+    ): Promise<PublishResult> => {
       if (!user) return { ok: false, reason: "auth" };
       const guard = checkPublishGuard(data.content);
       if (!guard.ok) return guard;
@@ -457,11 +470,50 @@ export default function Home() {
       setThoughts((prev) => [posted.thought, ...prev.filter((t) => t.id !== posted.thought.id)]);
       setMine((prev) => [posted.thought, ...prev.filter((t) => t.id !== posted.thought.id)]);
       setUndoId(posted.thought.id);
-      setFocusPostId(posted.thought.id);
+      if (opts.scrollTo !== false) setFocusPostId(posted.thought.id);
       bump(data.feeling);
       return { ok: true, thought: posted.thought };
     },
     [profile, save, bump, user]
+  );
+
+  // Text answer to today's prompt straight from the check-in card — no modal.
+  const quickPost = useCallback(
+    async (content: string, feeling?: FeelingId): Promise<PublishResult> => {
+      if (!user) {
+        router.push("/sign-in?next=/app");
+        return { ok: false, reason: "auth" };
+      }
+      if (maintenance) {
+        return {
+          ok: false,
+          reason: "blocked",
+          message: maintenanceMessage || "Voices is pausing briefly — check back soon.",
+        };
+      }
+      const lang =
+        LANGS.find((l) => l.code === navigator.language?.split("-")[0]?.toLowerCase()) ??
+        LANGS.find((l) => l.code === "en");
+      return publish({
+        author: identityAuthor || user.handle,
+        handle: identityHandle || user.handle,
+        content,
+        mediaType: "text",
+        feeling,
+        tags: [],
+        timestamp: new Date().toISOString(),
+        language: lang?.code ?? "en",
+        languageLabel: lang?.label ?? "English",
+        integrity: {
+          hash: fakeHash(`text:${user.handle}:${content.slice(0, 40)}:${Date.now()}`),
+          verified: false,
+          statusLabel: "Signed on post",
+        },
+        promptDay: promptTodayKey(),
+        promptText: dailyPrompt(),
+      }, undefined, { scrollTo: false });
+    },
+    [user, router, maintenance, maintenanceMessage, identityAuthor, identityHandle, publish]
   );
 
   const onReact = useCallback(async (thoughtId: string, reaction: Reaction) => {
@@ -664,6 +716,38 @@ export default function Home() {
     othersMap,
   };
 
+  // Desktop shortcuts on Voices: n = write, j/k = next/previous take.
+  useEffect(() => {
+    if (tab !== "home" || room) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || shareOpen) return;
+      const el = e.target as HTMLElement | null;
+      if (el?.closest("input, textarea, select, [contenteditable=true], [role=dialog]")) return;
+      if (e.key === "n") {
+        const box = document.getElementById("quick-compose");
+        if (!box) return;
+        e.preventDefault();
+        box.scrollIntoView({ behavior: "smooth", block: "center" });
+        box.focus({ preventScroll: true });
+        return;
+      }
+      if (e.key !== "j" && e.key !== "k") return;
+      const cards = Array.from(document.querySelectorAll<HTMLElement>("[data-feed-card]"));
+      if (!cards.length) return;
+      e.preventDefault();
+      const current = cards.indexOf(document.activeElement as HTMLElement);
+      const next =
+        current === -1
+          ? // Nothing focused yet: start from the first card below the header.
+            Math.max(0, cards.findIndex((c) => c.getBoundingClientRect().top > 80))
+          : Math.min(cards.length - 1, Math.max(0, current + (e.key === "j" ? 1 : -1)));
+      cards[next].focus({ preventScroll: true });
+      cards[next].scrollIntoView({ behavior: "smooth", block: "center" });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [tab, room, shareOpen]);
+
   // Hold the feed until we know who's here and whether they still need
   // onboarding, so a new account never sees Voices flash before the wizard.
   if (authLoading || (user && onboarded === null)) {
@@ -717,7 +801,9 @@ export default function Home() {
                   streakCount={streak.count}
                   checkedInToday={streak.last === todayKey()}
                   todayAnswerCount={todayAnswerCount}
-                  onShare={() => openShare("text", undefined, true)}
+                  todayFeelings={todayFeelings}
+                  onQuickPost={quickPost}
+                  onShare={() => openShare("audio", undefined, true)}
                   onBrowseToday={browseToday}
                 />
 

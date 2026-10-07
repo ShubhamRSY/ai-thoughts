@@ -153,7 +153,7 @@ export default function ActivityView({
                       : item.kind === "mention"
                         ? " mentioned you"
                         : item.preview === "❤️"
-                          ? " liked your take"
+                          ? " felt the same 🫂"
                           : " reacted"}
                   {item.kind === "reaction" && item.preview !== "❤️" ? ` ${item.preview}` : ""}
                 </p>

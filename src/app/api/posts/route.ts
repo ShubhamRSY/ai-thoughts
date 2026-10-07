@@ -11,7 +11,14 @@ import { GLOBAL_SEED_POSTS } from "@/lib/seed-posts";
 import { notifyFollowersOfPost, notifyMentions, notifyPostOwner } from "@/lib/activity";
 import { dailyPromptForDay, promptDayKeyUTC } from "@/lib/daily-prompt";
 import { setMood } from "@/lib/mood";
-import { LIKE_REACTION, BOOST_REACTION, BOOKMARK_REACTION, buildLikedBy } from "@/lib/likes";
+import {
+  LIKE_REACTION,
+  BOOST_REACTION,
+  BOOKMARK_REACTION,
+  WORRIED_REACTION,
+  AMAZED_REACTION,
+  buildLikedBy,
+} from "@/lib/likes";
 import { accountAgeMs, assertCanPost, contentFingerprint, postLimitsForAge } from "@/lib/anti-abuse";
 import { extractMentions } from "@/lib/mentions";
 import {
@@ -447,6 +454,19 @@ export async function GET(request: NextRequest) {
               r.handle?.trim().toLowerCase().replace(/^@/, "") === me
           )
       );
+      const myReactions = me
+        ? [
+            ...new Set(
+              rows
+                .filter(
+                  (r) =>
+                    (r.reaction === WORRIED_REACTION || r.reaction === AMAZED_REACTION) &&
+                    r.handle?.trim().toLowerCase().replace(/^@/, "") === me
+                )
+                .map((r) => String(r.reaction))
+            ),
+          ]
+        : [];
       const authorKey = String(p.handle || "")
         .trim()
         .toLowerCase()
@@ -486,6 +506,7 @@ export async function GET(request: NextRequest) {
         boost_count: boostCount,
         boosted_by_me: boostedByMe,
         bookmarked_by_me: bookmarkedByMe,
+        my_reactions: myReactions,
         view_count: p.view_count ?? 0,
         author_joined_at: p.author_joined_at ?? null,
       };

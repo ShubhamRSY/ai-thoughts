@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   MessageCircle,
-  Heart,
   Repeat2,
   Quote,
   Bookmark,
@@ -17,7 +16,14 @@ import {
   BellOff,
 } from "lucide-react";
 import type { Thought, Reaction, FeelingId, LikedByPerson } from "@/lib/types";
-import { LIKE_REACTION, BOOST_REACTION, BOOKMARK_REACTION, formatLikedBy } from "@/lib/likes";
+import {
+  LIKE_REACTION,
+  BOOST_REACTION,
+  BOOKMARK_REACTION,
+  FEEL_REACTIONS,
+  formatLikedBy,
+} from "@/lib/likes";
+import { FEELING_EDGE } from "@/lib/feelings";
 import { markViewed } from "@/lib/db";
 import AudioPlayer from "@/components/Player/AudioPlayer";
 import VideoPlayer from "@/components/Player/VideoPlayer";
@@ -142,6 +148,10 @@ export default function FeedCard({
       : thought.reactions.find((e) => e.type === LIKE_REACTION)?.count ?? 0
   );
   const [likedBy, setLikedBy] = useState<LikedByPerson[]>(thought.likedBy ?? []);
+  const [mineFeel, setMineFeel] = useState<Set<string>>(() => new Set(thought.myReactions ?? []));
+  const [feelCounts, setFeelCounts] = useState<Record<string, number>>(() =>
+    Object.fromEntries(thought.reactions.map((r) => [r.type, r.count]))
+  );
   const [boosted, setBoosted] = useState(Boolean(thought.boostedByMe));
   const [boosts, setBoosts] = useState(thought.boostCount ?? 0);
   const [quoting, setQuoting] = useState(false);
@@ -232,6 +242,31 @@ export default function FeedCard({
     }
   };
 
+  /** 😟 / 🤩 toggles. Same 🫂 goes through like() so "Felt the same: …" stays in sync. */
+  const toggleFeel = async (reaction: Reaction) => {
+    if (!currentHandle) return;
+    setActionError(null);
+    const was = mineFeel.has(reaction);
+    const bump = (on: boolean) => {
+      setMineFeel((prev) => {
+        const next = new Set(prev);
+        if (on) next.add(reaction);
+        else next.delete(reaction);
+        return next;
+      });
+      setFeelCounts((prev) => ({
+        ...prev,
+        [reaction]: Math.max(0, (prev[reaction] ?? 0) + (on ? 1 : -1)),
+      }));
+    };
+    bump(!was);
+    const ok = onReact ? await Promise.resolve(onReact(thought.id, reaction)) : true;
+    if (ok === false) {
+      bump(was);
+      setActionError("Couldn’t save that — try again.");
+    }
+  };
+
   const boost = async () => {
     if (!currentHandle) return;
     setActionError(null);
@@ -286,7 +321,11 @@ export default function FeedCard({
   return (
     <article
       ref={cardRef}
-      className="relative isolate border-b border-[var(--border-base)] bg-[var(--surface)] py-4"
+      id={`card-${thought.id}`}
+      data-feed-card
+      tabIndex={-1}
+      style={{ borderLeftColor: (thought.feeling && FEELING_EDGE[thought.feeling]) || "transparent" }}
+      className="relative isolate -mx-2 rounded-r-lg border-b border-l-[3px] border-[var(--border-base)] bg-[var(--surface)] py-4 pl-3 pr-2 outline-none transition-colors hover:bg-[var(--surface-2)]/40 focus-visible:ring-2 focus-visible:ring-[var(--accent)]/40"
     >
       <div className="flex items-start gap-3">
         <div className="relative mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-2)] text-[11px] font-semibold text-[var(--foreground)]">
@@ -553,20 +592,39 @@ export default function FeedCard({
         )}
       </div>
 
-      <div className="relative z-0 mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 text-[var(--foreground)]/65">
-        <button
-          type="button"
-          onClick={() => void like()}
-          disabled={!currentHandle}
-          aria-label={liked ? "Unlike" : "Like"}
-          title={!currentHandle ? "Sign in to like" : undefined}
-          className={`flex items-center gap-1.5 text-sm font-medium transition disabled:opacity-50 ${
-            liked ? "text-[var(--accent)]" : "hover:text-[var(--foreground)]"
-          }`}
-        >
-          <Heart className="h-5 w-5" fill={liked ? "currentColor" : "none"} strokeWidth={2} />
-          {likes > 0 ? likes : null}
-        </button>
+      <div
+        role="group"
+        aria-label="How does this make you feel?"
+        className="relative z-0 mt-3 flex flex-wrap items-center gap-1.5 text-[var(--foreground)]/75"
+      >
+        {FEEL_REACTIONS.map(({ reaction, emoji, label }) => {
+          const isSame = reaction === LIKE_REACTION;
+          const on = isSame ? liked : mineFeel.has(reaction);
+          const count = isSame ? likes : feelCounts[reaction] ?? 0;
+          return (
+            <button
+              key={reaction}
+              type="button"
+              onClick={() => void (isSame ? like() : toggleFeel(reaction))}
+              disabled={!currentHandle}
+              aria-pressed={on}
+              aria-label={`${label}${count ? `, ${count}` : ""}`}
+              title={!currentHandle ? "Sign in to react" : label}
+              className={`flex h-8 items-center gap-1 rounded-full border px-2.5 text-[13px] font-medium transition active:scale-95 disabled:opacity-50 ${
+                on
+                  ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                  : "border-[var(--border-base)] hover:border-[var(--accent)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              <span aria-hidden>{emoji}</span>
+              {label}
+              {count > 0 && <span className="tabular-nums opacity-80">{count}</span>}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="relative z-0 mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 text-[var(--foreground)]/65">
         <button
           type="button"
           onClick={() => void boost()}

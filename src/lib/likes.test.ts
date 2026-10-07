@@ -21,7 +21,8 @@ test("P1 bookmark privacy", () => {
 });
 
 test("reaction whitelist only admits the product reactions", () => {
-  assert.deepEqual(VALID_REACTIONS, [LIKE_REACTION, BOOST_REACTION, BOOKMARK_REACTION]);
+  assert.deepEqual(VALID_REACTIONS, [LIKE_REACTION, BOOST_REACTION, BOOKMARK_REACTION, "😟", "🤩"]);
+  assert.equal(isValidReaction("😟"), true);
   assert.equal(isValidReaction("❤️"), true);
   assert.equal(isValidReaction("🔁"), true);
   assert.equal(isValidReaction("🔖"), true);
@@ -71,7 +72,7 @@ test("buildLikedBy pulls author names from the name map", () => {
 
 test("formatLikedBy covers counts and names", () => {
   assert.equal(formatLikedBy([], 0, null), null);
-  assert.equal(formatLikedBy([{ handle: "@maya", author: "Maya" }], 1, null), "Liked by Maya");
+  assert.equal(formatLikedBy([{ handle: "@maya", author: "Maya" }], 1, null), "Felt the same: Maya");
   assert.equal(
     formatLikedBy(
       [
@@ -81,15 +82,15 @@ test("formatLikedBy covers counts and names", () => {
       2,
       null
     ),
-    "Liked by Maya and Dex"
+    "Felt the same: Maya and Dex"
   );
   assert.equal(
     formatLikedBy([{ handle: "@maya", author: "Maya" }], 3, null),
-    "Liked by Maya and 2 others"
+    "Felt the same: Maya and 2 others"
   );
 });
 
 test("formatLikedBy renders 'you' for the current user", () => {
   const out = formatLikedBy([{ handle: "@maya", author: "Maya" }], 1, "@maya");
-  assert.equal(out, "Liked by you");
+  assert.equal(out, "Felt the same: you");
 });

@@ -1,5 +1,13 @@
-/** Heart reaction used by the Like button on feed cards. */
+/** "Same 🫂" on feed cards. Stored as ❤️ so likes from before feeling reactions still count. */
 export const LIKE_REACTION = "❤️" as const;
+export const WORRIED_REACTION = "😟" as const;
+export const AMAZED_REACTION = "🤩" as const;
+/** The feeling reactions shown on every card, in display order. */
+export const FEEL_REACTIONS = [
+  { reaction: LIKE_REACTION, emoji: "🫂", label: "Same" },
+  { reaction: WORRIED_REACTION, emoji: "😟", label: "Worried" },
+  { reaction: AMAZED_REACTION, emoji: "🤩", label: "Amazed" },
+] as const;
 /** Repost/boost — a public signal, same toggle mechanics as Like. */
 export const BOOST_REACTION = "🔁" as const;
 /** Bookmark — private; see shouldNotifyOwner. */
@@ -10,6 +18,8 @@ export const VALID_REACTIONS: readonly string[] = [
   LIKE_REACTION,
   BOOST_REACTION,
   BOOKMARK_REACTION,
+  WORRIED_REACTION,
+  AMAZED_REACTION,
 ];
 
 export function isValidReaction(reaction: string): boolean {
@@ -76,18 +86,18 @@ export function formatLikedBy(
 
   const named = people.map(label).filter(Boolean);
   if (named.length === 0) {
-    return total === 1 ? "1 like" : `${total} likes`;
+    return `${total} felt the same`;
   }
-  if (total === 1) return `Liked by ${named[0]}`;
+  if (total === 1) return `Felt the same: ${named[0]}`;
   if (total === 2) {
-    if (named.length >= 2) return `Liked by ${named[0]} and ${named[1]}`;
-    return `Liked by ${named[0]} and 1 other`;
+    if (named.length >= 2) return `Felt the same: ${named[0]} and ${named[1]}`;
+    return `Felt the same: ${named[0]} and 1 other`;
   }
-  if (named.length === 1) return `Liked by ${named[0]} and ${total - 1} others`;
+  if (named.length === 1) return `Felt the same: ${named[0]} and ${total - 1} others`;
   if (named.length >= 2) {
     const rest = total - 2;
-    if (rest <= 0) return `Liked by ${named[0]} and ${named[1]}`;
-    return `Liked by ${named[0]}, ${named[1]} and ${rest} other${rest === 1 ? "" : "s"}`;
+    if (rest <= 0) return `Felt the same: ${named[0]} and ${named[1]}`;
+    return `Felt the same: ${named[0]}, ${named[1]} and ${rest} other${rest === 1 ? "" : "s"}`;
   }
-  return `${total} likes`;
+  return `${total} felt the same`;
 }

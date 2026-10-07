@@ -100,3 +100,14 @@ export function feelingWash(_id?: FeelingId | string | null): string {
   if (!_id) return "";
   return "bg-gradient-to-br from-[var(--accent-soft)]/35 to-transparent";
 }
+
+/** Muted edge color per feeling — the one place moods get their own hue (card left border). */
+export const FEELING_EDGE: Partial<Record<FeelingId, string>> = {
+  "using-it": "#6b7f8e",
+  "love-it": "#c0737a",
+  "blown-away": "#3d8f86",
+  hurts: "#8a6a9b",
+  worried: "#c08a3e",
+  confused: "#8c8a83",
+  "need-support": "#5b7fb8",
+};

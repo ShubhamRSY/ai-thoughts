@@ -1,6 +1,7 @@
 "use client";
 
-import { Plus, LogOut, Send } from "lucide-react";
+import { useState } from "react";
+import { Plus, LogOut, Send, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,6 +18,7 @@ interface HeaderProps {
 export default function Header({ onShare, onOpenProfile, onOpenMessages, messagesUnread = 0 }: HeaderProps) {
   const { user, signOut } = useAuth();
   const router = useRouter();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -68,23 +70,61 @@ export default function Header({ onShare, onOpenProfile, onOpenMessages, message
                   )}
                 </button>
               )}
-              <button
-                type="button"
-                onClick={onOpenProfile}
-                aria-label="View your profile"
-                title={user.displayName}
-                className="ml-1 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-[var(--surface-2)] text-xs font-semibold text-[var(--foreground)] transition hover:ring-2 hover:ring-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] active:scale-95"
-              >
-                {user.displayName.slice(0, 1).toUpperCase()}
-              </button>
-              <button
-                type="button"
-                onClick={handleSignOut}
-                aria-label="Sign out"
-                className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--muted)] transition hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]"
-              >
-                <LogOut className="h-4 w-4" strokeWidth={2} />
-              </button>
+              <div className="relative ml-1">
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen((v) => !v)}
+                  aria-label="Account menu"
+                  aria-haspopup="menu"
+                  aria-expanded={menuOpen}
+                  title={user.displayName}
+                  className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-[var(--surface-2)] text-xs font-semibold text-[var(--foreground)] transition hover:ring-2 hover:ring-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] active:scale-95"
+                >
+                  {user.displayName.slice(0, 1).toUpperCase()}
+                </button>
+                {menuOpen && (
+                  <>
+                    <button
+                      type="button"
+                      className="fixed inset-0 z-10 cursor-default"
+                      aria-label="Close menu"
+                      onClick={() => setMenuOpen(false)}
+                    />
+                    <div
+                      role="menu"
+                      className="absolute right-0 top-11 z-20 w-48 overflow-hidden rounded-lg border border-[var(--border-base)] bg-[var(--surface)] shadow-md"
+                    >
+                      <p className="truncate border-b border-[var(--border-base)] px-3 py-2 text-xs text-[var(--muted)]">
+                        {user.displayName}
+                      </p>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          onOpenProfile();
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-[var(--foreground)] hover:bg-[var(--surface-2)]"
+                      >
+                        <User className="h-3.5 w-3.5" />
+                        Your profile
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          void handleSignOut();
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-[var(--foreground)] hover:bg-[var(--surface-2)]"
+                      >
+                        <LogOut className="h-3.5 w-3.5" />
+                        Sign out
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </>
           )}
         </div>

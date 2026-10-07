@@ -51,7 +51,9 @@ export type Reaction =
   | "👏"
   | "🙌"
   | "🔁"
-  | "🔖";
+  | "🔖"
+  | "😟"
+  | "🤩";
 
 export interface ReactionCount {
   type: Reaction;
@@ -115,6 +117,8 @@ export interface Thought {
   replyCount?: number;
   /** How many unique people reposted/boosted. */
   boostCount?: number;
+  /** Feeling reactions (😟 🤩) the signed-in user has on this take. ❤️ is likedByMe. */
+  myReactions?: string[];
   /** Whether the signed-in user already reposted this take. */
   boostedByMe?: boolean;
   /** Whether the signed-in user has bookmarked this take (private to them). */

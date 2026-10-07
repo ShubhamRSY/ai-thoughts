@@ -58,6 +58,7 @@ interface RawPost {
   integrity_label?: string | null;
   transcript?: unknown;
   prompt_day?: string | null;
+  my_reactions?: string[];
   prompt_text?: string | null;
   created_at: string;
   reactions?: { type: string; count: number }[];
@@ -123,6 +124,7 @@ function toThought(r: RawPost): Thought {
     boostCount: typeof r.boost_count === "number" ? r.boost_count : undefined,
     boostedByMe: Boolean(r.boosted_by_me),
     bookmarkedByMe: Boolean(r.bookmarked_by_me),
+    myReactions: Array.isArray(r.my_reactions) ? r.my_reactions : undefined,
     viewCount: typeof r.view_count === "number" ? r.view_count : undefined,
     authorJoinedAt: r.author_joined_at ?? undefined,
     quotedPostId: r.quoted_post_id ?? undefined,

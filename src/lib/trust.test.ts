@@ -109,13 +109,13 @@ describe("P0 like copy", () => {
       1,
       "@YOU"
     );
-    assert.equal(s, "Liked by you");
+    assert.equal(s, "Felt the same: you");
   });
 
   it("formatLikedBy never invents fake +12", () => {
     assert.equal(formatLikedBy([], 0), null);
-    assert.equal(formatLikedBy([], 1), "1 like");
-    assert.equal(formatLikedBy([{ handle: "@a", author: "Ann" }], 3), "Liked by Ann and 2 others");
+    assert.equal(formatLikedBy([], 1), "1 felt the same");
+    assert.equal(formatLikedBy([{ handle: "@a", author: "Ann" }], 3), "Felt the same: Ann and 2 others");
   });
 });
 
