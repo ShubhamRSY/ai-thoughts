@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   fetchMessages,
+  reportComment,
   sendMessage,
   subscribeToMessages,
   type ChatMessage,
@@ -10,13 +11,14 @@ import {
 import { useLocalProfile } from "@/hooks/useLocalProfile";
 import { useAuth } from "@/hooks/useAuth";
 import { checkDignity } from "@/lib/dignity";
-import VerifiedBadge from "@/components/VerifiedBadge";
 import {
   mentionQueryAt,
   normHandle,
   splitMentionParts,
   type MentionPerson,
 } from "@/lib/mentions";
+import VerifiedBadge from "@/components/VerifiedBadge";
+import ReportDialog from "@/components/ReportDialog";
 import Link from "next/link";
 
 interface ChatPanelProps {
@@ -74,6 +76,7 @@ export default function ChatPanel({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [reportFor, setReportFor] = useState<ChatMessage | null>(null);
   const [caret, setCaret] = useState(0);
   const [suggestOpen, setSuggestOpen] = useState(false);
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -367,6 +370,15 @@ export default function ChatPanel({
               </p>
               <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
                 <span className="text-[13px] text-[var(--foreground)]/70">{timeLabel(m.created_at)}</span>
+                {signedIn && !m.id.startsWith("local-") && (
+                  <button
+                    type="button"
+                    onClick={() => setReportFor(m)}
+                    className="text-[13px] font-medium text-[var(--foreground)]/50 hover:text-rose-600"
+                  >
+                    Report
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -466,6 +478,15 @@ export default function ChatPanel({
           </>
         )}
       </div>
+
+      {reportFor && (
+        <ReportDialog
+          subject="comment"
+          signedIn={signedIn}
+          onSubmit={(reason) => reportComment(reportFor.id, reason)}
+          onClose={() => setReportFor(null)}
+        />
+      )}
     </div>
   );
 }

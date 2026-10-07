@@ -3,8 +3,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { getSession } from "@/lib/auth";
 import { isKeeperUser } from "@/lib/admin";
-import { canViewPost } from "@/lib/visibility";
-import { blockedHandles } from "@/lib/blocks";
+import { canViewPost, hiddenHandles } from "@/lib/visibility";
 import { checkDignity } from "@/lib/dignity";
 import { extractMentions } from "@/lib/mentions";
 import { contentFingerprint } from "@/lib/anti-abuse";
@@ -71,13 +70,13 @@ export async function GET(
       }
     }
     const heartRows = reactions.filter((r) => r.reaction === LIKE_REACTION);
-    const blockedSet = new Set(
-      (await blockedHandles(db, session?.handle ?? null)).map((h) => h.replace(/^@/, ""))
+    // Same rule as the feed: a viewer's liked-by list never names accounts they
+    // could not follow — blocked ones, or private/locked accounts they don't follow.
+    const hiddenLikers = new Set(
+      (await hiddenHandles(db, session?.handle ?? null)).map(normHandle)
     );
     const likedBy = buildLikedBy(
-      heartRows.filter(
-        (r) => !blockedSet.has((r.handle ?? "").trim().toLowerCase().replace(/^@/, ""))
-      ),
+      heartRows.filter((r) => !hiddenLikers.has(normHandle(String(r.handle ?? "")))),
       nameByHandle,
       8
     );

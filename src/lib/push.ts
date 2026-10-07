@@ -170,6 +170,32 @@ export async function removePushSubscription(
   return (await db.collection("push_subscriptions").deleteOne(filter)).deletedCount > 0;
 }
 
+/**
+ * How many devices will actually be pushed to, and whether the caller is one
+ * of them. The count is what sendPushToHandle would fan out to (same handle
+ * matching, same newest-first cap), so it is a real delivery prediction rather
+ * than a stored preference: `push_enabled` stays true after a subscription
+ * silently dies — a cleared Home Screen icon, a revoked origin, an OS pruning
+ * the service worker — and the toggle would keep reading "on" while nothing
+ * arrives. `mine: false` under granted permission is exactly that case.
+ */
+export async function getPushStatus(
+  db: Db,
+  handle: string,
+  endpoint: string | null
+): Promise<{ count: number; mine: boolean }> {
+  const subs = await db
+    .collection("push_subscriptions")
+    .find({ handle: { $in: handleVariants(handle) } }, { projection: { endpoint: 1 } })
+    .sort({ updated_at: -1 })
+    .limit(MAX_SUBS_PER_HANDLE)
+    .toArray();
+  return {
+    count: subs.length,
+    mine: Boolean(endpoint && subs.some((s) => String(s.endpoint) === endpoint)),
+  };
+}
+
 export async function sendPushToHandle(
   db: Db,
   handle: string,

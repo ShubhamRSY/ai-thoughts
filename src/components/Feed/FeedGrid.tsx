@@ -21,6 +21,7 @@ interface FeedGridProps {
   othersMap?: Record<string, number>;
   emptyHint?: string;
   loading?: boolean;
+  onRetry?: () => void;
   focusPostId?: string | null;
 }
 
@@ -46,6 +47,7 @@ export default function FeedGrid({
   othersMap,
   emptyHint,
   loading,
+  onRetry,
   focusPostId,
 }: FeedGridProps) {
   const following = new Set(
@@ -72,6 +74,15 @@ export default function FeedGrid({
         <p className="mt-2 text-sm text-[var(--muted)]">
           {emptyHint ?? "Be the first to share how AI makes you feel."}
         </p>
+        {onRetry && (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="mt-4 rounded-full border border-[var(--border-base)] px-5 py-2 text-sm font-semibold text-[var(--foreground)] hover:border-[var(--accent)]"
+          >
+            Try again
+          </button>
+        )}
       </div>
     );
   }

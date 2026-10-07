@@ -188,15 +188,27 @@ test.describe("3. a suspended account disappears from people and search", () => 
       };
       return people.some((p) => norm(p.handle) === q);
     };
-    const inSearch = async () => {
-      const { people } = (await (await viewer.api.get(`/api/search?q=${encodeURIComponent(q)}`)).json()) as {
+const inSearch = async () => {
+      const { people } = await (await viewer.api.get(`/api/search?q=${encodeURIComponent(q)}`)).json() as {
         people: { handle: string }[];
       };
       return people.some((p) => norm(p.handle) === q);
     };
+    const profile = async () =>
+      (await (await viewer.api.get(`/api/profile?handle=${encodeURIComponent(victim.handle)}`)).json())
+        .profile;
+
+    // A real account has a profiles row once onboarded. Users created here
+    // skip that step, so give the victim one — the leak under test is that a
+    // suspended account still answers on /api/profile even though this row
+    // lives on after a ban.
+    await db()
+      .collection("profiles")
+      .updateOne({ handle: victim.handle }, { $set: { author: victim.handle, bio: "e2e" } }, { upsert: true });
 
     // Visible while active.
     expect(await inPeople()).toBe(true);
+    expect(await profile(), "an active account's profile shell is visible").not.toBeNull();
 
     // Suspend directly in the DB — banUser is the route under test elsewhere,
     // and this is the state a ban leaves behind (posts removed, profiles row kept).
@@ -209,6 +221,7 @@ test.describe("3. a suspended account disappears from people and search", () => 
 
     expect(await inPeople(), "a banned account must not appear in people search").toBe(false);
     expect(await inSearch(), "a banned account must not appear in search").toBe(false);
+    expect(await profile(), "a banned account's profile must look gone too").toBeNull();
 
     const follow = await viewer.api.post("/api/follows", {
       data: { handle: victim.handle, action: "follow" },

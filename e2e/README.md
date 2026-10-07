@@ -37,6 +37,12 @@ Mongo `start-test-mongo.sh` starts, and waits for it to respond. Override
 different, or set `E2E_BASE_URL` to run against an already-running server
 instead.
 
+Cross-engine smoke coverage is opt-in: `E2E_CROSS=1 npm run test:e2e` adds
+Firefox and WebKit projects (`npx playwright install firefox webkit` first).
+It's gated because a full 3-browser run is slow with the shared in-memory
+rate limiter; `e2e/feed-retry.spec.ts` is skipped on WebKit while its route
+interception stays flaky there (see the note in that spec).
+
 ## Design notes
 
 - Selectors use roles/labels/visible text (`getByRole`, `getByLabel`), not CSS

@@ -3,6 +3,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
 import { ObjectId } from "mongodb";
 import { reportError } from "@/lib/report-error";
+import { rateLimit } from "@/lib/rate-limit";
 
 function normHandle(h: string) {
   return h.trim().toLowerCase().replace(/^@/, "");
@@ -54,6 +55,16 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+
+    // Per account: a scripted actor hammering "read all" (or marking rows read
+    // one by one) is the only load this endpoint can be put under.
+    const { ok, retryInSec } = await rateLimit(`activity:${session.id}`, 60, 5 * 60_000);
+    if (!ok) {
+      return NextResponse.json(
+        { error: "Too many requests — try again shortly", retry_in_sec: retryInSec },
+        { status: 429 }
+      );
+    }
 
     const body = await request.json().catch(() => ({}));
     const { db } = await connectToDatabase();

@@ -781,6 +781,11 @@ export default function Home() {
                     {...cardActions}
                     loading={feedStatus === "loading"}
                     focusPostId={focusPostId}
+                    onRetry={
+                      feedStatus === "error"
+                        ? () => void reloadFeed({ silent: false })
+                        : undefined
+                    }
                     emptyHint={
                       feedStatus === "error"
                         ? "Couldn’t load Voices — check your connection and try again."

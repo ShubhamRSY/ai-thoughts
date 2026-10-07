@@ -393,8 +393,13 @@ export async function GET(request: NextRequest) {
     const messageCounts = new Map<string, number>();
     for (const row of messageRows) if (row._id) messageCounts.set(String(row._id), row.n);
 
-    // Names of blocked users are dropped from "liked by"; the counts are left alone.
-    const blockedSet = new Set((await blockedP).map(normHandle));
+    // Identities the viewer may not follow disappear from "liked by": blocked
+    // accounts, plus private/locked accounts they don't follow (otherwise a
+    // stranger could read a private account's activity through someone else's
+    // public post). The counts themselves are left alone.
+    const hiddenLikers = new Set(
+      (await hiddenHandles(db, viewerHandle, undefined, blockedP)).map(normHandle)
+    );
 
     // Private files only open through a short-lived signed link, handed out
     // here because this viewer passed the visibility filters above.
@@ -414,7 +419,7 @@ export async function GET(request: NextRequest) {
       const rows = rowsByPost[id] ?? [];
       const heartRows = rows.filter((r) => r.reaction === LIKE_REACTION);
       const likedBy = buildLikedBy(
-        heartRows.filter((r) => !blockedSet.has(normHandle(String(r.handle ?? "")))),
+        heartRows.filter((r) => !hiddenLikers.has(normHandle(String(r.handle ?? "")))),
         nameByHandle,
         5
       );

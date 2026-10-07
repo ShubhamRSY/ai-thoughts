@@ -3,6 +3,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { getSession } from "@/lib/auth";
 import { getPrefs, upsertPrefs } from "@/lib/prefs";
 import { reportError } from "@/lib/report-error";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function GET() {
   try {
@@ -25,6 +26,14 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+    // Per account; a prefs write touching email/digest/push is a low-volume op.
+    const { ok, retryInSec } = await rateLimit(`prefs:${session.id}`, 30, 10 * 60_000);
+    if (!ok) {
+      return NextResponse.json(
+        { error: "Too many preference changes — try again shortly", retry_in_sec: retryInSec },
+        { status: 429 }
+      );
+    }
     const body = await request.json();
     const { db } = await connectToDatabase();
     const prefs = await upsertPrefs(db, session.handle, {

@@ -414,6 +414,21 @@ export async function reportChat(conversationId: string, reason: string): Promis
   }
 }
 
+/** Report a reply/comment on a take to the keepers. */
+export async function reportComment(messageId: string, reason: string): Promise<boolean> {
+  try {
+    await jsonFetch(`${API}/reports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target_type: "comment", target_id: messageId, reason }),
+    });
+    return true;
+  } catch (e) {
+    console.error("reportComment:", e);
+    return false;
+  }
+}
+
 export interface ReportedChat {
   preserved: boolean;
   messages: { from: string; reported: boolean; body: string; created_at: string }[];

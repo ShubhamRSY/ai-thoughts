@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { FEELINGS } from "@/lib/feelings";
 import { isValidMoodDay, setMood, weekMoods } from "@/lib/mood";
+import { rateLimit } from "@/lib/rate-limit";
 
 const FEELING_IDS = new Set<string>(FEELINGS.map((f) => f.id));
 
@@ -10,6 +11,16 @@ const FEELING_IDS = new Set<string>(FEELINGS.map((f) => f.id));
 export async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+
+  // Each mood row is a (handle, day) write; bound it so a loop can't grow the
+  // moods collection on demand. The honest client posts far less than this.
+  const { ok, retryInSec } = await rateLimit(`mood:${session.id}`, 30, 10 * 60_000);
+  if (!ok) {
+    return NextResponse.json(
+      { error: "Too many mood taps — try again shortly", retry_in_sec: retryInSec },
+      { status: 429 }
+    );
+  }
 
   const body = await request.json().catch(() => ({}));
   const feelings = body.feelings ?? (body.feeling ? [body.feeling] : []);

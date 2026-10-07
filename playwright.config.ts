@@ -44,6 +44,22 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
     },
+    // Cross-browser smoke coverage, opt-in: `E2E_CROSS=1 npx playwright test`.
+    // Default stays chromium-only — the in-memory rate limiter and shared
+    // dev-server process make a full 3-browser run slow, but the smoke specs
+    // (auth, feed retry) catch layout/engine bugs on the other two engines.
+    ...(process.env.E2E_CROSS === "1"
+      ? [
+          {
+            name: "firefox",
+            use: { ...devices["Desktop Firefox"] },
+          },
+          {
+            name: "webkit",
+            use: { ...devices["Desktop Safari"] },
+          },
+        ]
+      : []),
   ],
   webServer: process.env.E2E_BASE_URL
     ? undefined

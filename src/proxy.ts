@@ -74,6 +74,44 @@ const unavailable = () =>
     { status: 503, headers: { "Retry-After": "5" } }
   );
 
+// A DB blip during a page navigation must not dump raw JSON at the reader.
+// Same 503, self-contained markup (no external refs), with an auto-reload.
+const unavailablePage = () => {
+  const html = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>AiTo is briefly unavailable</title>
+<style>
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#0b0f14;color:#ecf2fa;display:grid;place-items:center;min-height:100dvh}
+  main{max-width:26rem;padding:2rem 1.5rem;text-align:center}
+  h1{font-size:1.35rem;margin:0 0 .5rem}
+  p{font-size:.95rem;line-height:1.55;color:#93a3b4;margin:0 0 1.25rem}
+  button{background:#2f7ccf;border:0;color:#fff;font-weight:600;font-size:.95rem;border-radius:999px;padding:.65rem 1.5rem;cursor:pointer}
+  button:hover{background:#3c8be0}
+</style>
+</head>
+<body>
+<main>
+  <h1>AiTo is briefly unavailable</h1>
+  <p>Something went wrong on our side. Try again in a few seconds — your login is safe.</p>
+  <button type="button" onclick="location.reload()">Try again</button>
+</main>
+</body>
+</html>`;
+  return new NextResponse(html, {
+    status: 503,
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "Retry-After": "5",
+      "cache-control": "no-store",
+      "x-robots-tag": "noindex",
+    },
+  });
+};
+
 // Every route destructures `await request.json()` inside a catch-all that
 // answers 500, so `{` or `null` turned into server errors (and error-log
 // noise anyone could generate). Rejecting it here covers all of them.
@@ -181,7 +219,7 @@ export async function proxy(request: NextRequest) {
 
   if (under(pathname, PROTECTED_PATHS)) {
     const valid = await hasValidSession(request);
-    if (valid === null) return unavailable();
+    if (valid === null) return unavailablePage();
     if (!valid) {
       const signInUrl = new URL("/sign-in", request.url);
       signInUrl.searchParams.set("from", pathname);

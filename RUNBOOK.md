@@ -99,6 +99,12 @@ After deploying, open `/api/health` once: it builds the new unique index on `use
 
 ## Backup restore drill (do once, ~20 min)
 
+> **Restore has never been drilled (as of 2026-10-06).** The tooling below is
+> all in place and the round-trip was verified against live data, but nobody has
+> run `db:restore` + `drill:check --compare` against a real dump. That is the
+> single biggest unverified risk the app ships with. Schedule it before
+> inviting real users; record the restore duration and data-loss window here.
+
 **Current state: production has no managed backups.** `atlas-teal-basket` runs
 on the Atlas **Free Plan (M0)**, which does not offer Cloud Backup or snapshots
 at any setting — there is no snapshot to restore. The manual dump below is
@@ -185,7 +191,7 @@ The Terms promise action on reports **within 24 hours** (App Store rule 1.2). So
 ## Still host-owned (cannot be coded away)
 
 - Atlas IP allowlist / private networking
-- Backup restore drill (do once) — blocked while production is on the Free Plan; see drill section
+- Backup restore drill (do once) — tooling ready, never actually drilled; see drill section
 - Who is on the keeper list
 - Watching Resend + Vercel logs for spikes
 
@@ -207,12 +213,17 @@ The Terms promise action on reports **within 24 hours** (App Store rule 1.2). So
 - **Missing index.** `messages.messages_post_created` is absent on production
   (an older `messages.post_id_1_created_at_1` is there instead), so
   `ensureCoreIndexes` is not completing cleanly. Harmless at 1 message.
-- **Backup job is unverified end-to-end in production.** It is unit-tested and
-  the dump/restore round-trip was verified against live data, but the cron has
-  never actually run on Vercel. Check it after the first scheduled run:
-  `curl -sS https://YOUR_APP/api/cron/backup -H "Authorization: Bearer $CRON_SECRET"`.
-  If it returns 502 about private access, `BLOB_READ_WRITE_TOKEN` is a public
-  store token and the job will not upload — that is intentional.
-- **A silent backup is worse than none.** Nobody is alerted if the cron stops
-  running. Consider wiring a staleness check into `/api/health`.
+- **Backup job unverified end-to-end as of 2026-10-06.** Unit-tested, dump/restore
+  round-trip verified against live data, and a Sentry Cron monitor (`db-backup`,
+  added 2026-10-05) now alerts on missed/failed runs — but no successful run has
+  been *recorded* since the cron was scheduled (2026-09-29), so it may be failing
+  silently (e.g. private-store token). Check after the next scheduled run:
+  `curl -sS https://YOUR_APP/api/cron/backup -H "Authorization: Bearer $CRON_SECRET"`,
+  and look at `backups/` in the private Blob store. If it returns 502 about
+  private access, `BLOB_READ_WRITE_TOKEN` is a public-store token and the job
+  will not upload — that is intentional.
+- **Backup staleness is now surfaced.** `/api/health` reports the newest backup's
+  age (`backup.age_seconds`) to authorized Bearer callers, so a stopped cron is
+  visible without opening the app. Wire it into whatever Slack/PagerDuty alerting
+  watches production.
 

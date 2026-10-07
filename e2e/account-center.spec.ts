@@ -235,6 +235,20 @@ test("account center: email digests toggle independently, help links exist, view
   await expect(page.getByText("Invite someone")).toBeVisible();
 });
 
+test("account center: push health admits no channel until a device registers", async ({ page }) => {
+  await asClient(page, ip(9));
+  await signIn(page.request, "pushhealth", ip(9));
+  await skipOnboarding(page);
+  await page.goto("/app");
+  await openAccountCenter(page);
+
+  // A fresh account has no device registered, so push can't reach anyone. The
+  // settings screen must say so out loud instead of letting "off by default"
+  // masquerade as "enabled", and point at the email that still works.
+  await expect(page.getByText(/No device is receiving push/)).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(/security alerts still go to your email/i)).toBeVisible();
+});
+
 test("account center: device permissions reflect the browser's real state", async ({ page, context }) => {
   await asClient(page, ip(8));
   await signIn(page.request, "perms", ip(8));

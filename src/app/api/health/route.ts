@@ -63,6 +63,34 @@ export async function GET(request: Request) {
 
   const authorized = await hasSecret(request);
 
+  // Newest verified backup on the private store, so an authorized caller can
+  // spot a cron that silently stopped (RUNBOOK: "a silent backup is worse than
+  // none"). Metadata only — never a URL/path that opens the archive.
+  let backup: { age_seconds: number; taken_label: string } | undefined;
+  if (authorized && (process.env.BLOB_PRIVATE_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN)) {
+    try {
+      const { list } = await import("@vercel/blob");
+      const token =
+        process.env.BLOB_PRIVATE_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN;
+      const existing = (await list({ prefix: "backups/", token })) as {
+        blobs?: Array<{ uploadedAt?: Date | string }>;
+      };
+      const newest = (existing.blobs ?? [])
+        .map((b) => new Date(b.uploadedAt ?? 0).getTime())
+        .filter((t) => t > 0)
+        .sort((a, b) => b - a)[0];
+      if (newest) {
+        backup = {
+          age_seconds: Math.max(0, Math.floor((Date.now() - newest) / 1000)),
+          taken_label: new Date(newest).toISOString(),
+        };
+      }
+    } catch (e) {
+      // The health check must never go red because backup metadata won't load.
+      reportError(e, { route: "api/health", service: "blob" });
+    }
+  }
+
   return NextResponse.json(
     {
       ok: healthy,
@@ -80,7 +108,12 @@ export async function GET(request: Request) {
           : {}),
       },
       mongo,
-      ...(authorized ? { indexes } : {}),
+      ...(authorized
+        ? {
+            indexes,
+            backup,
+          }
+        : {}),
     },
     {
       status: healthy ? 200 : 503,

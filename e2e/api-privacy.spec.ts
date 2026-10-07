@@ -234,6 +234,39 @@ test.describe("account privacy: identity and discovery", () => {
   });
 });
 
+test.describe("account privacy: liked_by never names hidden accounts", () => {
+  test("a private account's like stays anonymous to strangers but visible to followers", async () => {
+    // B goes private and likes A's public post.
+    await setPrivacy(B, "private");
+    const like = await B.api.post(`/api/posts/${postId}/reactions`, {
+      data: { reaction: "❤️" },
+    });
+    expect(like.ok(), await like.text()).toBeTruthy();
+
+    const likedBy = async (viewer: U) => {
+      const post = await (await viewer.api.get(`/api/posts/${postId}`)).json();
+      return (post.liked_by as { handle: string }[]).map((p) => norm(p.handle));
+    };
+
+    // Neither the owner nor a stranger follows private B now, so neither may
+    // learn B reacted to the post.
+    expect(await likedBy(A)).not.toContain(norm(B.handle));
+    expect(await likedBy(C)).not.toContain(norm(B.handle));
+    // The reaction itself still counts.
+    const post = await (await A.api.get(`/api/posts/${postId}`)).json();
+    expect(post.like_count).toBeGreaterThan(0);
+
+    // Once B approves C as a follower, C is allowed to see the reaction.
+    await follow(C, B);
+    await follow(B, C, "approve");
+    expect(await likedBy(C)).toContain(norm(B.handle));
+
+    // Leave the cast as we found it.
+    await follow(C, B, "unfollow");
+    await setPrivacy(B, "public");
+  });
+});
+
 test.describe("account privacy: notifications", () => {
   test("a mention on a private thread never reaches someone who can't open it", async () => {
     const mentionsForC = async () =>

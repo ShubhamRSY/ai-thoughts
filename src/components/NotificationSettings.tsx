@@ -22,9 +22,41 @@ export default function NotificationSettings({ signedIn }: { signedIn: boolean }
   const [pushOn, setPushOn] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushConfigured, setPushConfigured] = useState(true);
+  // Live channel health from the server, distinct from the stored preference:
+  // { count, mine } — who will actually be pushed to, and whether this browser
+  // is one of them. null = not checked yet.
+  const [health, setHealth] = useState<{ count: number; mine: boolean } | null>(null);
+  // iOS only exposes Web Push to Home Screen web apps, so an iPhone in a plain
+  // Safari tab can have push enabled here and still never receive anything.
+  const [needsHomeScreen, setNeedsHomeScreen] = useState(false);
   const [emailDigest, setEmailDigest] = useState(false);
   const [weeklyDigest, setWeeklyDigest] = useState(false);
   const [prefsBusy, setPrefsBusy] = useState(false);
+
+  /** Ask the server who is really registered, comparing against what this browser holds. */
+  const refreshHealth = useCallback(async () => {
+    if (!signedIn) return;
+    let endpoint: string | null = null;
+    try {
+      if ("serviceWorker" in navigator) {
+        const reg = await navigator.serviceWorker.getRegistration();
+        endpoint = (await reg?.pushManager.getSubscription())?.endpoint ?? null;
+      }
+    } catch {
+      /* no registration — still worth asking for the account-wide count */
+    }
+    try {
+      const res = await fetch("/api/push/status", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint }),
+      });
+      if (res.ok) setHealth(await res.json());
+    } catch {
+      /* leave the last known state rather than flashing an empty warning */
+    }
+  }, [signedIn]);
 
   useEffect(() => {
     if (!signedIn) return;
@@ -51,11 +83,28 @@ export default function NotificationSettings({ signedIn }: { signedIn: boolean }
       } catch {
         /* ignore */
       }
+      if (!cancelled) await refreshHealth();
     })();
     return () => {
       cancelled = true;
     };
-  }, [signedIn]);
+  }, [signedIn, refreshHealth]);
+
+  // Device capability, independent of account state. Checked after mount so the
+  // server render and the first client render agree.
+  useEffect(() => {
+    const ua = navigator.userAgent;
+    const ios =
+      /iPad|iPhone|iPod/.test(ua) ||
+      // iPadOS reports itself as macOS and only gives itself away here.
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    if (!ios) return;
+    const asApp =
+      // Non-standard: Safari on iOS only, absent everywhere else.
+      (navigator as { standalone?: boolean }).standalone ||
+      window.matchMedia?.("(display-mode: standalone)").matches;
+    setNeedsHomeScreen(!asApp);
+  }, []);
 
   const setNudge = useCallback((enabled: boolean) => {
     const next = { ...readNudgePrefs(), enabled };
@@ -105,13 +154,14 @@ export default function NotificationSettings({ signedIn }: { signedIn: boolean }
       if (!res.ok) throw new Error("subscribe failed");
       setPushOn(true);
       setNudge(true);
+      await refreshHealth();
     } catch (e) {
       console.error(e);
       alert("Couldn’t enable Web Push on this device.");
     } finally {
       setPushBusy(false);
     }
-  }, [signedIn, setNudge]);
+  }, [signedIn, setNudge, refreshHealth]);
 
   const disableWebPush = useCallback(async () => {
     setPushBusy(true);
@@ -130,9 +180,12 @@ export default function NotificationSettings({ signedIn }: { signedIn: boolean }
     } catch {
       /* ignore */
     } finally {
+      // Re-read even after a partial failure: the honest count matters more
+      // than the optimistic one, and this is exactly when they'd disagree.
+      await refreshHealth();
       setPushBusy(false);
     }
-  }, []);
+  }, [refreshHealth]);
 
   // Send only the field that changed: /api/prefs is a patch.
   const saveEmailPrefs = useCallback(
@@ -157,6 +210,12 @@ export default function NotificationSettings({ signedIn }: { signedIn: boolean }
     },
     [signedIn]
   );
+
+  // Derived from live server state, not the stored preference — the whole point
+  // is that the preference can say "on" while nobody is registered.
+  const noPushChannel = health !== null && health.count === 0;
+  const lostOnThisDevice =
+    health !== null && health.count > 0 && perm === "granted" && !health.mine;
 
   return (
     <div className="space-y-3">
@@ -185,6 +244,46 @@ export default function NotificationSettings({ signedIn }: { signedIn: boolean }
                     ? "Notifications blocked"
                     : "Enable Web Push"}
             </button>
+
+            {health !== null && (
+              <div
+                role="status"
+                className={`mt-3 rounded-xl border px-3 py-2 text-xs leading-relaxed ${
+                  noPushChannel || lostOnThisDevice
+                    ? "border-amber-200 bg-amber-50 text-amber-800"
+                    : "border-[var(--border-base)] bg-[var(--surface-2)] text-[var(--muted)]"
+                }`}
+              >
+                {noPushChannel ? (
+                  <>
+                    <span className="font-semibold">No device is receiving push.</span>{" "}
+                    Push can’t reach you until you enable it somewhere — security
+                    alerts still go to your email.
+                  </>
+                ) : lostOnThisDevice ? (
+                  <>
+                    <span className="font-semibold">This device stopped receiving push.</span>{" "}
+                    Its registration expired. Turn push off and back on here to
+                    restore it; other devices are unaffected.
+                  </>
+                ) : (
+                  <>
+                    Receiving push on{" "}
+                    <span className="font-semibold text-[var(--foreground)]">
+                      {health.count} {health.count === 1 ? "device" : "devices"}
+                    </span>
+                    {health.mine ? ", including this one." : "."}
+                  </>
+                )}
+              </div>
+            )}
+
+            {needsHomeScreen && (
+              <p className="mt-2 text-xs leading-relaxed text-amber-800">
+                On iPhone or iPad, push only works after adding this app to your Home
+                Screen. Until then these alerts reach you by email.
+              </p>
+            )}
           </div>
         </div>
       </div>

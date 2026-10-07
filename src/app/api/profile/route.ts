@@ -13,6 +13,7 @@ import {
 } from "@/lib/auth";
 import { checkDisplayNameAllowed, checkHandleAllowed } from "@/lib/anti-abuse";
 import { getVisibility } from "@/lib/visibility";
+import { isSuspended } from "@/lib/moderation";
 import { upsertPrefs } from "@/lib/prefs";
 import { decryptEmail } from "@/lib/secure";
 import { reportError } from "@/lib/report-error";
@@ -45,6 +46,10 @@ export async function GET(request: NextRequest) {
     if (!handle) return NextResponse.json({ profile: null });
     const { db } = await connectToDatabase();
     const session = await getSession();
+    // Banned handles vanish from the app; their profiles row lives on (so the
+    // same email can't re-register). A stale link, share card or follow badge
+    // can still hit /api/profile directly, so answer like the profile is gone.
+    if (await isSuspended(db, handle)) return NextResponse.json({ profile: null });
     const vis = await getVisibility(db, session?.handle ?? null, handle);
     if (!vis.profile) return NextResponse.json({ profile: null });
     const profile = await db.collection("profiles").findOne({ handle });
