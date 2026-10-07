@@ -238,6 +238,26 @@ export async function GET(request: NextRequest) {
     void blockedP.catch(() => {}); // awaited below; avoids an unhandled rejection if we bail out first
     const mutedP = mutedHandles(db, viewerHandle);
     void mutedP.catch(() => {});
+    if (request.nextUrl.searchParams.get("saved") === "1") {
+      // The caller's bookmarks (private to them). Still runs through the
+      // visibility filters below, so a take they can no longer see drops out.
+      const savedIds = viewerHandle
+        ? (
+            await db
+              .collection("reactions")
+              .find({ handle: { $in: handleVariants(viewerHandle) }, reaction: BOOKMARK_REACTION })
+              .sort({ created_at: -1 })
+              .limit(200)
+              .project({ post_id: 1 })
+              .toArray()
+          )
+            .map((r) => String(r.post_id))
+            .filter((id) => ObjectId.isValid(id))
+            .map((id) => new ObjectId(id))
+        : [];
+      filter = { _id: { $in: savedIds } };
+      limit = 200;
+    }
     let hidden: string[] | null = null;
     if (request.nextUrl.searchParams.get("archived") === "1") {
       // The caller's own archive: only ever their own takes, newest first.

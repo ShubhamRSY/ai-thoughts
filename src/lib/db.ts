@@ -179,6 +179,18 @@ export async function fetchPostsByHandle(handle: string): Promise<Thought[]> {
   }
 }
 
+/** The signed-in reader's bookmarked takes, from any point in the feed. */
+export async function fetchSavedPosts(): Promise<Thought[]> {
+  try {
+    const q = new URLSearchParams({ saved: "1", t: String(Date.now()) });
+    const rows = await jsonFetch<RawPost[]>(`${API}/posts?${q}`);
+    return rows.map(toThought);
+  } catch (e) {
+    console.error("fetchSavedPosts:", e);
+    return [];
+  }
+}
+
 /** Takes where this handle was @mentioned in the take's own content. */
 export async function fetchPostsTagged(handle: string): Promise<Thought[]> {
   try {

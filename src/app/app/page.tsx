@@ -35,6 +35,7 @@ import { FEED_PAGE_SIZE } from "@/lib/types";
 import {
   fetchPulsePosts,
   fetchPostsByHandle,
+  fetchSavedPosts,
   publishPost,
   addReaction,
   reportPost,
@@ -53,7 +54,6 @@ import type { RegionScope } from "@/components/Feed/FilterBar";
 import { todayKey as promptTodayKey, dailyPrompt } from "@/lib/daily-prompt";
 import { LANGS } from "@/lib/mock-data";
 import { fakeHash } from "@/lib/integrity";
-import { BOOKMARK_REACTION } from "@/lib/likes";
 
 type MediaFilter = "all" | MediaType;
 
@@ -91,8 +91,15 @@ export default function Home() {
   /** Handle whose profile the "You" tab is currently showing (null = your own). */
   const [viewProfileHandle, setViewProfileHandle] = useState<string | null>(null);
   const [showAccount, setShowAccount] = useState(false);
-  const { items: activityItems, unread: activityUnread, markAllRead, refresh: refreshActivity } =
-    useActivity(!!user);
+  const {
+    items: activityItems,
+    unread: activityUnread,
+    markAllRead,
+    markRead,
+    clear: clearActivity,
+    clearAll: clearAllActivity,
+    refresh: refreshActivity,
+  } = useActivity(!!user);
   const { maintenance, message: maintenanceMessage, featured } = useSiteFlags();
 
   // Direct messages: the inbox drives the header badge and the Messages view.
@@ -541,25 +548,19 @@ export default function Home() {
     [user]
   );
 
-  // Unsaving from the Saved list needs the feed's own `bookmarkedByMe` flag
-  // flipped too — FeedCard's optimistic toggle is local-only, so without
-  // this the item would only disappear after the next full feed refetch.
-  const onUnsave = useCallback(
-    async (thoughtId: string) => {
-      setThoughts((prev) =>
-        prev.map((t) => (t.id === thoughtId ? { ...t, bookmarkedByMe: false } : t))
-      );
-      const ok = await onReact(thoughtId, BOOKMARK_REACTION);
-      if (ok === false) {
-        setThoughts((prev) =>
-          prev.map((t) => (t.id === thoughtId ? { ...t, bookmarkedByMe: true } : t))
-        );
-      }
-    },
-    [onReact]
-  );
-
-  const saved = useMemo(() => thoughts.filter((t) => t.bookmarkedByMe), [thoughts]);
+  // Saved takes come from the server (older bookmarks aren't in the loaded
+  // feed), refreshed each time the You tab opens so new bookmarks show up.
+  const [saved, setSaved] = useState<Thought[]>([]);
+  useEffect(() => {
+    if (tab !== "you" || !user) return;
+    let cancelled = false;
+    void fetchSavedPosts().then((rows) => {
+      if (!cancelled) setSaved(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, user]);
   const reposted = useMemo(() => thoughts.filter((t) => t.boostedByMe), [thoughts]);
 
   const reloadFeed = useCallback(
@@ -920,6 +921,9 @@ export default function Home() {
             signedIn={!!user}
             following={following}
             onMarkAllRead={() => void markAllRead()}
+            onMarkRead={markRead}
+            onClear={clearActivity}
+            onClearAll={clearAllActivity}
             onSelectPost={openActivityPost}
             onUnfollow={(handle) => void onFeelWith(handle, false)}
             onInvite={() => void invitePeople()}
@@ -990,7 +994,6 @@ export default function Home() {
                     onArchive={user ? onArchive : undefined}
                   />
                 )}
-                onUnsave={onUnsave}
                 viewHandle={viewingOther ? viewProfileHandle! : undefined}
                 onFollowToggle={(handle, next) => onFeelWith(handle, next)}
                 onBack={() => setViewProfileHandle(null)}

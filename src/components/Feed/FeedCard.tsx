@@ -23,7 +23,6 @@ import {
   FEEL_REACTIONS,
   formatLikedBy,
 } from "@/lib/likes";
-import { FEELING_EDGE } from "@/lib/feelings";
 import { markViewed } from "@/lib/db";
 import AudioPlayer from "@/components/Player/AudioPlayer";
 import VideoPlayer from "@/components/Player/VideoPlayer";
@@ -324,8 +323,7 @@ export default function FeedCard({
       id={`card-${thought.id}`}
       data-feed-card
       tabIndex={-1}
-      style={{ borderLeftColor: (thought.feeling && FEELING_EDGE[thought.feeling]) || "transparent" }}
-      className="relative isolate -mx-2 rounded-r-lg border-b border-l-[3px] border-[var(--border-base)] bg-[var(--surface)] py-4 pl-3 pr-2 outline-none transition-colors hover:bg-[var(--surface-2)]/40 focus-visible:ring-2 focus-visible:ring-[var(--accent)]/40"
+      className="relative isolate -mx-2 rounded-lg border-b border-[var(--border-base)] bg-[var(--surface)] px-2 py-4 outline-none transition-colors hover:bg-[var(--surface-2)]/40 focus-visible:ring-2 focus-visible:ring-[var(--accent)]/40"
     >
       <div className="flex items-start gap-3">
         <div className="relative mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-2)] text-[11px] font-semibold text-[var(--foreground)]">

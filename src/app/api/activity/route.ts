@@ -79,6 +79,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
+    if (body.action === "clear_all") {
+      await db.collection("notifications").deleteMany({ recipient_handle: { $in: variants } });
+      return NextResponse.json({ ok: true });
+    }
+
+    // { id } marks one read; { id, action: "clear" } removes it.
     if (typeof body.id === "string") {
       let oid: ObjectId;
       try {
@@ -90,7 +96,8 @@ export async function POST(request: NextRequest) {
       if (!row || normHandle(String(row.recipient_handle || "")) !== me) {
         return NextResponse.json({ error: "Not found" }, { status: 404 });
       }
-      await db.collection("notifications").updateOne({ _id: oid }, { $set: { read: true } });
+      if (body.action === "clear") await db.collection("notifications").deleteOne({ _id: oid });
+      else await db.collection("notifications").updateOne({ _id: oid }, { $set: { read: true } });
       return NextResponse.json({ ok: true });
     }
 

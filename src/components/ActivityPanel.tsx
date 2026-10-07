@@ -56,5 +56,37 @@ export function useActivity(enabled: boolean) {
     }
   }, []);
 
-  return { items, unread, refresh, markAllRead };
+  const post = (body: object) =>
+    fetch("/api/activity", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).catch(() => {});
+
+  /** Tapped: that one notification has been seen. */
+  const markRead = useCallback((id: string) => {
+    setItems((prev) => {
+      const hit = prev.find((i) => i.id === id && !i.read);
+      if (hit) setUnread((n) => Math.max(0, n - 1));
+      return hit ? prev.map((i) => (i.id === id ? { ...i, read: true } : i)) : prev;
+    });
+    void post({ id });
+  }, []);
+
+  const clear = useCallback((id: string) => {
+    setItems((prev) => {
+      if (prev.some((i) => i.id === id && !i.read)) setUnread((n) => Math.max(0, n - 1));
+      return prev.filter((i) => i.id !== id);
+    });
+    void post({ id, action: "clear" });
+  }, []);
+
+  const clearAll = useCallback(() => {
+    setItems([]);
+    setUnread(0);
+    void post({ action: "clear_all" });
+  }, []);
+
+  return { items, unread, refresh, markAllRead, markRead, clear, clearAll };
 }

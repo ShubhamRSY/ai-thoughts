@@ -70,9 +70,8 @@ test.describe("post actions: repost, bookmark, views", () => {
     expect(bookmarked.boosted_by_me).toBe(false);
     expect(bookmarked.bookmarked_by_me).toBe(true);
 
-    // Removing the bookmark (what the Saved list's remove button does) drops
-    // it out of bookmarked_by_me — this is what makes it disappear from the
-    // Saved section on the You tab.
+    // Removing the bookmark (the card's bookmark button) drops it out of
+    // bookmarked_by_me and out of the Saved tab (GET /api/posts?saved=1).
     const bookmarkOff = await request.post(`/api/posts/${postId}/reactions`, {
       data: { reaction: "🔖" },
     });

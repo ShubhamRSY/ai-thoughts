@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Ban, Bookmark, Camera, Check, Download, Flag, Lock, PencilLine, Settings, UserPlus, UserCheck, BellOff, Send } from "lucide-react";
+import { ArrowLeft, Ban, Camera, Check, Download, Flag, Lock, PencilLine, Settings, UserPlus, UserCheck, BellOff, Send } from "lucide-react";
 import ReportDialog from "@/components/ReportDialog";
 import { upload } from "@vercel/blob/client";
 import { stripImageMetadata } from "@/lib/image";
@@ -37,7 +37,6 @@ interface ProfileViewProps {
   onCreate: () => void;
   /** Renders the profile's takes as full feed cards (the page owns their actions). */
   renderPosts: (posts: Thought[]) => ReactNode;
-  onUnsave?: (thoughtId: string) => void;
   /** Handle to view. Omitted/own handle = your own editable profile. */
   viewHandle?: string;
   /** Follow/unfollow the profile being viewed (only used when viewHandle is someone else). */
@@ -71,7 +70,6 @@ export default function ProfileView({
   repostedThoughts = [],
   onCreate,
   renderPosts,
-  onUnsave,
   viewHandle,
   onFollowToggle,
   onBack,
@@ -92,6 +90,7 @@ export default function ProfileView({
   const [onWindows, setOnWindows] = useState(false);
   useEffect(() => setOnWindows(isWindowsBrowser()), []);
   const [saved, setSaved] = useState(false);
+  const [listTab, setListTab] = useState<"takes" | "saved">("takes");
   const [error, setError] = useState<string | null>(null);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -636,10 +635,43 @@ export default function ProfileView({
       )}
 
       <div className="mt-6">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-          {isOwn ? "Your takes" : "Posts"}
-        </p>
-        {postsList.length === 0 ? (
+        {isOwn ? (
+          <div role="tablist" className="mb-3 flex gap-5 border-b border-[var(--border-base)]">
+            {(
+              [
+                ["takes", "Your takes", postsList.length],
+                ["saved", "Saved", savedThoughts.length],
+              ] as const
+            ).map(([id, label, count]) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={listTab === id}
+                onClick={() => setListTab(id)}
+                className={`-mb-px border-b-2 pb-2 text-sm font-semibold transition ${
+                  listTab === id
+                    ? "border-[var(--foreground)] text-[var(--foreground)]"
+                    : "border-transparent text-[var(--muted)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                {label}
+                {count > 0 && <span className="ml-1 font-normal tabular-nums text-[var(--muted)]">{count}</span>}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">Posts</p>
+        )}
+        {isOwn && listTab === "saved" ? (
+          savedThoughts.length === 0 ? (
+            <p className="rounded-2xl border border-dashed border-[var(--border-base)] bg-[var(--surface)] px-4 py-8 text-center text-sm text-[var(--muted)]">
+              Tap the bookmark on any take to save it here. Only you can see what you save.
+            </p>
+          ) : (
+            renderPosts(savedThoughts)
+          )
+        ) : postsList.length === 0 ? (
           isOwn ? (
             <button
               type="button"
@@ -826,37 +858,6 @@ export default function ProfileView({
                   {t.content}
                 </p>
                 <span className="shrink-0 text-xs tabular-nums text-[var(--muted)]">{t.timeLabel}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {isOwn && savedThoughts.length > 0 && (
-        <div className="mt-6">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-            Saved
-          </p>
-          <div className="flex flex-col gap-2">
-            {savedThoughts.map((t) => (
-              <div
-                key={t.id}
-                className="flex items-center gap-3 rounded-xl border border-[var(--border-base)] bg-[var(--surface)] px-3 py-2.5"
-              >
-                <p dir="auto" className="min-w-0 flex-1 truncate text-sm text-[var(--foreground)]">
-                  {t.content}
-                </p>
-                <span className="shrink-0 text-xs tabular-nums text-[var(--muted)]">{t.timeLabel}</span>
-                {onUnsave && (
-                  <button
-                    type="button"
-                    aria-label="Remove bookmark"
-                    onClick={() => onUnsave(t.id)}
-                    className="shrink-0 rounded-md p-1.5 text-[var(--accent)] hover:bg-[var(--surface-2)]"
-                  >
-                    <Bookmark className="h-3.5 w-3.5" fill="currentColor" />
-                  </button>
-                )}
               </div>
             ))}
           </div>
