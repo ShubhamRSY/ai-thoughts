@@ -104,7 +104,8 @@ export default function LandingMotion({ children }: { children: ReactNode }) {
 
         gsap
           .timeline({ scrollTrigger: { trigger: ".landing-steps", start: "top 85%", once: true } })
-          .from(".landing-steps-title, .landing-step", { y: 28, autoAlpha: 0, duration: 0.7, stagger: 0.1 })
+          // clearProps: LandingDemo dims inactive steps with CSS opacity.
+          .from(".landing-steps-title, .landing-step", { y: 28, autoAlpha: 0, duration: 0.7, stagger: 0.1, clearProps: "opacity,visibility,transform" })
           .from(".landing-step-num", { scale: 0, rotate: -90, duration: 0.6, ease: "back.out(2.5)", stagger: 0.1 }, 0.2);
       });
 

@@ -2,6 +2,7 @@ import Footer from "@/components/Footer";
 import BrandMark from "@/components/BrandMark";
 import LandingCTAs from "@/components/LandingCTAs";
 import LandingMotion from "@/components/LandingMotion";
+import LandingDemo from "@/components/LandingDemo";
 import { getPulseStats, crowdCountLabel } from "@/lib/pulse-stats";
 import { getSession } from "@/lib/auth";
 import { BRAND } from "@/lib/brand";
@@ -89,20 +90,7 @@ export default async function LandingPage() {
           </div>
         </section>
 
-        <section className="landing-steps">
-          <h2 className="landing-steps-title">What you do here</h2>
-          <ol className="landing-steps-grid">
-            {BRAND.whatYouDo.map((step, i) => (
-              <li key={step.title} className="landing-step">
-                <span className="landing-step-num">{i + 1}</span>
-                <div>
-                  <p className="landing-step-title">{step.title}</p>
-                  <p className="landing-step-body">{step.body}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </section>
+        <LandingDemo />
       </LandingMotion>
 
       <div className="landing-footer-wrap">

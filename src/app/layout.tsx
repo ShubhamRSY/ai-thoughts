@@ -71,7 +71,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${fraunces.variable} ${manrope.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-background text-foreground">
+      {/* Extensions such as Grammarly add attributes to <body> before React
+          loads; this ignores those attribute diffs on <body> only. */}
+      <body className="min-h-full bg-background text-foreground" suppressHydrationWarning>
         <AuthProvider>
           <ViewportSync />
           {children}
