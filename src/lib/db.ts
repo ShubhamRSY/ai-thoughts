@@ -282,6 +282,16 @@ export async function publishPost(
         access: process.env.NEXT_PUBLIC_PRIVATE_MEDIA === "1" ? "private" : "public",
         contentType: mediaBlob.type || "application/octet-stream",
         handleUploadUrl: `${API}/upload`,
+        // Long recordings: chunked, retried parts instead of one huge request.
+        multipart: mediaBlob.size > 50 * 1024 * 1024,
+      }).catch((e: Error) => {
+        // The Blob client drops /api/upload's reason (rate or storage limit).
+        if (e.message.includes("client token")) {
+          throw new Error(
+            "Couldn’t start the upload — you may have hit your upload or storage limit. Your take is still here; try again later or delete some older takes."
+          );
+        }
+        throw e;
       });
       mediaUrl = uploaded.url;
     }

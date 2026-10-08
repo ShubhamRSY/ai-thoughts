@@ -22,6 +22,8 @@ export interface UploadRow {
   /** Post id (takes, one post per file) or "profile:<userId>" (avatars); null until used. */
   attached_to: string | null;
   backfilled?: boolean;
+  /** Bytes, recorded when attached; absent on older rows (they count as 0). */
+  size?: number;
 }
 
 const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
@@ -81,7 +83,8 @@ const VIDEO_TYPES = ["video/webm", "video/mp4", "video/ogg", "video/quicktime", 
 
 /**
  * What a token for `pathname` may upload. The extension picks the family;
- * webm/mp4/ogg can be audio or video, so they get the video cap. Avatars are
+ * webm/mp4/ogg can be audio or video, so they get the video cap — large
+ * enough for long recordings; STORAGE_BUDGET_BYTES bounds the total. Avatars are
  * photos only. null = not an upload name we issue tokens for.
  */
 export function uploadCaps(pathname: string): { maxBytes: number; contentTypes: string[] } | null {
@@ -92,7 +95,7 @@ export function uploadCaps(pathname: string): { maxBytes: number; contentTypes: 
   if (parsed.kind === "avatar") return image ? { maxBytes: 10 * MB, contentTypes: IMAGE_TYPES } : null;
   if (image) return { maxBytes: 10 * MB, contentTypes: IMAGE_TYPES };
   if (["m4a", "mp3", "wav", "aac"].includes(ext)) return { maxBytes: 25 * MB, contentTypes: AUDIO_TYPES };
-  return { maxBytes: 150 * MB, contentTypes: [...AUDIO_TYPES, ...VIDEO_TYPES] };
+  return { maxBytes: 500 * MB, contentTypes: [...AUDIO_TYPES, ...VIDEO_TYPES] };
 }
 
 /** Per-account upload quotas: [count, window] pairs per kind. */
@@ -113,6 +116,13 @@ export function quotaWaitSec(kind: UploadKind, recent: Date[], now = Date.now())
   }
   return wait;
 }
+
+/**
+ * Total take storage per account. Over it, new uploads are refused until the
+ * member deletes takes — nothing is ever removed to make room. ~2.5 hours of
+ * video at the recorder's 1.5 Mbps.
+ */
+export const STORAGE_BUDGET_BYTES = 2 * 1024 * MB;
 
 /** Uploads older than this that never made it into a post or profile are removed. */
 export const UNATTACHED_GRACE_MS = 24 * 60 * 60_000;
@@ -157,6 +167,21 @@ export async function uploadQuotaWaitSec(db: Db, ownerId: string, kind: UploadKi
     .project<{ created_at: Date }>({ created_at: 1 })
     .toArray();
   return quotaWaitSec(kind, recent.map((r) => r.created_at));
+}
+
+/** Bytes of takes the account has stored (attached files with a recorded size). */
+export async function storageUsedBytes(db: Db, ownerId: string): Promise<number> {
+  const [row] = await uploads(db)
+    .aggregate<{ total: number }>([
+      { $match: { owner_id: ownerId, kind: "take", size: { $gt: 0 } } },
+      { $group: { _id: null, total: { $sum: "$size" } } },
+    ])
+    .toArray();
+  return row?.total ?? 0;
+}
+
+export async function recordUploadSize(db: Db, key: string, size: number): Promise<void> {
+  await uploads(db).updateOne({ key }, { $set: { size } });
 }
 
 export type AttachCheck = { ok: true; key: string } | { ok: false; status: 400 | 403 | 409; error: string };

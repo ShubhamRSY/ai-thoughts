@@ -62,12 +62,12 @@ describe("which files go with deleted content (H3)", () => {
 
 describe("upload size caps (M4)", () => {
   const MB = 1024 * 1024;
-  it("caps photos at 10 MB, audio-only at 25 MB, audio/video at 150 MB", () => {
+  it("caps photos at 10 MB, audio-only at 25 MB, audio/video at 500 MB", () => {
     assert.equal(uploadCaps(`take-${U}.jpg`)?.maxBytes, 10 * MB);
     assert.equal(uploadCaps(`avatar-${U}.png`)?.maxBytes, 10 * MB);
     assert.equal(uploadCaps(`take-${U}.m4a`)?.maxBytes, 25 * MB);
-    assert.equal(uploadCaps(`take-${U}.webm`)?.maxBytes, 150 * MB);
-    assert.equal(uploadCaps(`take-${U}.mov`)?.maxBytes, 150 * MB);
+    assert.equal(uploadCaps(`take-${U}.webm`)?.maxBytes, 500 * MB);
+    assert.equal(uploadCaps(`take-${U}.mov`)?.maxBytes, 500 * MB);
   });
   it("only lets a photo token upload photos, and avatars be photos", () => {
     assert.ok(uploadCaps(`avatar-${U}.jpg`)!.contentTypes.every((t) => t.startsWith("image/")));

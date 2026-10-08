@@ -172,11 +172,18 @@ export function useMediaRecorder(
       setStream(mediaStream);
 
       const mime = pickMime(kind);
+      // Browsers default to ~2.5 Mbps for 720p; a selfie clip looks the same
+      // at 1.5 Mbps and takes ~40% less storage and bandwidth. 128 kbps is
+      // plenty for voice.
+      const bitrates =
+        kind === "audio"
+          ? { audioBitsPerSecond: 128_000 }
+          : { videoBitsPerSecond: 1_500_000, audioBitsPerSecond: 128_000 };
       let recorder: MediaRecorder;
       try {
         recorder = mime
-          ? new MediaRecorder(mediaStream, { mimeType: mime })
-          : new MediaRecorder(mediaStream);
+          ? new MediaRecorder(mediaStream, { mimeType: mime, ...bitrates })
+          : new MediaRecorder(mediaStream, bitrates);
       } catch {
         recorder = new MediaRecorder(mediaStream);
       }

@@ -55,7 +55,7 @@ export async function isFlaggedContent(opts: { text?: string; imageUrl?: string 
 }
 
 // OpenAI's transcription upload limit. Bigger clips skip screening (reports
-// and keepers still cover them); takes are capped at 2 minutes, so this is rare.
+// and keepers still cover them) — about 2 minutes at the recorder's bitrate.
 const TRANSCRIBE_MAX_BYTES = 25 * 1024 * 1024;
 
 /**

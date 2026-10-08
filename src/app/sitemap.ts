@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getSiteUrl } from "@/lib/site";
+import { BRAND } from "@/lib/brand";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = getSiteUrl();
@@ -15,7 +16,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/guidelines",
     "/trust",
     "/contact",
-    "/support",
+    // /support 404s unless NEXT_PUBLIC_SUPPORT_URL is set.
+    ...(BRAND.supportUrl ? ["/support"] : []),
     "/dmca",
   ].map((path) => ({
     url: `${base}${path}`,

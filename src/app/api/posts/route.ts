@@ -31,10 +31,11 @@ import { blockedHandles } from "@/lib/blocks";
 import { mutedHandles } from "@/lib/mutes";
 import { isAllowedMediaUrl, isBlobUrl, isPlayableMediaUrl } from "@/lib/media-sniff";
 import { flaggedBody, isFlaggedContent } from "@/lib/content-moderation";
-import { checkAttach, claimAttachment, releaseAttachment } from "@/lib/uploads";
+import { checkAttach, claimAttachment, recordUploadSize, releaseAttachment } from "@/lib/uploads";
 import { screenMediaPost } from "@/lib/moderation";
 import { postingPausedError, recordStrike, swearingLimitError } from "@/lib/strikes";
-import { signMediaUrl } from "@/lib/media-access";
+import { blobTokenFor, signMediaUrl } from "@/lib/media-access";
+import { head } from "@vercel/blob";
 import { reportError } from "@/lib/report-error";
 
 function normHandle(h: string) {
@@ -850,6 +851,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "cooldown", retry_in_sec: Math.ceil(cooldownMs / 1000) }, { status: 429 });
     }
     const postId = result.insertedId.toString();
+    // Count the file toward the member's storage budget (lib/uploads.ts).
+    if (mediaKey && mediaUrl) {
+      const key = mediaKey;
+      const url = mediaUrl;
+      after(() =>
+        head(url, { token: blobTokenFor(url) })
+          .then((b) => recordUploadSize(db, key, b.size))
+          .catch((e) => reportError(e, { route: "api/posts", service: "blob" }))
+      );
+    }
     if (mediaUrl && mediaType !== "text") {
       const insertedId = result.insertedId;
       after(() =>

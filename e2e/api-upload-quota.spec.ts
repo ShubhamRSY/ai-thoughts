@@ -79,6 +79,27 @@ test("the 11th take upload in an hour is refused; within quota the uploader is r
   expect((await askToken(api, `avatar-${randomUUID()}.jpg`)).status()).toBe(400);
 });
 
+test("a full storage budget refuses new takes but deletes nothing", async () => {
+  const { api, id } = await newUser("storage");
+  const GB = 1024 ** 3;
+  // Two attached takes totalling the 2 GB budget, plus an old row with no size.
+  const a = await uploads().insertOne({ key: `u:${randomUUID()}`, owner_id: id, kind: "take", private: false, created_at: new Date(Date.now() - 3 * 24 * 3600e3), attached_to: "post-a", size: GB });
+  const b = await uploads().insertOne({ key: `u:${randomUUID()}`, owner_id: id, kind: "take", private: false, created_at: new Date(Date.now() - 3 * 24 * 3600e3), attached_to: "post-b", size: GB });
+  await seedRow(id, "take", new Date(Date.now() - 3 * 24 * 3600e3), "post-legacy");
+
+  const full = await askToken(api, `take-${randomUUID()}.webm`);
+  expect(full.status()).toBe(413);
+  expect((await full.json()).code).toBe("storage_full");
+  // Avatars aren't part of the budget.
+  expect((await askToken(api, `avatar-${randomUUID()}.jpg`)).status()).toBe(400);
+  expect(await uploads().countDocuments({ owner_id: id, kind: "take" })).toBe(3);
+
+  // Deleting a take frees its space.
+  await uploads().deleteOne({ _id: b.insertedId });
+  expect((await askToken(api, `take-${randomUUID()}.webm`)).status()).toBe(400);
+  expect(await uploads().countDocuments({ _id: a.insertedId })).toBe(1);
+});
+
 test("the cleanup job only reports until it's switched on", async () => {
   const { id } = await newUser("cleanup");
   // Start from a clean slate of stale rows in the test database.

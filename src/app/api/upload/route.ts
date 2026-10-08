@@ -4,7 +4,14 @@ import { getSession } from "@/lib/auth";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { privateBlobToken } from "@/lib/media-access";
 import { connectToDatabase } from "@/lib/mongodb";
-import { claimUpload, parseUploadPathname, uploadCaps, uploadQuotaWaitSec } from "@/lib/uploads";
+import {
+  claimUpload,
+  parseUploadPathname,
+  STORAGE_BUDGET_BYTES,
+  storageUsedBytes,
+  uploadCaps,
+  uploadQuotaWaitSec,
+} from "@/lib/uploads";
 
 const IP_UPLOAD_LIMIT = 20;
 const IP_UPLOAD_WINDOW_MS = 10 * 60_000;
@@ -46,6 +53,12 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json(
         { error: "You've reached your upload limit for now — try again later.", retry_in_sec: waitSec },
         { status: 429, headers: { "Retry-After": String(waitSec) } }
+      );
+    }
+    if (parsed.kind === "take" && (await storageUsedBytes(db, session.id)) >= STORAGE_BUDGET_BYTES) {
+      return NextResponse.json(
+        { error: "Your storage is full — delete some older takes to make room.", code: "storage_full" },
+        { status: 413 }
       );
     }
     try {
