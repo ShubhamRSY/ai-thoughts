@@ -258,7 +258,7 @@ function Thread({
   const canReply = thread ? thread.can_reply : Boolean(composeTo);
 
   return (
-    <div data-dm-thread className="flex h-[calc(100dvh-var(--header-h)-var(--tabbar-h)-env(safe-area-inset-bottom,0px))] flex-col">
+    <div data-dm-thread className="flex h-[calc(100dvh-var(--header-live,var(--header-h))-var(--tabbar-h)-env(safe-area-inset-bottom,0px))] flex-col">
       {reporting && other && (
         <ReportDialog
           subject={id ? "conversation" : "account"}

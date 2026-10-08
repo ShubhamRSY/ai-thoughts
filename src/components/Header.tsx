@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Plus, LogOut, Send, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -19,6 +19,21 @@ export default function Header({ onShare, onOpenProfile, onOpenMessages, message
   const { user, signOut } = useAuth();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
+
+  // The header wraps to two rows on phones, so --header-h (one row) undercounts it.
+  // Publish the real height for full-height views like the DM thread.
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const root = document.documentElement;
+    const ro = new ResizeObserver(() => root.style.setProperty("--header-live", `${el.offsetHeight}px`));
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      root.style.removeProperty("--header-live");
+    };
+  }, []);
 
   const handleSignOut = async () => {
     await signOut();
@@ -27,7 +42,7 @@ export default function Header({ onShare, onOpenProfile, onOpenMessages, message
   };
 
   return (
-    <header className="safe-top sticky top-0 z-40 border-b border-[var(--border-base)] bg-[var(--surface)]">
+    <header ref={headerRef} className="safe-top sticky top-0 z-40 border-b border-[var(--border-base)] bg-[var(--surface)]">
       <div className="app-pad flex min-h-[var(--header-h)] flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2">
         <div className="min-w-0">
           <p className="font-display truncate text-[15px] font-semibold tracking-tight text-[var(--foreground)]">

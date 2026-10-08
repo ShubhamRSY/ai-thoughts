@@ -561,6 +561,11 @@ export async function POST(request: NextRequest) {
     if (!content) {
       return NextResponse.json({ error: "Content is required" }, { status: 400 });
     }
+    // Same floor as the composer (3 chars), counted without invisible format
+    // characters so a take of only zero-width spaces can't post as a blank card.
+    if (content.replace(/\p{Cf}/gu, "").trim().length < 3) {
+      return NextResponse.json({ error: "Say at least a few words" }, { status: 400 });
+    }
     if (content.length > MAX_CONTENT_LENGTH) {
       return NextResponse.json(
         { error: `Content must be ${MAX_CONTENT_LENGTH} characters or fewer` },
