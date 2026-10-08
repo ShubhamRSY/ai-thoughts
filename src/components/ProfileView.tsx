@@ -407,8 +407,8 @@ export default function ProfileView({
           </div>
 
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <h2 className="font-display truncate text-lg font-semibold text-[var(--foreground)]">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="font-display max-w-full truncate text-lg font-semibold text-[var(--foreground)]">
                 {name}
               </h2>
               {verified && (

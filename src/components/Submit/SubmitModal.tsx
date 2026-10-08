@@ -320,7 +320,6 @@ export default function SubmitModal({
           <button
             onClick={onClose}
             disabled={publishing}
-            aria-label="Back"
             className="flex items-center gap-1 rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-[var(--surface-2)] hover:text-[var(--foreground)] disabled:opacity-40"
           >
             <X className="h-5 w-5" />
@@ -374,7 +373,9 @@ export default function SubmitModal({
             </button>
           </div>
         )
-      ) : publishing ? (
+      ) : (
+        <>
+          {publishing && (
         <div className="flex flex-1 flex-col items-center justify-center gap-5 overflow-y-auto px-6 py-10 text-center">
           <span className="relative flex h-14 w-14 items-center justify-center">
             <span className="absolute inset-0 rounded-full border-2 border-[var(--accent-soft)]" />
@@ -393,8 +394,10 @@ export default function SubmitModal({
             {publishProgress >= 100 ? "Shared!" : "Sharing your feeling…"}
           </p>
         </div>
-      ) : (
-        <>
+          )}
+          {/* Hidden, not unmounted, while publishing: the recorder holds the clip, so a
+              failed upload must hand the form back with the recording still in it. */}
+          <div className={publishing ? "hidden" : "contents"}>
           <div className="app-rail flex flex-1 flex-col overflow-y-auto">
             {fromDailyPrompt && (
               <p className="border-b border-[var(--border-base)] bg-[var(--accent-soft)]/40 px-4 py-2 text-xs leading-relaxed text-[var(--accent-2)]">
@@ -639,6 +642,7 @@ export default function SubmitModal({
                 {handle.trim() ? "" : " · add a handle"}
               </p>
             </div>
+          </div>
           </div>
         </>
       )}

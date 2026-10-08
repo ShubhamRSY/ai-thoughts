@@ -41,7 +41,8 @@ const FALLBACK_SAMPLES: PulseSample[] = INITIAL_THOUGHTS.slice(0, 3).map((t) => 
   timeLabel: t.timeLabel,
 }));
 
-const FALLBACK_STATS: PulseStats = { total: INITIAL_THOUGHTS.length, samples: FALLBACK_SAMPLES };
+// No headcount when the DB is unreachable — never claim people we can't count.
+const FALLBACK_STATS: PulseStats = { total: 0, samples: FALLBACK_SAMPLES };
 
 /** Soft social proof — 38 → "30+", 41 → "40+", never an exact headcount. */
 export function crowdCountLabel(total: number): string {
@@ -56,8 +57,10 @@ export function crowdCountLabel(total: number): string {
 const loadPulseStats = unstable_cache(
   async (): Promise<PulseStats> => {
     const { db } = await connectToDatabase();
-    const [total, recent] = await Promise.all([
-      db.collection("posts").countDocuments(),
+    // "People already expressing themselves": distinct real authors, not posts —
+    // the seeded sample takes (seed_id) aren't people.
+    const [authors, recent] = await Promise.all([
+      db.collection("posts").distinct("user_id", { seed_id: { $exists: false } }),
       db
         .collection("posts")
         .find({}, { projection: { handle: 1, author: 1, content: 1, feeling: 1, created_at: 1 } })
@@ -66,7 +69,8 @@ const loadPulseStats = unstable_cache(
         .toArray(),
     ]);
 
-    if (recent.length === 0) return { total: total || FALLBACK_STATS.total, samples: FALLBACK_SAMPLES };
+    const total = authors.length;
+    if (recent.length === 0) return { total, samples: FALLBACK_SAMPLES };
 
     return {
       total,
