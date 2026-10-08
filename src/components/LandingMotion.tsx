@@ -13,6 +13,8 @@ export default function LandingMotion({ children }: { children: ReactNode }) {
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
       const intro = contextSafe!(() => {
+        // fonts.ready can resolve after unmount (navigated away / tree remounted).
+        if (!ref.current) return;
         const name = SplitText.create(".landing-name", { type: "chars", mask: "chars" });
         const headline = SplitText.create(".landing-headline", {
           type: "lines,words",
