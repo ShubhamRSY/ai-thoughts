@@ -17,6 +17,7 @@ import {
   type Inbox,
 } from "@/lib/db";
 import { firstName } from "@/lib/display-name";
+import { useAutoGrow } from "@/hooks/useAutoGrow";
 
 const norm = (h: string) => h.trim().toLowerCase().replace(/^@/, "");
 
@@ -165,6 +166,8 @@ function Thread({
   const [thread, setThread] = useState<DmThread | null>(null);
   const [messages, setMessages] = useState<Dm[]>([]);
   const [draft, setDraft] = useState("");
+  const draftRef = useRef<HTMLTextAreaElement>(null);
+  useAutoGrow(draftRef, draft);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reporting, setReporting] = useState(false);
@@ -352,6 +355,7 @@ function Thread({
           {error && <p className="mb-1 text-[11px] text-rose-700">{error}</p>}
           <div className="flex items-end gap-2 rounded-3xl border border-[var(--border-base)] px-3 py-1">
             <textarea
+              ref={draftRef}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => {
@@ -365,7 +369,7 @@ function Thread({
               dir="auto"
               aria-label="Message"
               placeholder="Message…"
-              className="max-h-28 min-h-[36px] flex-1 resize-none bg-transparent py-2 text-sm text-[var(--foreground)] outline-none placeholder:text-[var(--muted)]"
+              className="max-h-40 min-h-[36px] flex-1 resize-none bg-transparent py-2 text-sm text-[var(--foreground)] outline-none placeholder:text-[var(--muted)]"
             />
             <button
               type="submit"

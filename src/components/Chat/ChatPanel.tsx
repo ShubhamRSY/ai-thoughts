@@ -10,6 +10,7 @@ import {
 } from "@/lib/db";
 import { useLocalProfile } from "@/hooks/useLocalProfile";
 import { useAuth } from "@/hooks/useAuth";
+import { useAutoGrow } from "@/hooks/useAutoGrow";
 import {
   mentionQueryAt,
   normHandle,
@@ -81,6 +82,7 @@ export default function ChatPanel({
   const [suggestOpen, setSuggestOpen] = useState(false);
   const listRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  useAutoGrow(inputRef, draft);
   const composerRef = useRef<HTMLDivElement | null>(null);
   const [keyboardPad, setKeyboardPad] = useState(0);
 
@@ -431,7 +433,7 @@ export default function ChatPanel({
             e.preventDefault();
             void handleSend();
           }}
-          className="flex items-center gap-2 border-t border-[var(--border-base)] pt-3"
+          className="flex items-end gap-2 border-t border-[var(--border-base)] pt-3"
         >
           <textarea
             ref={inputRef}
@@ -467,7 +469,7 @@ export default function ChatPanel({
             dir="auto"
             aria-label="Write a reply"
             placeholder="Write a reply…"
-            className="max-h-24 min-h-[36px] flex-1 resize-none bg-transparent py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted)] outline-none"
+            className="max-h-40 min-h-[36px] flex-1 resize-none bg-transparent py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted)] outline-none"
           />
           <button
             type="submit"
