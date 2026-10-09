@@ -319,9 +319,10 @@ export default function ChatPanel({
             <button
               type="button"
               onClick={() => insertMention(authorPerson)}
+              title={`Mention ${authorPerson.handle}`}
               className="text-[13px] font-semibold text-[var(--accent)] hover:underline"
             >
-              @{normHandle(authorPerson.handle)}
+              @{firstName(authorPerson.author, authorPerson.handle)}
             </button>
           )}
           <button
@@ -362,6 +363,16 @@ export default function ChatPanel({
               </p>
               <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
                 <span className="text-[13px] text-[var(--foreground)]/70">{timeLabel(m.created_at)}</span>
+                {/* Replying = @mention, which is what notifies the commenter. */}
+                {signedIn && normHandle(m.handle) !== me && (
+                  <button
+                    type="button"
+                    onClick={() => insertMention({ handle: m.handle, author: m.author })}
+                    className="text-[13px] font-medium text-[var(--foreground)]/70 hover:text-[var(--foreground)]"
+                  >
+                    Reply
+                  </button>
+                )}
                 {signedIn && !m.id.startsWith("local-") && (
                   <button
                     type="button"

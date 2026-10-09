@@ -8,7 +8,11 @@ import { reportError } from "./report-error.ts";
 const redisUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
 const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
 type RedisLike = Pick<Redis, "multi">;
-let redis: RedisLike | null = redisUrl && redisToken ? new Redis({ url: redisUrl, token: redisToken }) : null;
+// A placeholder or malformed URL (e.g. "[SENSITIVE]" in a scrubbed env file)
+// must not throw at module load — that breaks `next build`. Treat it as
+// unconfigured and fall back to the in-memory limiter below.
+const redisConfigured = /^https?:\/\//.test(redisUrl ?? "") && Boolean(redisToken);
+let redis: RedisLike | null = redisConfigured ? new Redis({ url: redisUrl!, token: redisToken! }) : null;
 
 /** Tests only: swap in a fake Redis (or null for in-memory). */
 export function setRedisForTests(fake: RedisLike | null): void {
