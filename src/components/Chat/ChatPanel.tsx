@@ -319,9 +319,10 @@ export default function ChatPanel({
             <button
               type="button"
               onClick={() => insertMention(authorPerson)}
+              title={`Mention ${authorPerson.handle}`}
               className="text-[13px] font-semibold text-[var(--accent)] hover:underline"
             >
-              @{normHandle(authorPerson.handle)}
+              @{firstName(authorPerson.author, authorPerson.handle)}
             </button>
           )}
           <button
