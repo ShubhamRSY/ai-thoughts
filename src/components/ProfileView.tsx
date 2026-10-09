@@ -23,6 +23,7 @@ import {
 import VerifiedBadge from "@/components/VerifiedBadge";
 import { BRAND } from "@/lib/brand";
 import WindowsStoreCta, { isWindowsBrowser } from "@/components/WindowsStoreCta";
+import { firstName } from "@/lib/display-name";
 
 function normHandle(h: string) {
   return h.trim().toLowerCase().replace(/^@/, "");
@@ -56,12 +57,7 @@ interface ConnectionProfile {
 }
 
 function initials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase() || "?";
+  return firstName(name).slice(0, 1).toUpperCase() || "?";
 }
 
 export default function ProfileView({
@@ -409,7 +405,7 @@ export default function ProfileView({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="font-display max-w-full truncate text-lg font-semibold text-[var(--foreground)]">
-                {name}
+                {firstName(name)}
               </h2>
               {verified && (
                 <span className="shrink-0 text-sky-500">
@@ -506,7 +502,6 @@ export default function ProfileView({
                 )
               )}
             </div>
-            <p className="text-sm text-[var(--muted)]">{displayHandle}</p>
             <p className="mt-2 text-sm leading-relaxed text-[var(--foreground)]">{shownBio}</p>
           </div>
         </div>
@@ -854,7 +849,7 @@ export default function ProfileView({
                 className="flex items-center gap-3 rounded-xl border border-[var(--border-base)] bg-[var(--surface)] px-3 py-2.5"
               >
                 <p dir="auto" className="min-w-0 flex-1 truncate text-sm text-[var(--foreground)]">
-                  <span className="font-medium text-[var(--foreground)]">{t.author}: </span>
+                  <span className="font-medium text-[var(--foreground)]">{firstName(t.author, t.handle)}: </span>
                   {t.content}
                 </p>
                 <span className="shrink-0 text-xs tabular-nums text-[var(--muted)]">{t.timeLabel}</span>
@@ -876,7 +871,7 @@ export default function ProfileView({
                 className="flex items-center gap-3 rounded-xl border border-[var(--border-base)] bg-[var(--surface)] px-3 py-2.5"
               >
                 <p dir="auto" className="min-w-0 flex-1 truncate text-sm text-[var(--foreground)]">
-                  <span className="font-medium text-[var(--foreground)]">{t.author}: </span>
+                  <span className="font-medium text-[var(--foreground)]">{firstName(t.author, t.handle)}: </span>
                   {t.content}
                 </p>
                 <span className="shrink-0 text-xs tabular-nums text-[var(--muted)]">{t.timeLabel}</span>
@@ -914,8 +909,7 @@ function ConnectionList({ title, people }: { title: string; people: ConnectionPr
                 </div>
               )}
               <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-[var(--foreground)]">{p.author}</p>
-                <p className="truncate text-xs text-[var(--muted)]">{p.handle}</p>
+                <p className="truncate text-sm font-medium text-[var(--foreground)]">{firstName(p.author, p.handle)}</p>
               </div>
             </div>
           ))}

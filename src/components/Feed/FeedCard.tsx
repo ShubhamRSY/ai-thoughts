@@ -36,18 +36,11 @@ import { shouldOfferTranslate } from "@/lib/lang";
 import type { ReportReason } from "@/lib/report-reasons";
 import ReportDialog from "@/components/ReportDialog";
 import { isNewAccount } from "@/lib/anti-abuse";
+import { firstName } from "@/lib/display-name";
 
 /** Post ids already counted as viewed during this page load. */
 const viewedThisLoad = new Set<string>();
 
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
 
 /**
  * Renders @handle and #tag tokens inside post text as tappable buttons.
@@ -327,23 +320,19 @@ export default function FeedCard({
     >
       <div className="flex items-start gap-3">
         <div className="relative mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-2)] text-[11px] font-semibold text-[var(--foreground)]">
-          {initials(thought.author)}
+          {firstName(thought.author, thought.handle).slice(0, 1).toUpperCase()}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
-            {thought.author && (
-              <span className="truncate text-sm font-semibold text-[var(--foreground)]">
-                {thought.author}
-              </span>
-            )}
+            <span
+              className="truncate text-sm font-semibold text-[var(--foreground)]"
+              title={thought.handle}
+            >
+              {firstName(thought.author, thought.handle)}
+            </span>
             {thought.authorVerified && (
               <span className="shrink-0 text-sky-500">
                 <VerifiedBadge className="h-4 w-4" />
-              </span>
-            )}
-            {thought.handle && (
-              <span className="truncate text-[13px] font-normal text-[var(--foreground)]/70">
-                {thought.handle.startsWith("@") ? thought.handle : `@${thought.handle}`}
               </span>
             )}
             {authorIsNew && (
@@ -560,21 +549,14 @@ export default function FeedCard({
             {thought.quotedPost ? (
               <>
                 <p className="flex items-center gap-1.5 text-[13px] font-semibold text-[var(--foreground)]">
-                  {thought.quotedPost.author && (
-                    <span className="truncate">
-                      {thought.quotedPost.author || thought.quotedPost.handle.replace(/^@/, "")}
-                    </span>
-                  )}
+                  <span className="truncate">
+                    {firstName(thought.quotedPost.author, thought.quotedPost.handle)}
+                  </span>
                   {thought.quotedPost.authorVerified && (
                     <span className="shrink-0 text-sky-500">
                       <VerifiedBadge className="h-3.5 w-3.5" />
                     </span>
                   )}
-                  <span className="shrink-0 font-normal text-[var(--foreground)]/60">
-                    {thought.quotedPost.handle.startsWith("@")
-                      ? thought.quotedPost.handle
-                      : `@${thought.quotedPost.handle}`}
-                  </span>
                 </p>
                 <p
                   dir="auto"
@@ -734,7 +716,7 @@ export default function FeedCard({
                 />
                 <div className="mt-3 rounded-xl border border-[var(--border-base)] bg-[var(--surface)]/60 p-3">
                   <p className="text-[13px] font-semibold text-[var(--foreground)]">
-                    {thought.handle.startsWith("@") ? thought.handle : `@${thought.handle}`}
+                    {firstName(thought.author, thought.handle)}
                   </p>
                   <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-[14px] text-[var(--user-ink)]/85">
                     {thought.content}

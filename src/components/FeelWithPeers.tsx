@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { HeartHandshake } from "lucide-react";
 import SharedSpectrum from "@/components/SharedSpectrum";
+import { firstName } from "@/lib/display-name";
 
 export interface PromptPeer {
   handle: string;
@@ -99,9 +100,8 @@ export default function FeelWithPeers({
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-[var(--foreground)]">
-                    {p.author}
+                    {firstName(p.author, p.handle)}
                   </p>
-                  <p className="truncate text-xs text-[var(--muted)]">{p.handle}</p>
                   <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-[var(--foreground)]">
                     {p.preview}
                   </p>

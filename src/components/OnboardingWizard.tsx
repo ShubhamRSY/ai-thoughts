@@ -13,6 +13,7 @@ import type { CapturedClip } from "@/components/Submit/MediaRecorderView";
 import BrandMark from "@/components/BrandMark";
 import SharedSpectrum from "@/components/SharedSpectrum";
 import { useAuth } from "@/hooks/useAuth";
+import { firstName as shortName } from "@/lib/display-name";
 
 interface OnboardingPeer {
   handle: string;
@@ -465,9 +466,8 @@ export default function OnboardingWizard({
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-[var(--foreground)]">
-                        {p.author}
+                        {shortName(p.author, p.handle)}
                       </p>
-                      <p className="truncate text-xs text-[var(--muted)]">{p.handle}</p>
                       <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-[var(--foreground)]">
                         {p.preview}
                       </p>
