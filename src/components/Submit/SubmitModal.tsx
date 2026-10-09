@@ -509,14 +509,11 @@ export default function SubmitModal({
               {lockedIdentity ? (
                 <div className="flex items-center gap-3 rounded-lg border border-[var(--border-base)] bg-white px-3 py-2.5">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-xs font-bold text-white">
-                    {(author || handle).replace("@", "").slice(0, 1).toUpperCase()}
+                    {handle.replace("@", "").slice(0, 1).toUpperCase()}
                   </div>
-                  <div className="min-w-0 leading-tight">
-                    <p className="truncate text-sm font-semibold text-[var(--foreground)]">
-                      {author || handle}
-                    </p>
-                    <p className="truncate text-xs text-[var(--muted)]">Posting as {handle}</p>
-                  </div>
+                  <p className="min-w-0 truncate text-sm text-[var(--muted)]">
+                    Posting as <span className="font-semibold text-[var(--foreground)]">{handle}</span>
+                  </p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

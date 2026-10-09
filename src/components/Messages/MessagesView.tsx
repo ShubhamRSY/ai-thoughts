@@ -16,6 +16,7 @@ import {
   type DmThread,
   type Inbox,
 } from "@/lib/db";
+import { firstName } from "@/lib/display-name";
 
 const norm = (h: string) => h.trim().toLowerCase().replace(/^@/, "");
 
@@ -127,10 +128,10 @@ function InboxList({ inbox, onOpen }: { inbox: Inbox | null; onOpen: (id: string
               onClick={() => onOpen(i.id)}
               className="flex w-full items-center gap-3 py-3 text-left transition hover:bg-[var(--surface-2)]/50"
             >
-              <Avatar name={i.other.displayName} />
+              <Avatar name={firstName(i.other.displayName, i.other.handle)} />
               <div className="min-w-0 flex-1">
                 <p className={`truncate text-sm text-[var(--foreground)] ${i.unread ? "font-bold" : "font-semibold"}`}>
-                  {i.other.displayName}
+                  {firstName(i.other.displayName, i.other.handle)}
                 </p>
                 <p className={`truncate text-[13px] ${i.unread ? "font-semibold text-[var(--foreground)]" : "text-[var(--muted)]"}`}>
                   {i.last_from_me ? "You: " : ""}
@@ -242,7 +243,7 @@ function Thread({
   };
 
   const block = async () => {
-    if (!other || !window.confirm(`Block ${other.displayName}? They won't be able to message you, and they won't be told.`)) return;
+    if (!other || !window.confirm(`Block ${firstName(other.displayName, other.handle)}? They won't be able to message you, and they won't be told.`)) return;
     const res = await fetch("/api/blocks", {
       method: "POST",
       credentials: "include",
@@ -280,10 +281,9 @@ function Thread({
         </button>
         {other && (
           <button type="button" onClick={() => onOpenProfile(other.handle)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
-            <Avatar name={other.displayName} size="h-8 w-8 text-xs" />
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-semibold text-[var(--foreground)]">{other.displayName}</span>
-              <span className="block truncate text-[11px] text-[var(--muted)]">@{norm(other.handle)}</span>
+            <Avatar name={firstName(other.displayName, other.handle)} size="h-8 w-8 text-xs" />
+            <span className="block min-w-0 truncate text-sm font-semibold text-[var(--foreground)]">
+              {firstName(other.displayName, other.handle)}
             </span>
           </button>
         )}
@@ -307,7 +307,7 @@ function Thread({
       <div ref={listRef} className="app-pad flex-1 space-y-1.5 overflow-y-auto overscroll-contain py-3">
         {messages.length === 0 && other && (
           <p className="py-8 text-center text-sm text-[var(--muted)]">
-            {id ? "Loading…" : `Say hi to ${other.displayName} — tell them what their take made you feel.`}
+            {id ? "Loading…" : `Say hi to ${firstName(other.displayName, other.handle)} — tell them what their take made you feel.`}
           </p>
         )}
         {messages.map((m) => (
@@ -330,7 +330,7 @@ function Thread({
       {thread?.request && other ? (
         <div className="app-pad border-t border-[var(--border-base)] py-3">
           <p className="mb-2 text-center text-[13px] text-[var(--muted)]">
-            {other.displayName} wants to message you. Accept to move this to your chats.
+            {firstName(other.displayName, other.handle)} wants to message you. Accept to move this to your chats.
           </p>
           <div className="flex gap-2">
             <button type="button" onClick={() => void act("delete")} className="flex-1 rounded-full border border-[var(--border-base)] py-2 text-sm font-semibold text-rose-700">

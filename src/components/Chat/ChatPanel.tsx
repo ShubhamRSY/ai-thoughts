@@ -19,6 +19,7 @@ import {
 import VerifiedBadge from "@/components/VerifiedBadge";
 import ReportDialog from "@/components/ReportDialog";
 import Link from "next/link";
+import { firstName } from "@/lib/display-name";
 
 interface ChatPanelProps {
   postId: string;
@@ -346,20 +347,17 @@ export default function ChatPanel({
         {messages.map((m) => (
           <div key={m.id} className="flex items-start gap-2.5">
             <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--surface-2)] text-[9px] font-bold text-[var(--foreground)]">
-              {(m.author || m.handle).slice(0, 1).toUpperCase()}
+              {firstName(m.author, m.handle).slice(0, 1).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-[15px] leading-snug text-[var(--user-ink)]">
-                <span className="font-semibold">{m.author || m.handle}</span>
+                <span className="font-semibold" title={m.handle}>{firstName(m.author, m.handle)}</span>
                 {m.authorVerified && (
                   <span className="mx-1 inline-flex text-sky-500">
                     <VerifiedBadge className="h-3.5 w-3.5" />
                   </span>
                 )}
-                <span className="text-[13px] font-normal text-[var(--foreground)]/60">
-                  {" "}
-                  @{normHandle(m.handle)}
-                </span>{" "}
+{" "}
                 <CommentBody body={m.body} />
               </p>
               <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
