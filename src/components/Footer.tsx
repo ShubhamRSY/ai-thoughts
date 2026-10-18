@@ -8,6 +8,7 @@ export default function Footer() {
       <p className="font-display text-sm text-[var(--foreground)]">{BRAND.name}</p>
       <p className="mt-1 text-xs text-[var(--muted)]">{BRAND.tagline}</p>
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-[var(--muted)]">
+        <Link href="/pulse" className="hover:text-[var(--foreground)]">Pulse</Link>
         <Link href="/terms" className="hover:text-[var(--foreground)]">Terms</Link>
         <Link href="/privacy" className="hover:text-[var(--foreground)]">Privacy</Link>
         <Link href="/dmca" className="hover:text-[var(--foreground)]">DMCA</Link>

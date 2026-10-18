@@ -52,6 +52,7 @@ import MessagesView from "@/components/Messages/MessagesView";
 import type { ReportReason } from "@/components/Feed/FeedCard";
 import type { RegionScope } from "@/components/Feed/FilterBar";
 import { todayKey as promptTodayKey, dailyPrompt } from "@/lib/daily-prompt";
+import { FEELINGS } from "@/lib/feelings";
 import { LANGS } from "@/lib/mock-data";
 import { fakeHash } from "@/lib/integrity";
 
@@ -275,6 +276,15 @@ export default function Home() {
       setRegionScope("world");
       setMedia("all");
       setFeeling("all");
+    }
+    // Deep link from a public /pulse/[feeling] page — open that feeling's room.
+    const feelingParam = params.get("feeling");
+    if (feelingParam && FEELINGS.some((f) => f.id === feelingParam)) {
+      setTab("home");
+      setFeeling(feelingParam as FeelingId);
+      setRoom(feelingParam as FeelingId);
+      setRegionScope("world");
+      setMedia("all");
     }
   }, []);
 

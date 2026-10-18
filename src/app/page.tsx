@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Footer from "@/components/Footer";
 import BrandMark from "@/components/BrandMark";
 import LandingCTAs from "@/components/LandingCTAs";
@@ -64,7 +65,7 @@ export default async function LandingPage() {
               <h1 className="landing-name">{BRAND.shortName}</h1>
             </div>
 
-            <p className="landing-headline">{BRAND.tagline}</p>
+            <p className="landing-headline">{BRAND.headline}</p>
             <p className="landing-support">{BRAND.promise}</p>
             <p className="landing-crowd">{crowdLine}</p>
 
@@ -73,6 +74,13 @@ export default async function LandingPage() {
               ctaLabel={ctaLabel}
               installHref={installHref}
             />
+            <p className="landing-note">
+              No sign-up to listen —{" "}
+              <Link href="/pulse" className="underline underline-offset-2 hover:text-[var(--foreground)]">
+                see the live pulse
+              </Link>{" "}
+              or open a take and just hear it.
+            </p>
           </div>
 
           <div className="landing-visual" aria-hidden>

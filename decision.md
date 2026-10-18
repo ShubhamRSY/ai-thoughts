@@ -323,10 +323,18 @@ Format: **Decision → Why → Alternatives considered → Libraries / stack**.
 
 ### Open Voices requires sign-in (reversal)
 - **Decision:** Re-gate `/app` behind a session. `src/proxy.ts` re-adds `/app` to `PROTECTED_PATHS` (alongside `/keeper`, `/admin`); it verifies the session token on the way in and, for guests, redirects to `/sign-in?from=/app` before any page markup is sent. Landing CTA stays “Open Voices” → `/app`; the redirect sends guests to sign-in.
-- **Why:** “Open Voices” led signed-out visitors straight into the feed (the earlier open-browsing pass), and the owner wants guests to meet the sign-in page instead of the voices they haven’t joined. Posting was already gated; this brings reading in line with writing.
+- **Why:** “Open Voices” led signed-out visitors straight into the feed (the earlier open-browsing pass), and the owner wants guests to meet the sign-in page instead of the voices they haven't joined. Posting was already gated; this brings reading in line with writing.
 - **Alternatives:** Keeping open browsing (the original call) — rejected by the owner after seeing the guest experience. Changing the landing CTA href instead of gating the route — less robust, since direct visits / deep links / push–`/app?post=…` clicks would still open the feed. A server `app/layout.tsx` gate — functionally equivalent but does a full DB-backed `getSession()` per load, while the proxy’s `verifySessionToken` is signature+expiry only.
 - **Stack:** `PROTECTED_PATHS` in `src/proxy.ts`, reusing the same mechanism as `/keeper` and `/admin`.
-- **Reconfirmed 2026-10-05:** an audit suggested un-gating reads to widen the funnel; the owner kept members-only. Settled — revisit only with sign-up data showing the wall is the bottleneck. Consequence: the sitemap and JSON-LD stay limited to the landing and public pages.
+- **Status:** **[Reversed 2026-10-17]** — see “Open reads for growth” below. The members-only wall was the top funnel killer: cold visitors hit sign-in before experiencing the product, and the sitemap was limited to landing + legal pages so there was no organic search surface. Reads are open again; writes stay gated in-routes.
+
+### Open reads for growth (second reversal — 2026-10-17)
+- **Decision:** Remove `/app` from `PROTECTED_PATHS` and drop the proxy-level `MEMBER_API_PATHS` read gate entirely. Guests browse Voices and the public read APIs (`/api/posts`, `/api/people`, `/api/profile`, `/api/search`, `/api/prompt`, `/api/feelings`) without a session; every route already handles a null session and applies privacy filters (private/locked/blocked stay hidden). Writes (share/react/reply/report/mood/profile-PUT) were always gated inside their handlers and stay that way. `/api/feelings/spectrum` drops its 401 and serves the public-only tally to guests.
+- **Why:** Scaling diagnosis after the app stalled: (1) the sign-in wall killed the cold-start funnel — people couldn't taste the product before committing an email; (2) no SEO surface — robots/sitemap excluded `/app`, so “how people feel about AI” search traffic had nowhere to land; (3) the launch plan was founder hustle with no repeatable acquisition engine. Open reads fix (1) and unlock (2).
+- **Alternatives:** Showing 3–5 sample takes before the wall — still a wall; un-gating only `/api/posts` but keeping `/app` gated — the page itself was the redirect. Keeping members-only and growing via press/data only — slower, and the feed still dies empty.
+- **Stack:** `src/proxy.ts` (PROTECTED_PATHS → `["/keeper", "/admin"]`); routes already used `session?.handle ?? null` + `hiddenHandles`.
+- **New public surfaces:** `/pulse` (live feeling tally + sample takes, server-rendered, SEO metadata + JSON-LD) and `/pulse/[feeling]` (per-feeling take pages, e.g. `/pulse/worried`). Both powered by `src/lib/public-pulse.ts` (viewer-null aggregates, 5-min revalidate). Sitemap lists `/pulse` + all feeling pages; footer + landing link to them. `/app?feeling=<id>` deep-link opens that feeling's room (from the per-feeling CTA).
+- **Note:** `/app` stays disallowed in robots.ts — it's a client-rendered shell with thin crawable content; `/pulse` is the SEO surface. Revisit the members-only call only with data showing reads hurt (abuse, private-account leakage) rather than assuming it.
 
 ### Kill “Coming soon on Microsoft Store” until it ships
 - **Decision:** `WindowsStoreCta` renders nothing when `NEXT_PUBLIC_MS_STORE_URL` is empty; install page, profile copy and landing PC notice drop all Windows mentions with it. Setting the env var brings everything back.
@@ -357,4 +365,4 @@ Format: **Decision → Why → Alternatives considered → Libraries / stack**.
 
 ---
 
-*Last updated: 2026-10-05 (members-only reads reconfirmed).*
+*Last updated: 2026-10-17 (reads un-gated for growth; /pulse public pages added).*

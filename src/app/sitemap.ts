@@ -1,15 +1,17 @@
 import type { MetadataRoute } from "next";
 import { getSiteUrl } from "@/lib/site";
 import { BRAND } from "@/lib/brand";
+import { FEELINGS } from "@/lib/feelings";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = getSiteUrl();
-  const lastModified = new Date("2026-09-16");
+  const lastModified = new Date("2026-10-17");
 
   return [
     "",
-    // Content lives behind sign-in (decision.md: members-only reads), so only
-    // public pages are listed. /sign-in is disallowed in robots.ts.
+    // Public, ungated content surfaces — the SEO entry points.
+    "/pulse",
+    ...FEELINGS.map((f) => `/pulse/${f.id}`),
     "/install",
     "/terms",
     "/privacy",
@@ -19,10 +21,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // /support 404s unless NEXT_PUBLIC_SUPPORT_URL is set.
     ...(BRAND.supportUrl ? ["/support"] : []),
     "/dmca",
-  ].map((path) => ({
-    url: `${base}${path}`,
-    lastModified,
-    changeFrequency: path === "" ? "hourly" : "monthly",
-    priority: path === "" ? 1 : 0.6,
-  }));
+  ].map((path) => {
+    const isPulse = path === "/pulse" || path.startsWith("/pulse/");
+    return {
+      url: `${base}${path}`,
+      lastModified,
+      changeFrequency: path === "" || path === "/pulse" ? "hourly" : isPulse ? "daily" : "monthly",
+      priority: path === "" ? 1 : path === "/pulse" ? 0.9 : isPulse ? 0.7 : 0.6,
+    };
+  });
 }

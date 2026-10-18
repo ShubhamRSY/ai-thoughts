@@ -11,9 +11,10 @@ const FEELING_IDS = FEELINGS.map((f) => f.id);
 /**
  * GET /api/feelings/spectrum — the community feeling tally for the last 7 days.
  *
- * Members only, and counted over what *this* viewer is allowed to see: takes
- * and check-ins belonging to private or locked accounts (and to anyone in a
- * block with the viewer) are left out. An aggregate is still derived from real
+ * Open to guests and members. Counted over what *this* viewer is allowed to
+ * see: takes and check-ins belonging to private or locked accounts (and to
+ * anyone in a block with the viewer) are left out — for a guest that means
+ * only public accounts show up. An aggregate is still derived from real
  * posts, so a signed-in member polling it could otherwise infer that a
  * specific private account posted or felt something on a given day — the one
  * thing those accounts chose to keep to themselves.
@@ -23,10 +24,7 @@ const FEELING_IDS = FEELINGS.map((f) => f.id);
 export async function GET() {
   try {
     const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ error: "Sign in required" }, { status: 401 });
-    }
-    const viewer = session.handle;
+    const viewer = session?.handle ?? null;
 
     const { db } = await connectToDatabase();
     const since = new Date(Date.now() - WINDOW_MS);

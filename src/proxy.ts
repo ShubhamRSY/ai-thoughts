@@ -5,14 +5,11 @@ import { SESSION_COOKIE, sessionCookieOptions, validateSession } from "@/lib/aut
 import { safeRedirectPath } from "@/lib/safe-redirect";
 import { reportError } from "@/lib/report-error";
 
-// Voices needs an account: reading and writing both ask for sign-in, and the
-// proxy sends guests to the sign-in page before /app loads. The API guards
-// the first write (share, react, reply, report) as the second layer.
-const PROTECTED_PATHS = ["/app", "/keeper", "/admin"];
-// Reading feed content (takes, replies, people, profiles, feelings) is
-// members-only too, so a guest can't pull it straight off the API. Writes are
-// already guarded inside each route.
-const MEMBER_API_PATHS = ["/api/posts", "/api/people", "/api/profile", "/api/prompt", "/api/feelings", "/api/search"];
+// Reading is open: guests browse Voices (/app) and the public read APIs
+// without an account. Writes (share, react, reply, report, mood, profile
+// edits) are guarded inside each route and still ask for sign-in. Keeper and
+// admin stay members-only pages.
+const PROTECTED_PATHS = ["/keeper", "/admin"];
 const AUTH_PAGES = ["/sign-in"];
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
@@ -53,9 +50,9 @@ function blockedByOriginCheck(request: NextRequest): boolean {
 }
 
 // Full check, not just the signature: a signed-out or revoked cookie is still
-// validly signed, and must not open /app. null = couldn't check (DB down):
-// answer 503 and keep the cookie — treating it as signed-out logged every
-// member out on a DB blip and sent them all to the OTP email cap at once.
+// validly signed, and must not open /keeper or /admin. null = couldn't check
+// (DB down): answer 503 and keep the cookie — treating it as signed-out logged
+// every member out on a DB blip and sent them all to the OTP email cap at once.
 async function hasValidSession(request: NextRequest): Promise<boolean | null> {
   const token = request.cookies.get(SESSION_COOKIE)?.value;
   if (!token) return false;
@@ -67,12 +64,6 @@ async function hasValidSession(request: NextRequest): Promise<boolean | null> {
     return null;
   }
 }
-
-const unavailable = () =>
-  NextResponse.json(
-    { error: "Temporarily unavailable — try again shortly" },
-    { status: 503, headers: { "Retry-After": "5" } }
-  );
 
 // A DB blip during a page navigation must not dump raw JSON at the reader.
 // Same 503, self-contained markup (no external refs), with an auto-reload.
@@ -202,12 +193,9 @@ async function guardApi(request: NextRequest) {
     return NextResponse.json({ error: "Request body must be a JSON object" }, { status: 400 });
   }
 
-  const isRead = request.method === "GET" || request.method === "HEAD";
-  if (isRead && under(request.nextUrl.pathname, MEMBER_API_PATHS)) {
-    const valid = await hasValidSession(request);
-    if (valid === null) return unavailable();
-    if (!valid) return NextResponse.json({ error: "Sign in to see Voices" }, { status: 401 });
-  }
+  // Reads are public: every route under the former MEMBER_API_PATHS handles a
+  // null session and applies privacy filters itself. Writes stay gated inside
+  // each handler (share/react/reply/report/mood all require a session).
 
   return NextResponse.next();
 }
