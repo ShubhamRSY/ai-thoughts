@@ -3,7 +3,7 @@ import { test, expect, type Page } from "@playwright/test";
 const tapRow = (page: Page) => page.getByRole("group", { name: "Pick a feeling" });
 
 // The retention loop: the daily tap asks for sign-in when tapped, and a
-// signed-in tap sticks. Guests are sent to sign-in before the feed loads.
+// signed-in tap sticks. Guests can browse the feed; the first write asks.
 // Also the public trust page.
 // GitHub runners are slow and `next dev` compiles on demand: give every wait real headroom.
 const SLOW = { timeout: 30_000 };
@@ -31,12 +31,16 @@ async function signIn(page: Page) {
   await page.getByRole("button", { name: "Start exploring" }).click();
 }
 
-test("a guest is sent to sign-in before the feed loads", async ({ page }) => {
+test("a guest can browse the feed; the first write asks for sign-in", async ({ page }) => {
   test.setTimeout(120_000);
   const response = await page.goto("/app");
-  await expect(page).toHaveURL(/\/sign-in\?from=%2Fapp$/, { timeout: 30_000 });
-  await expect(page.getByRole("button", { name: "Send sign-in code" })).toBeVisible(SLOW);
-  expect(response?.request().redirectedFrom()).not.toBeNull();
+  // Reads are open: no sign-in wall, the feed renders for a guest.
+  await expect(page).toHaveURL(/\/app$/, { timeout: 30_000 });
+  await expect(page.getByRole("heading", { name: "Latest takes" })).toBeVisible(SLOW);
+  expect(response?.request().redirectedFrom()).toBeNull();
+  // The first write still requires an account.
+  await page.getByRole("button", { name: "Share", exact: true }).click();
+  await expect(page).toHaveURL(/\/sign-in/, { timeout: 30_000 });
 });
 
 test("a signed-in tap is saved and survives a reload", async ({ page }) => {

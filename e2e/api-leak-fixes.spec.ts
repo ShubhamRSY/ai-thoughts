@@ -165,13 +165,20 @@ test.describe("2. feeling spectrum respects private and locked accounts", () => 
     expect(withPost - (await tallyFor(viewer)), "locked data must leave the tally").toBe(1);
   });
 
-  test("guests are refused", async () => {
+  test("guests get the public-only tally, never a shared-cache copy", async () => {
     const guest = await pwRequest.newContext({
       baseURL: ORIGIN,
       extraHTTPHeaders: { Origin: ORIGIN, "X-Forwarded-For": nextIp() },
     });
     const res = await guest.get("/api/feelings/spectrum");
-    expect(res.status()).toBe(401);
+    // Reads are open, but the tally stays per-viewer (hiddenHandles(null) above
+    // already proves private/locked data drops out for a member; a guest is
+    // just the extreme case of that filter).
+    expect(res.status()).toBe(200);
+    const body = (await res.json()) as { tally: unknown[]; total: number };
+    expect(Array.isArray(body.tally)).toBeTruthy();
+    expect(typeof body.total).toBe("number");
+    expect(res.headers()["cache-control"]).toContain("no-store");
     await guest.dispose();
   });
 });
