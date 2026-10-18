@@ -21,9 +21,9 @@ const manrope = Manrope({
 });
 
 const siteUrl = getSiteUrl();
-const title = "AI·Thoughts — Say how AI makes you feel";
+const title = "AiTo — how AI actually makes you feel";
 const description =
-  "Express how AI makes you feel — love it, fear it, or both. Voice your perspective in voice, video, or words, and connect with people who feel it too.";
+  "Everyone has an opinion about AI. Nobody asks how it feels. Pick a feeling, then say why — voice, video, or a few words. No debates, no tips.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

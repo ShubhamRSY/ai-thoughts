@@ -406,6 +406,14 @@ html[data-pwa-banner="1"] .pb-nav {
   color: var(--muted);
 }
 
+.landing-note {
+  margin-top: clamp(0.65rem, 1.5vw, 0.9rem);
+  max-width: 34ch;
+  font-size: clamp(0.78rem, 1.3vw, 0.85rem);
+  line-height: 1.5;
+  color: var(--muted);
+}
+
 .landing-ctas {
   display: flex;
   flex-direction: column;

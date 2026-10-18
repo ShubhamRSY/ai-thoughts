@@ -5,8 +5,10 @@ export const BRAND = {
   shortName: "AiTo",
   /** Short line under / beside the brand — what this place is for */
   tagline: "Say how AI makes you feel — love it, fear it, or both.",
+  /** Landing + share-card hook — question-first, feeling-forward */
+  headline: "Everyone has an opinion about AI. Nobody asks how it feels.",
   /** One-line promise for landing / share cards */
-  promise: "Voice your feeling and your take on AI — not tips, not debates. Then find the people who feel it too.",
+  promise: "Pick how AI makes you feel — love it, worried, both — then say why. Voice, video, or a few words. No debates, no tips.",
   /** Replaces “pulse” — the living community of shared takes */
   community: "Voices",
   communityShort: "Voices",
@@ -17,7 +19,7 @@ export const BRAND = {
   shareTitle: "Share your feeling",
   shareSuccess: "Your feeling is live.",
   shareSuccessSub: "It’s in Voices — people who feel the same can reply, react, and connect with you.",
-  openCta: "Open Voices",
+  openCta: "Hear what people feel",
   homeNav: "Voices",
   /**
    * Microsoft Store listing for Windows.

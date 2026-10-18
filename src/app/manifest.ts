@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "AiTo",
     short_name: "AiTo",
     description:
-      "Express how AI makes you feel — love it, fear it, or both. Voice, video, or words.",
+      "Everyone has an opinion about AI. Nobody asks how it feels. Pick a feeling, then say why — voice, video, or a few words.",
     id: "/",
     start_url: "/",
     scope: "/",

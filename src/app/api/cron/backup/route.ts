@@ -22,7 +22,9 @@ export const maxDuration = 60;
 const MONITOR = {
   schedule: { type: "crontab", value: "30 4 * * *" },
   timezone: "UTC",
-  checkinMargin: 30,
+  // Vercel fires this up to an hour late (observed 05:28 for a 04:30 slot), so
+  // a tighter margin alerts on every healthy run.
+  checkinMargin: 120,
 } as const;
 
 export async function GET(request: NextRequest) {
