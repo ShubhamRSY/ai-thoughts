@@ -38,8 +38,8 @@ test("a guest can browse the feed; the first write asks for sign-in", async ({ p
   await expect(page).toHaveURL(/\/app$/, { timeout: 30_000 });
   await expect(page.getByRole("heading", { name: "Latest takes" })).toBeVisible(SLOW);
   expect(response?.request().redirectedFrom()).toBeNull();
-  // The first write still requires an account.
-  await page.getByRole("button", { name: "Share", exact: true }).click();
+  // The first write still requires an account (header Share, not the composer's).
+  await page.getByRole("banner").getByRole("button", { name: "Share" }).click();
   await expect(page).toHaveURL(/\/sign-in/, { timeout: 30_000 });
 });
 

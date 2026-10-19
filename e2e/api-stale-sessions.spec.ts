@@ -120,7 +120,9 @@ test("a banned account loses every session on the next request, legacy cookies t
 
   expect((await target.api.get("/api/auth/me")).status()).toBe(401);
   expect((await legacy.get("/api/auth/me")).status()).toBe(401);
-  const page = await target.api.get("/app");
+  // The feed is public now, so probe a members-only page instead: the stale
+  // cookie must still be bounced to sign-in.
+  const page = await target.api.get("/keeper");
   expect(page.status()).toBe(307);
   expect(page.headers()["location"]).toContain("/sign-in");
 });
